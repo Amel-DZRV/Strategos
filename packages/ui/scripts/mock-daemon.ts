@@ -136,6 +136,23 @@ const initiatives = [
   { id: 'i-release', name: 'Release 2.4', colour: '#35e0c8', createdAt: t0, contractFiles: [], archived: false },
 ];
 
+// MOCK_CROWD=1 adds a crowded scene for checking the 4x4 grid and the "+N" badge: 12 more repos, 27 more sessions.
+if (process.env['MOCK_CROWD']) {
+  const sts: Status[] = ['working', 'working', 'done', 'stopped', 'permission', 'question', 'working', 'seen'];
+  for (let r = 0; r < 12; r++) {
+    const n = r === 0 ? 9 : r < 4 ? 3 : 1;
+    for (let j = 0; j < n; j++) {
+      const id = `c${r}_${j}`;
+      const st = sts[(r + j) % sts.length]!;
+      const pend = st === 'permission' ? { requestId: 'q' + id, kind: 'permission' as const, held: true, toolName: 'Bash', inputSummary: 'npm test', inputTruncated: false, risk: ['run' as const], since: t0 - 2 * min } : undefined;
+      sessions.set(id, rec({
+        strategosId: id, displayName: `Task ${r}.${j}`, repo: `crowd-repo${r}`, status: st, createdAt: t0 - (200 - r * 10 - j) * min, ctx: { pct: 10 + ((r * 7 + j * 13) % 85), at: t0, source: 'statusline' },
+        cost: { lineageUsd: 0.1 * (j + 1), byClaudeSession: {} }, ...(pend ? { pending: pend, waitingSince: t0 - (r + 1) * min } : {}),
+      }));
+    }
+  }
+}
+
 let seq = 0;
 const conns = new Set<WebSocket>();
 const subs = new Map<WebSocket, Set<string>>();

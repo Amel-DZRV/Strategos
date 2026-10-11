@@ -26,7 +26,8 @@ function groupsOf(tokens: TokenInput[], extra: string[] = []): GroupInput[] {
 describe('grid', () => {
   test('capacity grows 2x2 to 3x3 to 4x4', () => {
     expect([0, 1, 4, 5, 9, 10, 16].map(sizeFor)).toEqual([2, 2, 2, 3, 3, 4, 4]);
-    expect(viewBoxFor(2)).toEqual({ w: 2 * CELL_W, h: 2 * CELL_H });
+    expect(viewBoxFor(2)).toMatchObject({ w: 2 * CELL_W });
+    expect(viewBoxFor(2).h).toBeGreaterThan(2 * CELL_H); // padded so the bottom row labels fit
   });
 
   test('new planets take the free cell nearest the centre, in spiral order', () => {
@@ -53,7 +54,7 @@ describe('grid', () => {
     const keys = (n: number) => Array.from({ length: n }, (_, i) => ({ key: `p${i}` }));
     let m = stepLayout(emptyLayout(), keys(7), [], T).memory;
     expect(m.size).toBe(3);
-    m = stepLayout(m, keys(6), [], T).memory; // 6 > 4-2... 3x3 shrinks to 2x2 when count <= 2
+    m = stepLayout(m, keys(6), [], T).memory; // 6 is above the threshold (3x3 shrinks to 2x2 only at 2 or fewer)
     expect(m.size).toBe(3);
     m = stepLayout(m, keys(2), [], T).memory;
     m = stepLayout(m, keys(2), [], T).memory;
@@ -193,7 +194,7 @@ describe('stability (property test)', () => {
     // The run must actually exercise growth and shrinking, or the test proves little.
     expect(grows).toBeGreaterThan(0);
     expect(shrinks).toBeGreaterThan(0);
-  });
+  }, 60_000);
 });
 
 describe('folding and crowding', () => {

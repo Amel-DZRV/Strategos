@@ -44,7 +44,8 @@ export function expandPlanet(key: string): void {
   setTimeout(() => {
     const cur = expandedUntil.value[key];
     if (cur !== undefined && cur <= Date.now()) {
-      const { [key]: _gone, ...rest } = expandedUntil.value;
+      const rest = { ...expandedUntil.value };
+      delete rest[key];
       expandedUntil.value = rest;
     }
   }, EXPAND_MS + 50);

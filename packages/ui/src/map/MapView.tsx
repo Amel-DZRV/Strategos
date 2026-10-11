@@ -129,14 +129,14 @@ export function MapView() {
   return (
     <div class="mapbox" ref={wrap}>
       <svg
-        ref={svg} class={`map ${reduced ? 'reduced' : ''}`} viewBox={`0 0 ${sc.vb.w} ${sc.vb.h}`} preserveAspectRatio="xMidYMid meet"
+        ref={svg} class={`map ${reduced ? 'reduced' : ''}`} viewBox={`${sc.vb.x} ${sc.vb.y} ${sc.vb.w} ${sc.vb.h}`} preserveAspectRatio="xMidYMid meet"
         role="group" aria-label="Campaign map of repos and sessions"
         onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
       >
         <defs><PlanetDefs planets={sc.planets} /></defs>
         {stars(sc.vb.w, sc.vb.h).map((d, k) => <circle key={k} cx={d.x} cy={d.y} r={d.r} fill="#6b7694" opacity=".35" />)}
         {empty ? (
-          <text class="mapempty" x={sc.vb.w / 2} y={sc.vb.h / 2} text-anchor="middle">
+          <text class="mapempty" x={sc.vb.w / 2} y={sc.vb.y + sc.vb.h / 2} text-anchor="middle">
             {store.synced.value ? 'No sessions yet. Press c to start one.' : 'Waiting for the daemon…'}
           </text>
         ) : null}

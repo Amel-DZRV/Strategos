@@ -1,7 +1,7 @@
 /* The Map (look B of design/prototype/strategos-looks.html), its needs-you strip, hover card and footers. */
 .main.mapmain { display: flex; flex-direction: column; overflow: hidden; }
 .mapbox { position: relative; flex: 1; min-height: 0; overflow: auto; background: #06080f; }
-.map { display: block; width: 100%; height: 100%; min-width: 600px; min-height: 360px; }
+.map { display: block; width: 100%; height: 100%; min-width: 420px; }
 .map .tok { cursor: pointer; outline: none; transition: opacity 0.15s; }
 .map .planet { transition: opacity 0.15s; }
 .map .planet .disc { cursor: grab; }
@@ -43,10 +43,11 @@
 .strip.mapstrip { flex-wrap: nowrap; padding: 10px 14px; min-width: 0; }
 .mapstrip h4 { flex: none; white-space: nowrap; }
 .mapstrip .clear { font-size: 12.5px; }
-.chips { display: flex; gap: 8px; overflow-x: auto; min-width: 0; flex: 1; padding-bottom: 2px; }
+.chips { display: flex; gap: 8px; overflow-x: auto; min-width: 0; flex: 1; padding-bottom: 2px; scrollbar-width: thin; scrollbar-color: #2a3350 transparent; }
 .nchip { flex: none; white-space: nowrap; }
 .nchip .nsel { display: flex; gap: 8px; align-items: center; background: none; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; }
-.nchip .cmd { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 11.5px; }
+/* The command is shown whole. A long one wraps inside its own box (and scrolls there) so the strip stays one row of chips. */
+.nchip .cmd { background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 11.5px; white-space: pre-wrap; overflow-wrap: anywhere; width: max-content; max-width: 420px; max-height: 3.6em; overflow-y: auto; scrollbar-width: thin; }
 .nchip .q { color: var(--c-reply); font-size: 12.5px; }
 
 /* Top bar additions */

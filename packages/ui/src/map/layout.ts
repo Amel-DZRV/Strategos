@@ -197,8 +197,11 @@ export function stepLayout(prev: LayoutMemory, groups: readonly GroupInput[], to
 // Geometry
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface ViewBox { w: number; h: number }
-export const viewBoxFor = (size: number): ViewBox => ({ w: size * CELL_W, h: size * CELL_H });
+/** Room above the first row and below the last for ring-0 tokens and their labels (a label sits 49 units under its token). */
+export const MAP_PAD_TOP = 12;
+export const MAP_PAD_BOTTOM = 36;
+export interface ViewBox { x: number; y: number; w: number; h: number }
+export const viewBoxFor = (size: number): ViewBox => ({ x: 0, y: -MAP_PAD_TOP, w: size * CELL_W, h: size * CELL_H + MAP_PAD_TOP + MAP_PAD_BOTTOM });
 
 export function cellCentre(c: Cell): { x: number; y: number } {
   return { x: c.col * CELL_W + CELL_W / 2, y: c.row * CELL_H + CELL_H / 2 };

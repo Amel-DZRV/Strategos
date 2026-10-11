@@ -72,7 +72,6 @@ export function Token({ t, selected, dimmed, reduced, nowMs, tabbable, onActivat
   const cache = s.cache ? cacheColour(s.cache, nowMs) : null;
   const flags = s.flags;
   const hasConflict = flags.conflicts.length > 0 || flags.contractChanged.length > 0;
-  const extra = [inferred ? 'probably' : '', needs ? fmtWait(wait) : ''].filter(Boolean).join(' · ');
   const glyph = s.status === 'seen' ? '✓' : st.glyph;
 
   const ci = s.pr && s.pr.ci !== 'none' ? CI_COLOUR[s.pr.ci] : null;
@@ -152,14 +151,15 @@ export function Token({ t, selected, dimmed, reduced, nowMs, tabbable, onActivat
         </g>
       ) : null}
       {risk ? (
-        <g class="risk-chip" transform="translate(0 -37)">
+        <g class="risk-chip" transform="translate(0 -25)">
           <rect x={-rw / 2} y="-6" width={r1(rw)} height="12" rx="6" fill="#0c1020" stroke={RISK_COLOUR[risk]} stroke-width="1" />
           <text y="2.8" text-anchor="middle" font-size="7.5" font-weight="700" fill={RISK_COLOUR[risk]}>{RISK_LABEL[risk]}</text>
         </g>
       ) : null}
       <text class="nm" y="37" text-anchor="middle">{clipName(s.displayName)}</text>
       <text class="sub" y="49" text-anchor="middle">{pct === null ? '–' : `${pct}%`} · {money(s.cost.lineageUsd)}</text>
-      {extra ? <text class={`sub extra ${needs ? 'wait' : ''}`} y="60" text-anchor="middle" fill={needs ? st.colour : undefined}>{extra}</text> : null}
+      {needs ? <text class="sub wait" x="27" y="3.5" text-anchor="start" fill={st.colour}>{fmtWait(wait)}</text> : null}
+      {inferred ? <text class="sub probably" x="-27" y="3.5" text-anchor="end">probably</text> : null}
     </g>
   );
 }
