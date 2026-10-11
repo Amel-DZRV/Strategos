@@ -15,6 +15,16 @@ import { loadConfig, strategosHome, type Config } from './config.ts';
 import { acquireLock } from './daemon-lock.ts';
 import { checkGuards } from './features/guards.ts';
 import { createModsProbe } from './features/mods.ts';
+import { registerGitCommands, createWorktreeProvider } from './git/commands.ts';
+import type { Exec } from './git/exec.ts';
+import { createInitiatives, registerInitiativeCommands } from './features/initiatives.ts';
+import { createGh, type Gh } from './git/gh.ts';
+import { createGitPoller, type GitPoller } from './git/git-poller.ts';
+import { createGit } from './git/git.ts';
+import { createPrPoller, type PrPoller } from './git/pr-poller.ts';
+import { createReview } from './git/review.ts';
+import { compileTestPatterns } from './git/test-detect.ts';
+import { createWorktrees } from './git/worktrees.ts';
 import { classifyRisk, riskCtxOf } from './features/risk.ts';
 import { createUsageTracker } from './features/usage.ts';
 import { cliSecretPath, daemonJsonPath, type DaemonInfo } from './home-files.ts';
@@ -57,6 +67,13 @@ export interface DaemonOptions {
   /** Run `claude agents --json` from the reconciler. Default false; main.ts turns it on. */
   agents?: boolean;
   git?: GitRunner;
+  /** Tests: replace the process runner behind git (M6 modules) and gh. */
+  gitExec?: Exec;
+  ghExec?: Exec;
+  /** Tests: replace gh wholesale. */
+  gh?: Gh;
+  /** Poll periods (M6): git status of live sessions (default 15 s), pull requests (default 60 s). */
+  polling?: { gitMs?: number; prMs?: number; suggestMs?: number };
   timing?: ManagerTiming;
   /** Echo log lines to the console. */
   echo?: boolean;
@@ -76,6 +93,8 @@ export interface Daemon {
   readonly manager: SessionManager;
   readonly fs: SafeFs;
   readonly logger: Logger;
+  readonly gitPoller: GitPoller;
+  readonly prPoller: PrPoller;
   readonly version: VersionStatus;
   readonly port: number;
   /** Graceful: release held requests, stop every process (resumable), close the server, flush state, remove lock/json/secret. */
@@ -191,7 +210,9 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
     // ---- server + manager (they refer to each other through closures) ---------------------------
     const controlSecret = randomBytes(32).toString('hex');
     const staticDir = opts.staticDir === null ? undefined : (opts.staticDir ?? (existsSync(DEFAULT_UI_DIST) ? DEFAULT_UI_DIST : undefined));
-    const ref: { m?: SessionManager } = {};
+    const ref: { m?: SessionManager; ini?: ReturnType<typeof createInitiatives> } = {};
+    const gitApi = createGit(opts.gitExec);
+    const worktrees = createWorktrees({ git: gitApi, safeFs: sfs });
     const server = createStrategosServer({
       port: config.machine.port,
       tokenFor: (sid) => ref.m?.tokenFor(sid),
@@ -218,6 +239,9 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
       classifyRisk: (sid, tool, input) => { const s = ref.m?.get(sid); return s === undefined ? [] : classifyRisk(tool, input, riskCtxOf(s)); },
       usage: createUsageTracker(),
       mods: createModsProbe(claudeDir), // 5.05: read-only look at the owner's mods (auto-handoff)
+      worktrees: createWorktreeProvider({ worktrees, worktreeRoot: () => config.machine.worktreeRoot }),
+      testPatterns: () => compileTestPatterns(config.portable.testCommandPatterns),
+      onSuggestion: (s) => { ref.ini?.remember(s); },
       version, logger, ...(opts.timing === undefined ? {} : { timing: opts.timing }),
     });
     ref.m = m;
@@ -227,6 +251,29 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
     server.hub.setHelloProvider(() => ({ daemonVersion: VERSION, claudeVersion: version.claudeVersion, testedRange: version.testedRange, inRange: version.inRange }));
     server.hub.setSnapshotProvider(() => m.snapshot());
     registerSessionCommands(server.hub, m, (what, err) => { logger.error(`command ${what}`, err); });
+
+    // ---- M6: git, worktrees, review, pull requests ---------------------------------------------
+    const gh = opts.gh ?? createGh({ git: gitApi, ...(opts.ghExec === undefined ? {} : { exec: opts.ghExec }) });
+    const setGhNeedsLogin = (needsLogin: boolean, message?: string): void => {
+      m.setRuntimePrefs({ ghNeedsLogin: needsLogin });
+      server.hub.publish({ t: 'gh.status', needsLogin, ...(message === undefined ? {} : { message }) });
+    };
+    const gitPoller = createGitPoller({ manager: m, git: gitApi, ...(opts.polling?.gitMs === undefined ? {} : { intervalMs: opts.polling.gitMs }), onError: (what, err) => { logger.warn(`${what}: ${errText(err)}`); } });
+    const prPoller = createPrPoller({
+      manager: m, gh, onNeedsLogin: setGhNeedsLogin, ...(opts.polling?.prMs === undefined ? {} : { intervalMs: opts.polling.prMs }),
+      onError: (what, err) => { logger.warn(`${what}: ${errText(err)}`); },
+    });
+    const initiatives = createInitiatives({
+      manager: m, store, hub: server.hub, git: gitApi, ...(opts.polling?.suggestMs === undefined ? {} : { debounceMs: opts.polling.suggestMs }),
+      onError: (what, err) => { logger.warn(`${what}: ${errText(err)}`); },
+    });
+    ref.ini = initiatives;
+    registerInitiativeCommands(server.hub, initiatives);
+    registerGitCommands(server.hub, {
+      manager: m, git: gitApi, worktrees, review: createReview({ manager: m, git: gitApi }), gh, prPoller, gitPoller,
+      canonical: platform.paths.canonical, onGhProblem: (err) => { setGhNeedsLogin(true, err.message); },
+      onError: (what, err) => { logger.error(`command ${what}`, err); },
+    });
 
     // ---- control routes for the CLI (loopback, no Origin, secret from a user-only file) ----------
     server.registerControl('pair', (_req, res) => { replyJson(res, 200, { url: server.pairUrl() }); });
@@ -262,6 +309,9 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
     await sfs.chmodUserOnly(cliSecretPath(home)).catch((err: unknown) => { logger.warn(`could not restrict cli.secret: ${errText(err)}`); });
     await sfs.writeFileAtomic(daemonJsonPath(home), JSON.stringify(info) + '\n');
     m.startBackground();
+    gitPoller.start();
+    prPoller.start();
+    initiatives.start();
     m.notifications.arm(opts.notifyQuietMs ?? 1500);
     logger.info(`listening on 127.0.0.1:${port}${staticDir === undefined ? ' (no UI build found)' : ''}`);
 
@@ -269,6 +319,9 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
     const shutdown = (): Promise<void> => {
       closing ??= (async () => {
         logger.info('shutting down');
+        gitPoller.stop();
+        prPoller.stop();
+        initiatives.stop();
         await m.shutdown().catch((err: unknown) => { logger.error('manager shutdown', err); });
         await server.close().catch((err: unknown) => { logger.error('server close', err); });
         await store.close().catch((err: unknown) => { logger.error('state close', err); });
@@ -282,7 +335,7 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
       return closing;
     };
 
-    return { home, info, server, manager: m, fs: sfs, logger, version, port, shutdown };
+    return { home, info, server, manager: m, fs: sfs, logger, gitPoller, prPoller, version, port, shutdown };
   } catch (err) {
     return releaseAndRethrow(err);
   }

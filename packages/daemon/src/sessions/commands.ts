@@ -28,9 +28,9 @@ export function registerSessionCommands(hub: WsHub, m: SessionManager, onError: 
   const known = (id: string): CommandResult => (m.get(id) === undefined ? fail(`no such session: ${id}`) : undefined);
 
   hub.registerCommand('session.start', async (c) => {
-    if (c.worktree !== undefined) return fail('Worktrees arrive in milestone M6.');
     await m.start({
       repoPath: c.repoPath,
+      ...(c.worktree === undefined ? {} : { worktree: c.worktree }),
       ...(c.firstPrompt === undefined ? {} : { firstPrompt: c.firstPrompt }),
       ...(c.name === undefined ? {} : { name: c.name }),
       ...(c.initiativeId === undefined ? {} : { initiativeId: c.initiativeId }),
