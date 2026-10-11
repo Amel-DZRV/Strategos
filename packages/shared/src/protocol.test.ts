@@ -12,6 +12,7 @@ const VALID: Record<UiCommandKind, Record<string, unknown>> = {
   'session.forget': { strategosId: 's' }, 'session.seen': { strategosId: 's' },
   'session.archive': { strategosId: 's', on: true },
   'session.resumeAll': {},
+  'resync': {},
   'pty.subscribe': { strategosId: 's', cols: 80, rows: 24 },
   'pty.unsubscribe': { strategosId: 's' },
   'pty.input': { strategosId: 's', data: 'ls\r' },
