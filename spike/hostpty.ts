@@ -1,6 +1,6 @@
 // Hosts a claude.exe (or --exe substitute) in node-pty, served to a browser via xterm over WS on 127.0.0.1:47800.
 // Control: POST /input {data}  |  GET /screen  (plain text of the headless xterm buffer, last ~200 lines)  |  GET /info
-// Flags: --conpty-dll --resume <id> --no-agentview --prompt "<text>" --cwd <dir> --name <n> --exe <path> --exe-args "<a b>" --port N --hook-port N --no-settings
+// Flags (batch 2: --perm <mode> --extra "a b" --settings-file F): --conpty-dll --resume <id> --no-agentview --prompt "<text>" --cwd <dir> --name <n> --exe <path> --exe-args "<a b>" --port N --hook-port N --no-settings
 import http from 'node:http';
 import { createReadStream, existsSync, mkdirSync, readFileSync, createWriteStream } from 'node:fs';
 import { dirname, join, resolve, delimiter } from 'node:path';
@@ -45,9 +45,12 @@ if (opt('--exe')) {
   cmdArgs = (opt('--exe-args') ?? '').split(' ').filter(Boolean);
 } else {
   settingsFile = writeSettings({ strategosId, port: HOOK_PORT, disableAgentView: !flag('--no-agentview'), sessionStartCommand: flag('--ss-command') });
+  if (opt('--settings-file')) settingsFile = opt('--settings-file')!;
   cmdArgs = flag('--resume') || opt('--resume')
     ? ['--resume', opt('--resume')!, '--settings', settingsFile, '--name', name]
     : ['--session-id', sessionId, '--settings', settingsFile, '--name', name];
+  if (opt('--perm')) cmdArgs.push('--permission-mode', opt('--perm')!);
+  if (opt('--extra')) cmdArgs.push(...opt('--extra')!.split(' ').filter(Boolean));
 }
 const env = scrubEnv(process.env);
 env.STRATEGOS_HOOK_TOKEN = randomBytes(24).toString('hex');

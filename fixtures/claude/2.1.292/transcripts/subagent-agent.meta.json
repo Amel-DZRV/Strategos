@@ -1,0 +1,8 @@
+{
+  "agentType": "Explore",
+  "description": "Read README first line",
+  "toolUseId": "toolu_01SPaeJ93mEKeKczKVHHquXr",
+  "spawnDepth": 1,
+  "requestShape": "background",
+  "requestNonInteractive": true
+}

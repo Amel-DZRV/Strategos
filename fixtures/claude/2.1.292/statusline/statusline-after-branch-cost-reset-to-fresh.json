@@ -1,0 +1,84 @@
+{
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "1680",
+    "x-strategos-token": "<redacted>",
+    "host": "127.0.0.1:47801",
+    "connection": "keep-alive"
+  },
+  "body": {
+    "session_id": "a724513b-1738-4b67-b375-2ef6ce2e0669",
+    "transcript_path": "~\\.claude\\projects\\C--dev-strategos-sandbox\\a724513b-1738-4b67-b375-2ef6ce2e0669.jsonl",
+    "cwd": "C:\\dev\\strategos-sandbox",
+    "scratchpad_dir": "~\\AppData\\Local\\Temp\\claude\\C--dev-strategos-sandbox\\a724513b-1738-4b67-b375-2ef6ce2e0669\\scratchpad",
+    "prompt_id": "f03467ec-0f2d-45c9-934a-2c896eb34681",
+    "effort": {
+      "level": "medium"
+    },
+    "session_name": "Run the shell command: echo strategos-probe > probe.txt (Branch)",
+    "model": {
+      "id": "claude-opus-5-5",
+      "display_name": "Opus 5.5"
+    },
+    "workspace": {
+      "current_dir": "C:\\dev\\strategos-sandbox",
+      "project_dir": "C:\\dev\\strategos-sandbox",
+      "added_dirs": []
+    },
+    "version": "2.1.292",
+    "output_style": {
+      "name": "default"
+    },
+    "cost": {
+      "total_cost_usd": 0.0165026,
+      "total_duration_ms": 18537,
+      "total_api_duration_ms": 1682,
+      "total_lines_added": 0,
+      "total_lines_removed": 0
+    },
+    "context_window": {
+      "total_input_tokens": 65617,
+      "total_output_tokens": 4,
+      "context_window_size": 1000000,
+      "current_usage": {
+        "input_tokens": 2,
+        "output_tokens": 4,
+        "cache_creation_input_tokens": 422,
+        "cache_read_input_tokens": 65193
+      },
+      "used_percentage": 7,
+      "remaining_percentage": 93
+    },
+    "exceeds_200k_tokens": false,
+    "prompt_cache": {
+      "warm": true,
+      "caching_observed": true,
+      "ttl": "1h",
+      "expires_at": 1791728667,
+      "requests": 1,
+      "misses": 0,
+      "expected_rebuilds": 0,
+      "hit_ratio": 0.9935382599021595,
+      "cache_write_tokens": 422,
+      "miss_recache_tokens": 0,
+      "last_miss_at": null,
+      "last_miss_cause": null,
+      "miss_causes": {},
+      "recache_tokens_if_cold": 65617
+    },
+    "fast_mode": false,
+    "thinking": {
+      "enabled": true
+    },
+    "rate_limits": {
+      "five_hour": {
+        "used_percentage": 14,
+        "resets_at": 1791741000
+      },
+      "seven_day": {
+        "used_percentage": 67,
+        "resets_at": 1791972000
+      }
+    }
+  }
+}

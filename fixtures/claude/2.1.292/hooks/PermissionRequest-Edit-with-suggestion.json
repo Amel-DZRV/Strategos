@@ -1,0 +1,39 @@
+{
+  "url": "/hook/sp-2b642ca4/PermissionRequest",
+  "headers": {
+    "accept": "application/json, text/plain, */*",
+    "content-type": "application/json",
+    "x-strategos-token": "<redacted>",
+    "user-agent": "axios/1.15.2",
+    "content-length": "761",
+    "accept-encoding": "gzip, compress, deflate, br",
+    "host": "127.0.0.1:47801",
+    "connection": "keep-alive"
+  },
+  "body": {
+    "session_id": "990be0c6-1eac-4eb7-ad48-099938dd211c",
+    "transcript_path": "~\\.claude\\projects\\C--dev-strategos-sandbox\\990be0c6-1eac-4eb7-ad48-099938dd211c.jsonl",
+    "cwd": "C:\\dev\\strategos-sandbox",
+    "scratchpad_dir": "~\\AppData\\Local\\Temp\\claude\\C--dev-strategos-sandbox\\990be0c6-1eac-4eb7-ad48-099938dd211c\\scratchpad",
+    "prompt_id": "26043abd-1d8f-4b53-a51f-5bfb3cbaf15d",
+    "permission_mode": "default",
+    "effort": {
+      "level": "medium"
+    },
+    "hook_event_name": "PermissionRequest",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "C:\\dev\\strategos-sandbox\\probe.md",
+      "old_string": "hello",
+      "new_string": "goodbye",
+      "replace_all": false
+    },
+    "permission_suggestions": [
+      {
+        "type": "setMode",
+        "mode": "acceptEdits",
+        "destination": "session"
+      }
+    ]
+  }
+}

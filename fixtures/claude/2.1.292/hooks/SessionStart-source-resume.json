@@ -1,0 +1,26 @@
+{
+  "url": "/hook/sp-2b642ca4/SessionStart",
+  "headers": {
+    "content-type": "application/json",
+    "x-strategos-token": "<redacted>",
+    "x-strategos-via": "command-relay",
+    "host": "127.0.0.1:47801",
+    "connection": "keep-alive",
+    "content-length": "668"
+  },
+  "body": {
+    "session_id": "2b642ca4-5e54-488b-9296-a93ec5240351",
+    "transcript_path": "~\\.claude\\projects\\C--dev-strategos-sandbox\\2b642ca4-5e54-488b-9296-a93ec5240351.jsonl",
+    "cwd": "C:\\dev\\strategos-sandbox",
+    "scratchpad_dir": "~\\AppData\\Local\\Temp\\claude\\C--dev-strategos-sandbox\\2b642ca4-5e54-488b-9296-a93ec5240351\\scratchpad",
+    "prompt_id": "4c076472-ef14-4f73-bacb-3d726635497c",
+    "hook_event_name": "SessionStart",
+    "source": "resume",
+    "model": "claude-opus-5-5",
+    "session_title": "spike-sp-2b642ca4",
+    "seconds_since_last_response": 56,
+    "context_tokens": 65195,
+    "prompt_cache_likely_expired": false,
+    "estimated_cache_write_usd": 0.5216
+  }
+}

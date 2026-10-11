@@ -1,0 +1,26 @@
+{
+  "url": "/hook/sp-2b642ca4/SessionStart",
+  "headers": {
+    "content-type": "application/json",
+    "x-strategos-token": "<redacted>",
+    "x-strategos-via": "command-relay",
+    "host": "127.0.0.1:47801",
+    "connection": "keep-alive",
+    "content-length": "713"
+  },
+  "body": {
+    "session_id": "a724513b-1738-4b67-b375-2ef6ce2e0669",
+    "transcript_path": "~\\.claude\\projects\\C--dev-strategos-sandbox\\a724513b-1738-4b67-b375-2ef6ce2e0669.jsonl",
+    "cwd": "C:\\dev\\strategos-sandbox",
+    "scratchpad_dir": "~\\AppData\\Local\\Temp\\claude\\C--dev-strategos-sandbox\\a724513b-1738-4b67-b375-2ef6ce2e0669\\scratchpad",
+    "prompt_id": "9afcd028-7264-4985-8321-afb9eb84af69",
+    "hook_event_name": "SessionStart",
+    "source": "fork",
+    "model": "claude-opus-5-5",
+    "session_title": "Run the shell command: echo strategos-probe > probe.txt (Branch)",
+    "seconds_since_last_response": 69,
+    "context_tokens": 65195,
+    "prompt_cache_likely_expired": false,
+    "estimated_cache_write_usd": 0.5216
+  }
+}

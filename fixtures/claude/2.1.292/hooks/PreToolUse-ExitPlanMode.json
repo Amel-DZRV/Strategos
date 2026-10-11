@@ -1,0 +1,31 @@
+{
+  "url": "/hook/sp-2b642ca4/PreToolUse",
+  "headers": {
+    "accept": "application/json, text/plain, */*",
+    "content-type": "application/json",
+    "x-strategos-token": "<redacted>",
+    "user-agent": "axios/1.15.2",
+    "content-length": "1072",
+    "accept-encoding": "gzip, compress, deflate, br",
+    "host": "127.0.0.1:47801",
+    "connection": "keep-alive"
+  },
+  "body": {
+    "session_id": "a724513b-1738-4b67-b375-2ef6ce2e0669",
+    "transcript_path": "~\\.claude\\projects\\C--dev-strategos-sandbox\\a724513b-1738-4b67-b375-2ef6ce2e0669.jsonl",
+    "cwd": "C:\\dev\\strategos-sandbox",
+    "scratchpad_dir": "~\\AppData\\Local\\Temp\\claude\\C--dev-strategos-sandbox\\a724513b-1738-4b67-b375-2ef6ce2e0669\\scratchpad",
+    "prompt_id": "7a8ae584-cbbe-4b37-912b-bae6af2281cd",
+    "permission_mode": "plan",
+    "effort": {
+      "level": "medium"
+    },
+    "hook_event_name": "PreToolUse",
+    "tool_name": "ExitPlanMode",
+    "tool_input": {
+      "plan": "# Plan: create probe.md\n\n## Context\nThe user wants a new file `probe.md` in the sandbox repo `C:\\dev\\strategos-sandbox`, containing the single word `hello`.\n\n## Step\n1. Create `C:\\dev\\strategos-sandbox\\probe.md` with the content `hello` (using the Write tool).\n\n## Verification\nRead `probe.md` back and confirm it contains exactly `hello`.\n",
+      "planFilePath": "~\\.claude\\plans\\plan-only-a-one-step-gleaming-dewdrop.md"
+    },
+    "tool_use_id": "toolu_013TqTKVkSemme4RvXi5kV5P"
+  }
+}

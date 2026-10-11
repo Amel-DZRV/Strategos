@@ -1,0 +1,23 @@
+{
+  "pid": 72176,
+  "sessionId": "2b642ca4-5e54-488b-9296-a93ec5240351",
+  "cwd": "C:\\dev\\strategos-sandbox",
+  "startedAt": 1791724741307,
+  "procStart": "134361983384878048",
+  "version": "2.1.292",
+  "peerProtocol": 1,
+  "peerFeatures": [
+    "notify_idle",
+    "artifact_yield"
+  ],
+  "kind": "interactive",
+  "entrypoint": "cli",
+  "pidDomain": "win32:<host>",
+  "messagingSocketPath": "\\\\.\\pipe\\LOCAL\\cc-msg-<redacted>",
+  "name": "spike-sp-2b642ca4",
+  "nameSource": "user",
+  "nameSince": 1791724741325,
+  "updatedAt": 1791724741871,
+  "status": "idle",
+  "statusUpdatedAt": 1791724741871
+}

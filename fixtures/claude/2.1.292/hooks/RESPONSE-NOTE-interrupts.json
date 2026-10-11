@@ -1,0 +1,3 @@
+{
+  "note": "No hook JSON exists for Esc/Ctrl+C. After Esc at a held PermissionRequest the only observable signal on the hook channel is the held HTTP connection closing (res close, finished=false). Esc/Ctrl+C mid-text and mid-tool produce no hook at all (no Stop, no PostToolUseFailure)."
+}

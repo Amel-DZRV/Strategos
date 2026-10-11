@@ -1,0 +1,9 @@
+{
+  "pid": 64760,
+  "sessionId": "f005c380-32b6-4553-ba82-5c46a3030196",
+  "cwd": "C:\\dev\\strategos-sandbox",
+  "kind": "interactive",
+  "status": "idle",
+  "parkedJobId": "b755246d",
+  "note": "pty process after ArrowLeft with Agent View enabled: file keeps the OLD session id and gains parkedJobId; the live conversation is in a separate kind:\"background\" process (claude agents --json: {pid:56692,id:\"b755246d\",kind:\"background\",sessionId:\"b755246d-...\",state:\"blocked\"})"
+}

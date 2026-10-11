@@ -1,0 +1,14 @@
+{
+  "pid": 72176,
+  "sessionId": "2b642ca4-5e54-488b-9296-a93ec5240351",
+  "cwd": "C:\\dev\\strategos-sandbox",
+  "version": "2.1.292",
+  "kind": "interactive",
+  "entrypoint": "cli",
+  "name": "spike-sp-2b642ca4",
+  "updatedAt": 1791724756123,
+  "status": "waiting",
+  "statusUpdatedAt": 1791724756123,
+  "waitingFor": "permission prompt",
+  "note": "captured while a PermissionRequest was held by the hook server; other fields as in sessions-pid-idle.json"
+}
