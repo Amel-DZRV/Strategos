@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -120,7 +120,7 @@ describe('canonicalWin32Real', () => {
       let short = '';
       try {
         // verbatim arguments: Node's default quoting would mangle the inner quotes for cmd
-        short = execFileSync('cmd.exe', ['/d', '/s', '/c', `"for %I in ("${long}") do @echo %~sI"`], { encoding: 'utf8', windowsVerbatimArguments: true }).trim();
+        short = (spawnSync('cmd.exe', ['/d', '/s', '/c', `"for %I in ("${long}") do @echo %~sI"`], { encoding: 'utf8', windowsVerbatimArguments: true }).stdout ?? '').trim();
       } catch { /* handled below */ }
       if (!short || short.toLowerCase() === long.toLowerCase() || !short.includes('~')) {
         console.warn('8.3 short names are disabled on this volume: skipping the real-filesystem short-name test');

@@ -1,11 +1,13 @@
 // Test-only filesystem helpers. The daemon package forbids fs writes outside safe-fs.ts (eslint), including in its tests,
 // so tests that need temp files import these (tools/ is outside that rule).
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 export function mkTmp(prefix = 'strategos-test-'): string {
-  return mkdtempSync(join(tmpdir(), prefix));
+  // Long, real form: os.tmpdir() is an 8.3 short path on some Windows accounts (like AMEL~1.DES under C:/Users), while the daemon
+  // canonicalises to the long form; tests that compare a path they built with one the daemon returned need the same spelling.
+  return realpathSync.native(mkdtempSync(join(tmpdir(), prefix)));
 }
 
 export function mkdirp(dir: string): string {

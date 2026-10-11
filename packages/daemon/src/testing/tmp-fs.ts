@@ -4,16 +4,16 @@
 // is the richer shared harness; this one exists so reconciler/transcript tests do not depend on it.
 
 import { createHash } from 'node:crypto';
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 
 export function makeTmpDir(prefix = 'strategos-test-'): string {
-  return mkdtempSync(join(tmpdir(), prefix));
+  return realpathSync.native(mkdtempSync(join(tmpdir(), prefix))); // long real form (tmpdir can be an 8.3 path)
 }
 
 export function removeDir(path: string): void {
-  rmSync(path, { recursive: true, force: true });
+  rmSync(path, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
 }
 
 export function writeText(path: string, text: string | Buffer): void {
