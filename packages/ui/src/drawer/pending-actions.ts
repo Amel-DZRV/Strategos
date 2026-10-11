@@ -28,7 +28,7 @@ export async function expandFull(s: SessionRecord): Promise<void> {
   loading.add(p.requestId);
   // Listen before asking: the daemon answers with a pending.full event and then the ack, and the card may mount late.
   const off = onChannel((ev) => {
-    if (ev.t === 'pending.full' && ev.requestId === p.requestId) setFullInput(ev.requestId, ev.input);
+    if (ev.t === 'pending.full' && ev.requestId === p.requestId) setFullInput(ev.requestId, typeof ev.input === 'string' ? ev.input : JSON.stringify(ev.input, null, 2));
   });
   try {
     await send({ c: 'pending.full', strategosId: s.strategosId, requestId: p.requestId });
