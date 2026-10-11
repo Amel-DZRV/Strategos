@@ -1,5 +1,9 @@
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { canonicalWin32, claudeConfigDir, strategosHome } from './win32/paths.ts';
+import { canonicalWin32, canonicalWin32Real, claudeConfigDir, strategosHome } from './win32/paths.ts';
 import * as mac from './darwin/paths.ts';
 import { javaStyleHash, MAX_PROJECT_DIR_LEN, projectDirName, projectDirPrefix } from './common/project-dir.ts';
 
@@ -89,5 +93,46 @@ describe('projectDirName', () => {
   it('exactly 200 characters is not hashed', () => {
     const s = 'x'.repeat(200);
     expect(projectDirName(s)).toBe(s);
+  });
+});
+
+describe('canonicalWin32Real', () => {
+  const fake = (map: Record<string, string>) => (p: string): string => {
+    for (const [from, to] of Object.entries(map)) if (p.toLowerCase() === from.toLowerCase() || p.toLowerCase().startsWith(from.toLowerCase() + '\\')) return to + p.slice(from.length);
+    throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+  };
+  it('expands an existing prefix and appends the missing rest (injected realpath, every OS)', () => {
+    const rp = fake({ 'C:\\Users\\AMEL~1.DES': 'C:\\Users\\Amel.DESKTOP-8UP1MTT', 'C:\\Users': 'C:\\Users', 'C:\\': 'C:\\' });
+    expect(canonicalWin32Real('c:/Users/AMEL~1.DES/new/dir/', rp)).toBe('C:\\Users\\Amel.DESKTOP-8UP1MTT\\new\\dir');
+    expect(canonicalWin32Real('C:\\Users\\Amel.DESKTOP-8UP1MTT\\new\\dir', rp)).toBe('C:\\Users\\Amel.DESKTOP-8UP1MTT\\new\\dir');
+  });
+  it('falls back to the text form when nothing exists, keeping verbatim/UNC handling', () => {
+    const none = (): string => { throw new Error('ENOENT'); };
+    expect(canonicalWin32Real('\\\\?\\c:\\a\\..\\b', none)).toBe('C:\\b');
+    expect(canonicalWin32Real('\\\\?\\UNC\\srv\\share\\x', none)).toBe('\\\\srv\\share\\x');
+  });
+
+  it.runIf(process.platform === 'win32')('an 8.3 short path and its long form give the same canonical path (real filesystem)', (ctx) => {
+    const base = mkdtempSync(join(realpathSync.native(tmpdir()), 'strategos-canon-'));
+    try {
+      const long = join(base, 'A Long Directory Name');
+      mkdirSync(long);
+      let short = '';
+      try {
+        // verbatim arguments: Node's default quoting would mangle the inner quotes for cmd
+        short = execFileSync('cmd.exe', ['/d', '/s', '/c', `"for %I in ("${long}") do @echo %~sI"`], { encoding: 'utf8', windowsVerbatimArguments: true }).trim();
+      } catch { /* handled below */ }
+      if (!short || short.toLowerCase() === long.toLowerCase() || !short.includes('~')) {
+        console.warn('8.3 short names are disabled on this volume: skipping the real-filesystem short-name test');
+        ctx.skip();
+        return;
+      }
+      expect(canonicalWin32Real(short)).toBe(canonicalWin32Real(long));
+      expect(canonicalWin32Real(short)).toBe(canonicalWin32(realpathSync.native(long)));
+      // a not-yet-existing child under the short form resolves through the existing parent
+      expect(canonicalWin32Real(join(short, 'new', 'x'))).toBe(canonicalWin32Real(join(long, 'new', 'x')));
+    } finally {
+      rmSync(base, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
   });
 });
