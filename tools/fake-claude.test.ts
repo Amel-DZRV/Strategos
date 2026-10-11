@@ -274,8 +274,13 @@ describe('fake-claude scenarios', () => {
     const r = start('plain');
     await server.waitFor(ev('SessionStart'));
     await waitOut(r, '> ');
+    const before = JSON.parse(readFileSync(join(cfg, 'sessions', `${r.child.pid}.json`), 'utf8')).sessionId;
     r.stdin('/clear\r');
     await server.waitFor((h) => h.event === 'SessionStart' && h.body['source'] === 'clear');
+    // The hook is recorded before the fake finishes its /clear (the relay is still exiting): wait for the new prompt
+    // instead of typing /exit into a half-finished clear.
+    await waitOut(r, '(conversation cleared)');
+    expect(JSON.parse(readFileSync(join(cfg, 'sessions', `${r.child.pid}.json`), 'utf8')).sessionId).not.toBe(before);
     r.stdin('/exit\r');
     await r.exited;
   }, 60_000);

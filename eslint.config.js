@@ -21,7 +21,8 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     files: ['packages/daemon/**/*.ts'],
-    ignores: ['packages/daemon/src/safe-fs.ts'],
+    // Tests and test helpers write only inside os.tmpdir(); they are not product code.
+    ignores: ['packages/daemon/src/safe-fs.ts', 'packages/daemon/**/*.test.ts', 'packages/daemon/**/*.testkit.ts', 'packages/daemon/src/testing/**'],
     rules: {
       'no-restricted-imports': ['error', {
         paths: FS_MODULES.map((name) => ({ name, importNames: WRITE_FNS, message: safeFsMessage })),

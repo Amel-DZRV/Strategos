@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-// eslint-disable-next-line no-restricted-imports -- test fixture, not daemon code
 import { readdirSync, readFileSync, symlinkSync } from 'node:fs';
 import * as path from 'node:path';
 import { claudeConfigDir, createSafeFs, SafeFsError } from './safe-fs.ts';

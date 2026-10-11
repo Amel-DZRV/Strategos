@@ -1,8 +1,7 @@
 // Test-only filesystem helpers: temp dirs, a tiny fake CLAUDE_CONFIG_DIR, and a read-only directory listing.
 // Product code must never import this file. It is the one place under packages/daemon (besides safe-fs.ts)
-// that writes, and only inside os.tmpdir(); hence the lint exemption below. Lane C's tools/fake-claude-home.ts
+// that writes, and only inside os.tmpdir(); eslint.config.js exempts packages/daemon/src/testing/**. Lane C's tools/fake-claude-home.ts
 // is the richer shared harness; this one exists so reconciler/transcript tests do not depend on it.
-/* eslint-disable no-restricted-imports */
 
 import { createHash } from 'node:crypto';
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, truncateSync, writeFileSync } from 'node:fs';

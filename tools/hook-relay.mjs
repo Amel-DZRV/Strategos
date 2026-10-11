@@ -11,7 +11,7 @@ process.stdin.setEncoding('utf8');
 process.stdin.on('data', (d) => (raw += d));
 process.stdin.on('end', () => {
   const req = http.request({
-    host: '127.0.0.1', port, path: `/hook/${encodeURIComponent(id)}/${encodeURIComponent(ev)}`, method: 'POST', timeout: 1500,
+    host: '127.0.0.1', port, path: `/hook/${encodeURIComponent(id)}/${encodeURIComponent(ev)}`, method: 'POST', timeout: 4000, // below the 5 s command-hook timeout; 1.5 s dropped the event when the daemon was busy
     headers: { 'content-type': 'application/json', 'x-strategos-token': process.env.STRATEGOS_HOOK_TOKEN || '', 'x-strategos-via': 'command-relay' },
   });
   req.on('error', () => process.exit(0));
