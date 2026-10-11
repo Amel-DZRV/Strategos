@@ -4,7 +4,7 @@
 // has a place never gets another one because something else changed.
 
 export const CELL_W = 380;
-export const CELL_H = 240;
+export const CELL_H = 280;
 /** Orbit radius of ring 0; each further ring adds RING_STEP. */
 export const RING_R0 = 80;
 export const RING_STEP = 28;
@@ -252,6 +252,18 @@ export function collapseQuiet(quiet: readonly { id: string; slot: number }[], li
 
 export type Dir = 'left' | 'right' | 'up' | 'down';
 export interface Pt { id: string; x: number; y: number }
+
+/** Space a token takes around its centre: the ring and risk chip above it, the name and "ctx . cost" lines below. */
+export const LABEL_HALF_W = 64;
+export const LABEL_TOP = -32;
+export const LABEL_BOTTOM = 54;
+export interface Box { left: number; top: number; right: number; bottom: number }
+
+/** Box of a token's ring plus labels, relative to its planet's centre. */
+export function labelBox(slot: number): Box {
+  const { dx, dy } = slotOffset(slot);
+  return { left: dx - LABEL_HALF_W, right: dx + LABEL_HALF_W, top: dy + LABEL_TOP, bottom: dy + LABEL_BOTTOM };
+}
 
 /** Nearest token in a direction: prefers close ones that are roughly in line. Returns undefined when nothing lies that way. */
 export function nearestInDirection(from: Pt, others: readonly Pt[], dir: Dir): string | undefined {
