@@ -11,7 +11,7 @@ const fwd = (p: string) => p.replace(/\\/g, '/');
 const EVENTS = ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'PostToolUseFailure',
   'Notification', 'Stop', 'StopFailure', 'SubagentStart', 'SubagentStop', 'PreCompact', 'PostCompact', 'CwdChanged', 'PermissionRequest'];
 
-export interface Opts { strategosId: string; port?: number; disableAgentView?: boolean; outDir?: string }
+export interface Opts { strategosId: string; port?: number; disableAgentView?: boolean; outDir?: string; sessionStartCommand?: boolean }
 
 export function buildSettings(o: Opts) {
   const port = o.port ?? 47801;
@@ -28,6 +28,7 @@ export function buildSettings(o: Opts) {
     if (ev === 'PreToolUse') hooks[ev] = [{ matcher: '*', hooks: [hook(ev, 5)] }, { matcher: 'AskUserQuestion', hooks: [hook(ev, 86400)] }];
     else if (ev === 'PermissionRequest') hooks[ev] = [{ matcher: '*', hooks: [hook(ev, 86400)] }];
     else if (ev === 'PostToolUse' || ev === 'PostToolUseFailure') hooks[ev] = [{ matcher: '*', hooks: [hook(ev)] }];
+    else if (ev === 'SessionStart' && o.sessionStartCommand) hooks[ev] = [{ hooks: [{ type: 'command', command: `"${fwd(process.execPath)}" "${fwd(resolve(here, 'relay.mjs'))}" ${o.strategosId} SessionStart`, timeout: 5 }] }];
     else if (ev === 'SessionEnd') hooks[ev] = [{ hooks: [hook(ev, 3)] }];
     else hooks[ev] = [{ hooks: [hook(ev)] }];
   }

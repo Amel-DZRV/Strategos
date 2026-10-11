@@ -4,6 +4,7 @@
 import http from 'node:http';
 import { createReadStream, existsSync, mkdirSync, readFileSync, createWriteStream } from 'node:fs';
 import { dirname, join, resolve, delimiter } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID } from 'node:crypto';
 import pty from 'node-pty';
@@ -22,7 +23,7 @@ export function scrubEnv(src: NodeJS.ProcessEnv): Record<string, string> {
   for (const [k, v] of Object.entries(src)) {
     if (v === undefined) continue;
     if (k === 'CLAUDE_CONFIG_DIR') { env[k] = v; continue; }
-    if (k === 'CLAUDECODE' || k.startsWith('CLAUDE_CODE_') || k.startsWith('CLAUDE_AGENT_SDK_') || k.startsWith('ANTHROPIC_')) continue;
+    if (k === 'CLAUDECODE' || k === 'CLAUDE_PID' || k === 'CLAUDE_EFFORT' || k.startsWith('CLAUDE_PREVIEW_') || k.startsWith('CLAUDE_CODE_') || k.startsWith('CLAUDE_AGENT_SDK_') || k.startsWith('ANTHROPIC_')) continue;
     env[k] = v;
   }
   return env;
@@ -43,7 +44,7 @@ let settingsFile = '';
 if (opt('--exe')) {
   cmdArgs = (opt('--exe-args') ?? '').split(' ').filter(Boolean);
 } else {
-  settingsFile = writeSettings({ strategosId, port: HOOK_PORT, disableAgentView: !flag('--no-agentview') });
+  settingsFile = writeSettings({ strategosId, port: HOOK_PORT, disableAgentView: !flag('--no-agentview'), sessionStartCommand: flag('--ss-command') });
   cmdArgs = flag('--resume') || opt('--resume')
     ? ['--resume', opt('--resume')!, '--settings', settingsFile, '--name', name]
     : ['--session-id', sessionId, '--settings', settingsFile, '--name', name];
@@ -51,6 +52,7 @@ if (opt('--exe')) {
 const env = scrubEnv(process.env);
 env.STRATEGOS_HOOK_TOKEN = randomBytes(24).toString('hex');
 env.STRATEGOS_PORT = String(HOOK_PORT);
+try { writeFileSync(join(outDir, 'token-' + strategosId + '.txt'), env.STRATEGOS_HOOK_TOKEN); } catch {}
 
 const cols = 120, rows = 32;
 const p = pty.spawn(exe, cmdArgs, { name: 'xterm-256color', cols, rows, cwd, env, useConptyDll: flag('--conpty-dll') } as any);

@@ -1,0 +1,14 @@
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "allow",
+    "updatedInput": {
+      "questions": [
+        "<echo the tool_input.questions array>"
+      ],
+      "answers": {
+        "Which colour do you prefer?": "Green"
+      }
+    }
+  }
+}

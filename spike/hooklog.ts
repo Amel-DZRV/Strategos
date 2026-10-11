@@ -32,6 +32,7 @@ const log = (...a: unknown[]) => { const l = `${new Date().toISOString()} ${a.jo
 interface Held { id: number; res: http.ServerResponse; body: any; event: string; since: number; closed: boolean }
 const held: Held[] = [];
 let seq = 0;
+let postNote = '';
 
 function respond(h: Held, kind: string, arg = ''): string {
   const ev = h.event;
@@ -78,6 +79,7 @@ function command(line: string): string {
   const m = line.trim().match(/^(\S+)\s*([\s\S]*)$/);
   if (!m) return 'empty';
   if (m[1] === 'list') return JSON.stringify(held.map((h) => ({ id: h.id, event: h.event, tool: h.body?.tool_name, closed: h.closed, ageS: Math.round((Date.now() - h.since) / 1000) })));
+  if (m[1] === 'note') { postNote = m[2]; return 'postNote=' + JSON.stringify(postNote); }
   const h = held.shift();
   if (!h) return 'nothing held';
   const r = respond(h, m[1], m[2]);
@@ -116,7 +118,13 @@ const server = http.createServer((req, res) => {
     const tool = body?.tool_name;
     log('hook', event, sid, tool ?? '', 'token=' + (req.headers['x-strategos-token'] ? 'present' : 'MISSING'), 'session_id=' + (body?.session_id ?? '-'));
     const hold = event === 'PermissionRequest' || (event === 'PreToolUse' && tool === 'AskUserQuestion');
-    if (!hold) { res.writeHead(200).end(); return; }
+    if (!hold) {
+      if (event === 'PostToolUse' && postNote) {
+        log('PostToolUse respond additionalContext=' + postNote);
+        res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: postNote } }));
+      } else res.writeHead(200).end();
+      return;
+    }
     const h: Held = { id: ++seq, res, body, event, since: Date.now(), closed: false };
     held.push(h);
     // NOTE: Node emits req 'close' as soon as the request body is consumed, NOT on client disconnect; res 'close' with finished=false is the disconnect signal.

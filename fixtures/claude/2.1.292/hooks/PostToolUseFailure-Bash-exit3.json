@@ -1,0 +1,34 @@
+{
+  "url": "/hook/sp-b5a6d25c/PostToolUseFailure",
+  "headers": {
+    "accept": "application/json, text/plain, */*",
+    "content-type": "application/json",
+    "x-strategos-token": "<redacted>",
+    "user-agent": "axios/1.15.2",
+    "content-length": "726",
+    "accept-encoding": "gzip, compress, deflate, br",
+    "host": "127.0.0.1:47801",
+    "connection": "keep-alive"
+  },
+  "body": {
+    "session_id": "b5a6d25c-f79c-4a72-b9fe-4763c2448c98",
+    "transcript_path": "~\\.claude\\projects\\C--dev-strategos-sandbox\\b5a6d25c-f79c-4a72-b9fe-4763c2448c98.jsonl",
+    "cwd": "C:\\dev\\strategos-sandbox",
+    "scratchpad_dir": "~\\AppData\\Local\\Temp\\claude\\C--dev-strategos-sandbox\\b5a6d25c-f79c-4a72-b9fe-4763c2448c98\\scratchpad",
+    "prompt_id": "70320847-d84e-4ccf-9c4c-e039e440deb1",
+    "permission_mode": "default",
+    "effort": {
+      "level": "medium"
+    },
+    "hook_event_name": "PostToolUseFailure",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "exit 3",
+      "description": "Exit the shell with code 3"
+    },
+    "tool_use_id": "toolu_01WoxQiJeh8sq6rWYppSzZgj",
+    "error": "Exit code 3",
+    "is_interrupt": false,
+    "duration_ms": 629
+  }
+}

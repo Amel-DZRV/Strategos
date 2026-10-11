@@ -1,0 +1,22 @@
+{
+  "url": "/hook/sp-de6845dd/SessionEnd",
+  "headers": {
+    "accept": "application/json, text/plain, */*",
+    "content-type": "application/json",
+    "x-strategos-token": "<redacted>",
+    "user-agent": "axios/1.15.2",
+    "content-length": "487",
+    "accept-encoding": "gzip, compress, deflate, br",
+    "host": "127.0.0.1:47801",
+    "connection": "keep-alive"
+  },
+  "body": {
+    "session_id": "de6845dd-47c6-4d27-9b3d-0306d7428ed9",
+    "transcript_path": "~\\.claude\\projects\\C--dev-strategos-sandbox\\de6845dd-47c6-4d27-9b3d-0306d7428ed9.jsonl",
+    "cwd": "C:\\dev\\strategos-sandbox",
+    "scratchpad_dir": "~\\AppData\\Local\\Temp\\claude\\C--dev-strategos-sandbox\\de6845dd-47c6-4d27-9b3d-0306d7428ed9\\scratchpad",
+    "prompt_id": "5860fbdc-edad-443b-9e8e-d0dd28575e3f",
+    "hook_event_name": "SessionEnd",
+    "reason": "prompt_input_exit"
+  }
+}

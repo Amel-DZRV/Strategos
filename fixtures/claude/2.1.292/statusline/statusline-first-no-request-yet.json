@@ -1,0 +1,52 @@
+{
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "1037",
+    "x-strategos-token": "<redacted>",
+    "host": "127.0.0.1:47801",
+    "connection": "keep-alive"
+  },
+  "body": {
+    "session_id": "b5a6d25c-f79c-4a72-b9fe-4763c2448c98",
+    "transcript_path": "~\\.claude\\projects\\C--dev-strategos-sandbox\\b5a6d25c-f79c-4a72-b9fe-4763c2448c98.jsonl",
+    "cwd": "C:\\dev\\strategos-sandbox",
+    "scratchpad_dir": "~\\AppData\\Local\\Temp\\claude\\C--dev-strategos-sandbox\\b5a6d25c-f79c-4a72-b9fe-4763c2448c98\\scratchpad",
+    "effort": {
+      "level": "medium"
+    },
+    "session_name": "spike-sp-b5a6d25c",
+    "model": {
+      "id": "claude-opus-5-5",
+      "display_name": "Opus 5.5"
+    },
+    "workspace": {
+      "current_dir": "C:\\dev\\strategos-sandbox",
+      "project_dir": "C:\\dev\\strategos-sandbox",
+      "added_dirs": []
+    },
+    "version": "2.1.292",
+    "output_style": {
+      "name": "default"
+    },
+    "cost": {
+      "total_cost_usd": 0,
+      "total_duration_ms": 13748,
+      "total_api_duration_ms": 0,
+      "total_lines_added": 0,
+      "total_lines_removed": 0
+    },
+    "context_window": {
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
+      "context_window_size": 1000000,
+      "current_usage": null,
+      "used_percentage": null,
+      "remaining_percentage": null
+    },
+    "exceeds_200k_tokens": false,
+    "fast_mode": false,
+    "thinking": {
+      "enabled": true
+    }
+  }
+}

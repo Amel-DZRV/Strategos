@@ -2,6 +2,13 @@
 // argv[2] = strategosId. env STRATEGOS_CHAIN_STATUSLINE = chained command; STRATEGOS_PORT (default 47801).
 import { spawn } from 'node:child_process';
 import http from 'node:http';
+import { appendFileSync, mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const T0 = Date.now();
+const TLOG = join(dirname(fileURLToPath(import.meta.url)), 'out', 'tap-timing.log');
+function timing(tag) { try { mkdirSync(dirname(TLOG), { recursive: true }); appendFileSync(TLOG, JSON.stringify({ tag, start: T0, end: Date.now(), ms: Date.now() - T0, procUptimeMs: Math.round(process.uptime() * 1000), ppid: process.ppid, shell: process.env.SHELL || null, msystem: process.env.MSYSTEM || null }) + String.fromCharCode(10)); } catch {} }
+process.on('exit', () => timing('exit'));
 
 const id = process.argv[2] || 'unknown';
 const port = Number(process.env.STRATEGOS_PORT || 47801);
@@ -28,6 +35,7 @@ process.stdin.on('end', async () => {
     out = `ctx ${pct}%`;
   }
   process.stdout.write(out.endsWith('\n') ? out : out + '\n');
+  timing('printed');
   try {
     const req = http.request({ host: '127.0.0.1', port, path: `/statusline/${id}`, method: 'POST', timeout: 250,
       headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(raw),

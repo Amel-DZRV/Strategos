@@ -1,0 +1,17 @@
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PermissionRequest",
+    "decision": {
+      "behavior": "allow",
+      "updatedPermissions": [
+        {
+          "type": "addDirectories",
+          "directories": [
+            "~sandbox"
+          ],
+          "destination": "session"
+        }
+      ]
+    }
+  }
+}
