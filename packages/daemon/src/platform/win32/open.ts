@@ -21,10 +21,10 @@ export function parseRegDefault(out: string): string | null {
 const APP_PATHS = 'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe';
 
 /** Chrome's full path: registry App Paths (HKCU then HKLM), then the standard install folders. Never PATH. */
-export async function findChrome(env: Record<string, string | undefined> = process.env, exists: (p: string) => boolean = isFile): Promise<string | null> {
+export async function findChrome(env: Record<string, string | undefined> = process.env, exists: (p: string) => boolean = isFile, regQuery: (key: string) => Promise<{ code: number; stdout: string }> = (key) => run(sys('reg.exe'), ['query', key, '/ve'], { timeoutMs: 5000 })): Promise<string | null> {
   for (const hive of ['HKCU', 'HKLM']) {
     try {
-      const r = await run(sys('reg.exe'), ['query', `${hive}\\${APP_PATHS}`, '/ve'], { timeoutMs: 5000 });
+      const r = await regQuery(`${hive}\\${APP_PATHS}`);
       const p = r.code === 0 ? parseRegDefault(r.stdout) : null;
       if (p && exists(p)) return p;
     } catch { /* try the next source */ }
