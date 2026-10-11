@@ -646,6 +646,18 @@ describe('rule 2: hooks beat inference', () => {
     expect(run(longQuiet({ status: 'trust_pending' }), { k: 'transcript', signal: 'awaiting_reply' }).next.status).toBe('done');
   });
 
+  it('a transcript verdict older than the current status is a stale tail and is ignored', () => {
+    const s = longQuiet({ statusSince: T0 - 5_000 });
+    expect(run(s, { k: 'transcript', signal: 'awaiting_reply', at: T0 - 6_000 }).next).toBe(s);
+    expect(run(s, { k: 'transcript', signal: 'awaiting_reply', at: T0 - 5_000 }).next.status).toBe('done');
+    expect(run(s, { k: 'transcript', signal: 'interrupt_marker', at: T0 - 6_000 }).next).toBe(s);
+    expect(run(s, { k: 'transcript', signal: 'interrupt_marker', at: T0 - 4_000 }).next.status).toBe('interrupted');
+    // with the pty flag the marker must postdate the key press (1 s of skew allowed)
+    const flagged = makeSession({ interruptPendingAt: T0 - 3_000, statusSince: T0 - 50_000 });
+    expect(run(flagged, { k: 'transcript', signal: 'interrupt_marker', at: T0 - 5_000 }).next).toBe(flagged);
+    expect(run(flagged, { k: 'transcript', signal: 'interrupt_marker', at: T0 - 3_500 }).next.status).toBe('interrupted');
+  });
+
   it('transcript working re-arms done/seen/starting only after silence', () => {
     const sig: MachineInput = { k: 'transcript', signal: 'working' };
     expect(run(justHeard({ status: 'done' }), sig).next.status).toBe('done');

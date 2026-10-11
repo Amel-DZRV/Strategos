@@ -20,6 +20,8 @@ export const INTERRUPT_DROP_MS = 10_000;
 export const TRUST_WINDOW_MS = 20_000;
 /** Rule 7: a hook/reconciler disagreement older than this is logged as drift. */
 export const DRIFT_MS = 30_000;
+/** Transcript timestamps and our clock are the same machine's, but allow a little skew. */
+const MARKER_SLACK_MS = 1_000;
 const LAST_MAX = 160;
 const SUBAGENTS_MAX = 50;
 
@@ -265,18 +267,27 @@ function onTranscript(c: Ctx, e: Extract<MachineInput, { k: 'transcript' }>): vo
       }
       break;
     case 'awaiting_reply':
-      if (quiet(c) && (s.status === 'working' || s.status === 'starting' || s.status === 'trust_pending')) {
+      // A reply recorded before this status began belongs to an earlier turn (a stale tail), not to this one.
+      if (
+        quiet(c) && (s.status === 'working' || s.status === 'starting' || s.status === 'trust_pending') &&
+        (e.at === undefined || e.at >= s.statusSince)
+      ) {
         s.lastIsQuestion = e.lastIsQuestion ?? false;
         markDone(c, 'transcript', 'transcript:awaiting_reply', true);
         s.doneAt = e.at ?? c.now;
       }
       break;
-    case 'interrupt_marker':
+    case 'interrupt_marker': {
       // A pty-detected Esc/Ctrl+C is confirmed by the marker; without that flag it is plain inference (rule 2).
-      if (s.interruptPendingAt !== undefined || (s.status === 'working' && quiet(c))) {
+      // Marker timestamps must postdate the key press or the current status, else they belong to an earlier turn.
+      const flagged = s.interruptPendingAt !== undefined && (e.at === undefined || e.at >= s.interruptPendingAt - MARKER_SLACK_MS);
+      const inferred =
+        s.interruptPendingAt === undefined && s.status === 'working' && quiet(c) && (e.at === undefined || e.at >= s.statusSince);
+      if (flagged || inferred) {
         markInterrupted(c, 'transcript', 'transcript:interrupt_marker');
       }
       break;
+    }
   }
 }
 
