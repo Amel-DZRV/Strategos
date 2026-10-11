@@ -27,7 +27,7 @@ describe('open helpers (pure)', () => {
 describe('win32 Chrome lookup', () => {
   it('falls back to the standard folders when the registry has nothing usable, never PATH', async () => {
     const want = 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe';
-    const p = await findChrome({ ProgramFiles: 'C:\\Program Files', 'ProgramFiles(x86)': 'C:\\Program Files (x86)', PATH: 'C:\\evil' }, (x) => x === want || x === 'C:\\evil\\chrome.exe');
+    const p = await findChrome({ ProgramFiles: 'C:\\Program Files', 'ProgramFiles(x86)': 'C:\\Program Files (x86)', PATH: 'C:\\evil' }, (x) => x === want || x === 'C:\\evil\\chrome.exe', async () => ({ code: 1, stdout: '' })); // registry stubbed: no real reg.exe under load
     expect(p).toBe(want);
   });
   it('openAppWindow spawns <chrome> --app=<url>', async () => {

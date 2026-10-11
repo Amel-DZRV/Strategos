@@ -30,12 +30,17 @@ beforeEach(async () => {
   writeText(path.join(cfg, '.keep'), '');
 });
 afterEach(async () => {
-  for (const c of children.splice(0)) if (c.exitCode === null) c.kill('SIGKILL');
+  // wait for the exit: on Windows a live child holds its cwd (and the relay/tap files), and rm then fails with EPERM/EBUSY
+  await Promise.all(children.splice(0).map((c) => new Promise<void>((res) => {
+    if (c.exitCode !== null || c.signalCode !== null) return res();
+    c.once('exit', () => res());
+    c.kill('SIGKILL');
+  })));
   await h.close();
   rmTree(path.dirname(work));
 });
 
-interface Fake { out: () => string; stdin: (s: string) => void; claudeId: string }
+interface Fake { out: () => string; sees: (s: string) => Promise<void>; stdin: (s: string) => void; claudeId: string }
 
 async function startFake(scenario: string): Promise<Fake> {
   const { token } = h.addSession(SID, { status: 'starting', launch: { addDirs: [], extraArgs: [], firstPrompt: 'go' } });
@@ -52,7 +57,9 @@ async function startFake(scenario: string): Promise<Fake> {
   let buf = '';
   child.stdout!.on('data', (d: Buffer) => { buf += d.toString(); });
   child.stderr!.on('data', (d: Buffer) => { buf += d.toString(); });
-  return { out: () => buf, stdin: (s) => { child.stdin!.write(s); }, claudeId };
+  // Hook decisions (HTTP) and the fake's stdout (a pipe) are separate channels: a status change does not imply the text arrived.
+  const sees = (s: string): Promise<void> => h.until(() => buf.includes(s), T, `fake output "${s}" (got: ${buf.slice(-300)})`);
+  return { out: () => buf, sees, stdin: (s) => { child.stdin!.write(s); }, claudeId };
 }
 
 const T = 30_000;
@@ -71,8 +78,8 @@ describe('fake-claude permission scenario', () => {
     await h.until(() => pending()?.held === true, T, 'held');
     expect(h.registry.decide(SID, pending()!.requestId, { kind: 'allow', via: 'drawer' })).toEqual({ ok: true });
     await h.until(() => h.get(SID).status === 'done', T, 'done');
-    expect(f.out()).toContain('(allow via hook)');
-    expect(f.out()).toContain('Bash ran (pretend)');
+    await f.sees('(allow via hook)');
+    await f.sees('Bash ran (pretend)');
   }, T);
 
   it('deny: the fake sees a denial', async () => {
@@ -80,8 +87,8 @@ describe('fake-claude permission scenario', () => {
     await h.until(() => pending()?.held === true, T, 'held');
     h.registry.decide(SID, pending()!.requestId, { kind: 'deny', message: 'no way', via: 'strip' });
     await h.until(() => h.get(SID).status === 'done', T, 'done');
-    expect(f.out()).toContain('(deny via hook)');
-    expect(f.out()).toContain('Denied');
+    await f.sees('(deny via hook)');
+    await f.sees('Denied');
   }, T);
 
   it('always: allowed', async () => {
@@ -89,7 +96,7 @@ describe('fake-claude permission scenario', () => {
     await h.until(() => pending()?.held === true, T, 'held');
     h.registry.decide(SID, pending()!.requestId, { kind: 'always', suggestionIndex: 0, via: 'drawer' });
     await h.until(() => h.get(SID).status === 'done', T, 'done');
-    expect(f.out()).toContain('(allow via hook)');
+    await f.sees('(allow via hook)');
   }, T);
 
   it('release: nothing is decided, the terminal dialog stays and the owner can answer there', async () => {
@@ -100,7 +107,7 @@ describe('fake-claude permission scenario', () => {
     expect(f.out()).not.toContain('via hook');
     f.stdin('1'); // the owner presses Yes in the terminal
     await h.until(() => h.get(SID).status === 'done', T, 'done');
-    expect(f.out()).toContain('(allow via tty)');
+    await f.sees('(allow via tty)');
   }, T);
 
   it('close: Esc in the terminal closes the held connection; the session is no longer pending', async () => {
@@ -120,7 +127,7 @@ describe('fake-claude permission scenario', () => {
     await h.until(() => pending()?.held === true, T, 'held');
     f.stdin('1');
     await h.until(() => h.get(SID).status === 'done', T, 'done');
-    expect(f.out()).toContain('(allow via tty)');
+    await f.sees('(allow via tty)');
     expect(h.registry.size).toBe(0);
     expect(pending()).toBeUndefined();
   }, T);
@@ -133,7 +140,7 @@ describe('fake-claude question scenario', () => {
     expect(pending()).toMatchObject({ kind: 'question', toolName: 'AskUserQuestion', questions: [{ question: 'Which flavour?', options: [{ label: 'Vanilla' }, { label: 'Chocolate' }] }] });
     expect(h.registry.decide(SID, pending()!.requestId, { kind: 'answers', answers: { 'Which flavour?': 'Chocolate' }, via: 'drawer' })).toEqual({ ok: true });
     await h.until(() => h.get(SID).status === 'done', T, 'done');
-    expect(f.out()).toContain('(allow via hook)');
+    await f.sees('(allow via hook)');
     expect(h.get(SID).last).toContain('Chocolate');
   }, T);
 
@@ -147,6 +154,6 @@ describe('fake-claude question scenario', () => {
     expect(pending()).toMatchObject({ kind: 'question', toolName: 'AskUserQuestion' });
     expect(h.registry.decide(SID, pending()!.requestId, { kind: 'answers', answers: { 'Which flavour?': 'Vanilla' } })).toEqual({ ok: true });
     await h.until(() => h.get(SID).status === 'done', T, 'done');
-    expect(f.out()).toContain('(allow via hook)');
+    await f.sees('(allow via hook)');
   }, T);
 });

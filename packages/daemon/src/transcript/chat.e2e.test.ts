@@ -52,7 +52,15 @@ describe('chat.subscribe', () => {
     const ui2 = await r.ui();
     await ui2.cmd({ c: 'chat.subscribe', strategosId: s.strategosId, from: 6 });
     expect(chatEvents(ui2, s.strategosId)[0]).toMatchObject({ from: 6, reset: false });
-    expect(chatEvents(ui2, s.strategosId)[0]!.items.map(label)).toEqual(['U:quiet', 'T:Read:ok', 'A:Fake reply to: quiet']);
+    // The Stop hook (which sets `last`) can arrive before the transcript tail has delivered the tool result and the reply:
+    // wait for the feed to catch up (later events replace/extend from their absolute index) instead of asserting the first batch.
+    const tail = (): ChatItem[] => {
+      let list: ChatItem[] = [];
+      for (const e of chatEvents(ui2, s.strategosId)) list = [...list.slice(0, e.from - 6), ...e.items];
+      return list;
+    };
+    await ui2.until(() => tail().length === 3 && tail().every((i) => i.k !== 'tool' || i.ok !== undefined), 15_000, 'resumed feed complete');
+    expect(tail().map(label)).toEqual(['U:quiet', 'T:Read:ok', 'A:Fake reply to: quiet']);
     ui2.close();
   }, T);
 

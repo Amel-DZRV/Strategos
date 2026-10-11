@@ -5,7 +5,8 @@
 //
 // Rules this file keeps:
 //   - It never answers a hook with a decision unless a UI decision (through the registry) or a guard deny produced it.
-//     Everything else is an empty 200 = no decision = the normal TUI dialog.
+//     The one other non-empty response is the PostToolUse conflict note (`additionalContext`: a note to Claude, not a
+//     decision). Everything else is an empty 200 = no decision = the normal TUI dialog.
 //   - Held events: PermissionRequest (any tool) and PreToolUse for AskUserQuestion. The request is registered in the
 //     registry BEFORE the reducer sees it, so effects that refer to it (supersede, release on evidence) can resolve it.
 //   - One PreToolUse "*" hook arrives for every tool (the settings file has a single URL), so the receiver decides by

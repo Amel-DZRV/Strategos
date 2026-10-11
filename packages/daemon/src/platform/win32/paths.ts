@@ -1,3 +1,4 @@
+import { realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { win32 } from 'node:path';
 
@@ -30,4 +31,27 @@ export function canonicalWin32(p: string): string {
   const root = win32.parse(s).root;
   while (s.length > root.length && s.endsWith('\\')) s = s.slice(0, -1);
   return s;
+}
+
+/**
+ * Canonical form with the filesystem consulted: the text form from `canonicalWin32`, then the longest existing prefix is
+ * resolved with `realpath` (native: expands 8.3 short names like `AMEL~1.DES`, resolves junctions and symlinks, fixes case)
+ * and the not-yet-existing remainder is appended. A path where nothing resolves falls back to the text-only form.
+ * `realpath` is injectable so the logic is unit-testable on any OS.
+ */
+export function canonicalWin32Real(p: string, realpath: (p: string) => string = (x) => realpathSync.native(x)): string {
+  const abs = canonicalWin32(p);
+  let cur = abs;
+  const rest: string[] = [];
+  for (;;) {
+    try {
+      const real = canonicalWin32(realpath(cur));
+      return rest.length ? canonicalWin32(win32.join(real, ...rest.reverse())) : real;
+    } catch {
+      const parent = win32.dirname(cur);
+      if (parent === cur) return abs;
+      rest.push(win32.basename(cur));
+      cur = parent;
+    }
+  }
 }

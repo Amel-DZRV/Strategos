@@ -24,7 +24,7 @@ const defaultCommand = (): string[] => [process.execPath, fileURLToPath(new URL(
 
 export function createWin32Platform(o: PlatformOptions = {}): Platform {
   return {
-    paths: { strategosHome: () => winPaths.strategosHome(), claudeConfigDir: () => winPaths.claudeConfigDir(), canonical: winPaths.canonicalWin32, projectDirName },
+    paths: { strategosHome: () => winPaths.strategosHome(), claudeConfigDir: () => winPaths.claudeConfigDir(), canonical: (p) => winPaths.canonicalWin32Real(p), projectDirName },
     locateClaude: (cfg) => winLocator.locateClaudeWin32(cfg),
     proc: { isAlive: winProcess.isAlive, startTime: winProcess.startTime, killTree: winProcess.killTree, sample: winSampler({ intervalMs: o.sampleIntervalMs }) },
     openExternal: winOpen.openExternal,

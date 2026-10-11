@@ -1,11 +1,13 @@
 // Test-only filesystem helpers. The daemon package forbids fs writes outside safe-fs.ts (eslint), including in its tests,
 // so tests that need temp files import these (tools/ is outside that rule).
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 export function mkTmp(prefix = 'strategos-test-'): string {
-  return mkdtempSync(join(tmpdir(), prefix));
+  // Long, real form: os.tmpdir() is an 8.3 short path on some Windows accounts (like AMEL~1.DES under C:/Users), while the daemon
+  // canonicalises to the long form; tests that compare a path they built with one the daemon returned need the same spelling.
+  return realpathSync.native(mkdtempSync(join(tmpdir(), prefix)));
 }
 
 export function mkdirp(dir: string): string {
@@ -25,5 +27,11 @@ export function appendText(path: string, content: string): void {
 }
 
 export function rmTree(path: string): void {
-  rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  // Windows: a just-killed child (or AV/indexer) can hold files for a moment; rmSync retries EBUSY/EPERM/ENOTEMPTY with a growing delay (~40s worst case).
+  // Cleanup is best effort: a grandchild (hook relay) still holding the directory must not fail an otherwise green test.
+  try {
+    rmSync(path, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
+  } catch (e) {
+    console.warn(`rmTree: could not remove ${path}: ${(e as Error).message}`);
+  }
 }
