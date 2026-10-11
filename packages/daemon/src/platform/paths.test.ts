@@ -21,7 +21,7 @@ describe('canonicalWin32 (pure, runs on every OS)', () => {
     ['\\\\srv\\share\\dir\\', '\\\\srv\\share\\dir'],
     ['//srv/share/dir', '\\\\srv\\share\\dir'],
     ['\\\\.\\COM3', '\\\\.\\COM3'],
-    ['C:\\Users\\Amel.DESKTOP-8UP1MTT\\Mixed Case', 'C:\\Users\\Amel.DESKTOP-8UP1MTT\\Mixed Case'],
+    ['C:\\Users\\Owner.PC-EXAMPLE\\Mixed Case', 'C:\\Users\\Owner.PC-EXAMPLE\\Mixed Case'],
   ];
   it.each(table)('%s -> %s', (input, expected) => {
     expect(canonicalWin32(input)).toBe(expected);
@@ -77,7 +77,7 @@ describe('home directories', () => {
 
 describe('projectDirName', () => {
   it('encodes non-alphanumerics as "-" [ran against ~/.claude/projects]', () => {
-    expect(projectDirName('C:\\Users\\Amel.DESKTOP-8UP1MTT')).toBe('C--Users-Amel-DESKTOP-8UP1MTT');
+    expect(projectDirName('C:\\Users\\Owner.PC-EXAMPLE')).toBe('C--Users-Owner-PC-EXAMPLE');
     expect(projectDirName('C:\\dev\\Claude Code Mods')).toBe('C--dev-Claude-Code-Mods');
     expect(projectDirName('/Users/amel/dev/my_app')).toBe('-Users-amel-dev-my-app');
   });
@@ -102,9 +102,9 @@ describe('canonicalWin32Real', () => {
     throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
   };
   it('expands an existing prefix and appends the missing rest (injected realpath, every OS)', () => {
-    const rp = fake({ 'C:\\Users\\AMEL~1.DES': 'C:\\Users\\Amel.DESKTOP-8UP1MTT', 'C:\\Users': 'C:\\Users', 'C:\\': 'C:\\' });
-    expect(canonicalWin32Real('c:/Users/AMEL~1.DES/new/dir/', rp)).toBe('C:\\Users\\Amel.DESKTOP-8UP1MTT\\new\\dir');
-    expect(canonicalWin32Real('C:\\Users\\Amel.DESKTOP-8UP1MTT\\new\\dir', rp)).toBe('C:\\Users\\Amel.DESKTOP-8UP1MTT\\new\\dir');
+    const rp = fake({ 'C:\\Users\\OWNER~1.PCE': 'C:\\Users\\Owner.PC-EXAMPLE', 'C:\\Users': 'C:\\Users', 'C:\\': 'C:\\' });
+    expect(canonicalWin32Real('c:/Users/OWNER~1.PCE/new/dir/', rp)).toBe('C:\\Users\\Owner.PC-EXAMPLE\\new\\dir');
+    expect(canonicalWin32Real('C:\\Users\\Owner.PC-EXAMPLE\\new\\dir', rp)).toBe('C:\\Users\\Owner.PC-EXAMPLE\\new\\dir');
   });
   it('falls back to the text form when nothing exists, keeping verbatim/UNC handling', () => {
     const none = (): string => { throw new Error('ENOENT'); };

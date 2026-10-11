@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 export function mkTmp(prefix = 'strategos-test-'): string {
-  // Long, real form: os.tmpdir() is an 8.3 short path on some Windows accounts (like AMEL~1.DES under C:/Users), while the daemon
+  // Long, real form: os.tmpdir() is an 8.3 short path on some Windows accounts (like OWNER~1.PCE under C:/Users), while the daemon
   // canonicalises to the long form; tests that compare a path they built with one the daemon returned need the same spelling.
   return realpathSync.native(mkdtempSync(join(tmpdir(), prefix)));
 }

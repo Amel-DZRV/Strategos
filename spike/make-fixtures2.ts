@@ -10,7 +10,7 @@ const root = join(here, '..', 'fixtures', 'claude', '2.1.292');
 const home = homedir();
 const BS = String.fromCharCode(92);
 const variants = (p: string) => [p, p.split(BS).join(BS + BS), p.split(BS).join('/')];
-const spellings = [...variants(home), ...variants('C:' + BS + 'Users' + BS + 'AMEL~1.DES'), ...variants('C:' + BS + 'Users' + BS + 'Amel.DESKTOP-8UP1MTT')];
+const spellings = [...variants(home), ...variants('C:' + BS + 'Users' + BS + 'OWNER~1.PCE'), ...variants('C:' + BS + 'Users' + BS + 'Owner.PC-EXAMPLE')];
 function redactStr(s: string): string {
   for (const sp of spellings) s = s.split(sp).join('~');
   if (s.length > 2048) s = s.slice(0, 2048) + `...[cut, ${s.length} chars total]`;

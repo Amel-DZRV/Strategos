@@ -35,7 +35,7 @@ export function canonicalWin32(p: string): string {
 
 /**
  * Canonical form with the filesystem consulted: the text form from `canonicalWin32`, then the longest existing prefix is
- * resolved with `realpath` (native: expands 8.3 short names like `AMEL~1.DES`, resolves junctions and symlinks, fixes case)
+ * resolved with `realpath` (native: expands 8.3 short names like `OWNER~1.PCE`, resolves junctions and symlinks, fixes case)
  * and the not-yet-existing remainder is appended. A path where nothing resolves falls back to the text-only form.
  * `realpath` is injectable so the logic is unit-testable on any OS.
  */

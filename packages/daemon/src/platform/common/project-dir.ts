@@ -1,6 +1,6 @@
 /**
  * Claude Code's project directory name for a working directory: every non-alphanumeric becomes "-".
- * [ran] C:\Users\Amel.DESKTOP-8UP1MTT -> C--Users-Amel-DESKTOP-8UP1MTT.
+ * [ran] C:\Users\Owner.PC-EXAMPLE -> C--Users-Owner-PC-EXAMPLE.
  * Names over 200 characters: Claude truncates to 200 and appends "-" + a hash of the full path.
  * TODO(verify): the hash below is the Java-style 31x hash in base 36 that Claude's Node build uses [inferred, from memory of the
  * bundled source]. The native claude.exe is a Bun build and may use Bun.hash instead; no over-200 directory exists on this
