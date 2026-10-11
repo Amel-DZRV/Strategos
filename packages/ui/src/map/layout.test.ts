@@ -1,8 +1,27 @@
 import { describe, expect, test } from 'vitest';
 import {
   CELL_H, CELL_W, collapseQuiet, emptyLayout, isDormant, nearestInDirection, slotOffset, sizeFor, spiralCells, stepLayout,
-  type GroupInput, type LayoutMemory, type TokenInput, viewBoxFor,
+  type Box, type GroupInput, type LayoutMemory, type TokenInput, labelBox, viewBoxFor,
 } from './layout.ts';
+
+describe('label spacing', () => {
+  const overlap = (a: Box, b: Box) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+  test('ring-0 label boxes of tokens in vertically adjacent cells never overlap (8 slots each)', () => {
+    for (let upper = 0; upper < 8; upper++) {
+      for (let lower = 0; lower < 8; lower++) {
+        const a = labelBox(upper);
+        const b = labelBox(lower);
+        const shifted: Box = { ...b, top: b.top + CELL_H, bottom: b.bottom + CELL_H };
+        expect(overlap(a, shifted), `slot ${upper} above slot ${lower}`).toBe(false);
+      }
+    }
+  });
+
+  test('the gap between the lowest label and the next cell\'s highest token is at least 12 units', () => {
+    expect(CELL_H + labelBox(0).top - labelBox(1).bottom).toBeGreaterThanOrEqual(12);
+  });
+});
 
 /** Small deterministic PRNG so a failing run can be replayed. */
 function rng(seed: number): () => number {

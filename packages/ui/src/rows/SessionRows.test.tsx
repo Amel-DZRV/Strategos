@@ -46,7 +46,7 @@ describe('SessionRows', () => {
     expect(within(row).getByText('Alpha')).toBeTruthy();
     expect(within(row).getByText(/strategos-app · feat\/x/)).toBeTruthy();
     expect(within(row).getByText('71%')).toBeTruthy();
-    expect(within(row).getByText('≈$3.42')).toBeTruthy();
+    expect(within(row).getByText('$3.42')).toBeTruthy();
     expect(within(row).getByText('Hello there')).toBeTruthy();
   });
 

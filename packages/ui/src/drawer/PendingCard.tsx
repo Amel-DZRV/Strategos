@@ -113,6 +113,7 @@ export function PendingCard({ session, onOpenTerminal }: { session: SessionRecor
         <div class="actions">
           <button type="button" class="btn primary" aria-keyshortcuts="a" onClick={() => void approve(session)}>
             {blocked ? 'Approve (show full input)' : 'Approve'}
+            <span class="k" aria-hidden="true">a</span>
           </button>
           <input
             ref={reasonRef} class="reason" type="text" placeholder="Reason for Claude (optional)" aria-label="Deny message (optional)"

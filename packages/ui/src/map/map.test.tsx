@@ -107,7 +107,7 @@ describe('NeedsStrip', () => {
     expect(order).toEqual(['p1', 'p2', 'q', 'e', 'i', 'd']);
   });
 
-  test('shows the risk, the whole command and inline Approve / Deny; a cut-short input opens the card first (D21)', async () => {
+  test('chips are compact (name, repo and wait; no command or Approve); a click selects and opens the drawer', async () => {
     const long = 'x'.repeat(390);
     load([
       makeSession({ strategosId: 'a', displayName: 'Alpha', status: 'permission', waitingSince: T0, pending: makePending({ requestId: 'r1', inputSummary: long, risk: ['network', 'run'] }) }),
@@ -115,14 +115,16 @@ describe('NeedsStrip', () => {
     ]);
     render(<NeedsStrip />);
     const chipA = document.querySelector<HTMLElement>('.nchip[data-sid=a]')!;
-    expect(within(chipA).getByText('NET')).toBeTruthy();
-    expect(chipA.textContent).toContain(long);
-    await act(() => { fireEvent.click(within(chipA).getByRole('button', { name: 'Approve' })); });
-    expect(t.sent.at(-1)).toEqual({ c: 'perm.decide', strategosId: 'a', requestId: 'r1', decision: 'allow' });
-    const chipB = document.querySelector<HTMLElement>('.nchip[data-sid=b]')!;
-    await act(() => { fireEvent.click(within(chipB).getByRole('button', { name: 'Approve' })); });
-    expect(t.sent.filter((c) => c.c === 'perm.decide').length).toBe(1);
+    expect(chipA.textContent).not.toContain(long);
+    expect(within(chipA).queryByText('NET')).toBeNull();
+    expect(document.querySelector('.nchip button, .nchip .mbtn')).toBeNull();
+    expect(chipA.textContent).toContain('Alpha');
+    expect(chipA.textContent).toMatch(/waiting [0-9]+m/);
+    await act(() => { fireEvent.click(chipA); });
+    expect(selectedId.value).toBe('a');
     expect(drawerOpen.value).toBe(true);
+    expect(t.sent.filter((c) => c.c === 'perm.decide').length).toBe(0);
+    expect(chipA.classList.contains('on')).toBe(true);
   });
 });
 
@@ -201,8 +203,7 @@ describe('Map in the app', () => {
     await press('n');
     await press('2');
     expect(t.sent.at(-1)).toEqual({ c: 'question.answer', strategosId: 'q', requestId: 'rq', answers: { 'Which?': 'Two' } });
-    await press('t');
-    expect(drawerOpen.value).toBe(true);
+    expect(drawerOpen.value).toBe(true); // n opens the drawer
     await press('t');
     expect(drawerTab.value).toBe('chat');
     await press('v');

@@ -14,7 +14,7 @@ describe('format', () => {
     expect(fmtWait(-5)).toBe('0s');
   });
   it('formats cost as an estimate', () => {
-    expect(money(3.416)).toBe('≈$3.42');
+    expect(money(3.416)).toBe('$3.42');
   });
   it('waits from waitingSince, else statusSince', () => {
     expect(waitingMs(makeSession({ strategosId: 'a', waitingSince: 100, statusSince: 50 }), 1100)).toBe(1000);
