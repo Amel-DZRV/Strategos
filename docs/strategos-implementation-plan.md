@@ -3,6 +3,9 @@
 Status: plan, 11 Oct 2026. Written by the Opus advisor pass. Nothing has been built or installed.
 
 **Edit, 11 Oct 2026 (after this plan was written):** the owner uses Chrome, so every Edge reference below was changed to Chrome (decisions D1 and D6, the shell bridge, check S15 and the end-to-end test line). Edge is installed on this machine but not on `PATH`.
+
+**Edit 2, 11 Oct 2026 (review pass):** the owner confirmed Strategos runs on both the Windows PC and a MacBook. The Windows PC stays the daily machine and goes first in order; macOS is a committed target, not a maybe. This edit adds check S0, moves approve/deny into M2, writes the platform module for both systems in M1, adds rules on truncated approvals, toast and batch approvals, forged hook events, the status-line tap order, Esc detection, per-platform keys, split config, auto-update, and risk R17. Changes are marked 'Edit 2' where they are not self-evident.
+
 Inputs: `strategos-technical-writeup.md` (the write-up), `bot-crossing-review.md` (the review), `strategos-looks.html` look B (the prototype), `Strategos_PRODUCT.md` (the product doc), the session-tracker and auto-handoff READMEs, the official Claude Code docs, and the Bot Crossing source read as data.
 
 **Claim tags.** **[docs]** read in official docs on 11 Oct 2026 (URL in §2 or §14). **[code]** read in source code (Bot Crossing or node-pty typings). **[ran]** ran on this machine today. **[inf]** my inference, not yet shown. Anything marked [inf] that matters has a spike check (S1–S18).
@@ -45,7 +48,7 @@ Inputs: `strategos-technical-writeup.md` (the write-up), `bot-crossing-review.md
 7. You can approve or deny permissions, answer questions, reply, start, stop, park and resume sessions, create worktrees, review diffs and open draft PRs, by mouse or keyboard.
 8. Hooks and a status-line tap are injected per process with `--settings`. Strategos never edits `~/.claude`.
 9. v1 runs as a browser app window (Chrome `--app`). From M7 it runs in an Electron shell with a tray icon, native toasts and a global hotkey. The shell is swappable.
-10. Windows 10 first. The macOS port (M9) only touches the platform module and packaging.
+10. Windows 10 and macOS. Windows first in order, and the Windows PC is the daily machine. The platform module is written for both systems in M1 (task 1.03); M9 is Mac packaging and acceptance only.
 
 **Not in v1:**
 - Sessions not started by Strategos ("external squads" in the product doc).
@@ -97,8 +100,10 @@ I checked every claim the earlier documents marked assumed, recalled or inferred
 | V22 | Hook input fields | **Confirmed:** `permission_mode`, `agent_id`, `agent_type`, `transcript_path`, `cwd`. SessionEnd reasons: `clear`, `resume`, `logout`, `prompt_input_exit`, `other`. Notification types include `permission_prompt`, `idle_prompt`, `elicitation_dialog`, `agent_needs_input` | hooks | Typed in `shared/hooks.ts` as tolerant (optional) fields |
 | V23 | SessionEnd has a short budget | **Confirmed.** 1.5 s by default, raised up to 60 s by a per-hook `timeout` | hooks | SessionEnd hook `timeout: 3`; never relied on alone (pty exit is the backstop) |
 | V24 | `CLAUDE_CODE_SIMPLE` is bare mode | **Confirmed** (`--bare` "Sets CLAUDE_CODE_SIMPLE") | cli-reference | The env scrubber must drop it; the write-up saw it inherited from the desktop app |
+| V25 | `node-pty` installs on this machine without MSVC build tools | **Unknown.** The official package falls back to compiling from source when no prebuilt binary matches the Node version, and this machine has no build tools. A community fork, `@lydell/node-pty`, ships prebuilt Windows and macOS binaries and never runs node-gyp [inf, read on the package page, not run] | npm package pages | New check **S0**, run before S1. Fallback: the fork, API-compatible [inf] |
+| V26 | Claude Code updates itself by default | **Inferred, not re-read today.** The auto-updater runs unless disabled by a setting or environment variable [inf, from memory of the settings page; confirm the exact name before setting it] | settings (to re-check) | The owner turns the auto-updater off by hand on both machines for the build period (that is the owner's own global setting; Strategos never writes it). Version guard moves from 8.05 to M1 (new task 1.16) |
 
-Still unknown after this pass, so spike-only: hold behaviour and maximum timeout (S2); ConPTY fidelity (S3); whether hooks keep reaching the same URL after `/clear` (S11, [inf] yes, because `--settings` is per process); whether `disableAgentView` from `--settings` blocks `←` and `/bg` (S18); how a failing Bash exit code is reported (S17); whether `Read(...)` deny rules for `~/.strategos` parse on Windows (S1).
+Still unknown after this pass, so spike-only: hold behaviour and maximum timeout (S2); ConPTY fidelity (S3); whether hooks keep reaching the same URL after `/clear` (S11, [inf] yes, because `--settings` is per process); whether `disableAgentView` from `--settings` blocks `←` and `/bg` (S18); how a failing Bash exit code is reported (S17); whether `Read(...)` deny rules for `~/.strategos` parse on Windows (S1); whether `node-pty` installs without build tools (S0).
 
 ---
 
@@ -108,7 +113,7 @@ Still unknown after this pass, so spike-only: hold behaviour and maximum timeout
 
 | # | Decision | Recommendation | Why |
 |---|---|---|---|
-| D1 | v1 shell | **Browser app window** (`chrome.exe --app=http://127.0.0.1:PORT/` (the launcher finds Chrome at its install path; it does not rely on PATH)) through M6. **Electron** in M7. Tauri stays possible later | Fastest to iterate and needs no packaging. Electron is the only shell with tray, toasts with buttons, global hotkey and no new toolchain (Rust/MSVC absent [write-up, verified]). The UI talks to the daemon only over WebSocket plus a 6-method `ShellBridge`, so Tauri or a native shell later reimplements only the bridge |
+| D1 | v1 shell | **Browser app window** (`chrome.exe --app=http://127.0.0.1:PORT/` (the launcher finds Chrome at its install path; it does not rely on PATH)) through M6. **Electron** in M7. Tauri stays possible later. On macOS the launcher opens Chrome at `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` with the same `--app=` flag, never relying on PATH | Fastest to iterate and needs no packaging. Electron is the only shell with tray, toasts with buttons, global hotkey and no new toolchain (Rust/MSVC absent [write-up, verified]). The UI talks to the daemon only over WebSocket plus a 6-method `ShellBridge`, so Tauri or a native shell later reimplements only the bridge |
 | D2 | Must stay shell-independent | Daemon (all logic, all state, all processes), protocol, UI app. Shell-specific: notifications with buttons, tray/badge, global hotkey, window focus, opening external URLs, autostart | Same list is the `ShellBridge` (§4) plus `platform/` |
 | D3 | Repo layout | **One git repo, npm workspaces**: `C:\dev\strategos` with `packages/{shared,daemon,ui,shell-electron}`, `tools/`, `fixtures/`, `spike/` | npm 11 has workspaces; no pnpm/turbo to install. One repo keeps protocol changes atomic |
 | D4 | UI framework | **Preact 10 + @preact/signals + Vite**, SVG written as JSX | The prototype re-renders with `innerHTML`, which would destroy xterm instances, focus and scroll. Keyed diffing fixes that. Signals map 1:1 to daemon deltas, so only the changed token re-renders. About 4 KB. JSX is what sub-agents write most reliably. Solid is equally fast but less familiar; React adds weight for nothing here |
@@ -125,6 +130,10 @@ Still unknown after this pass, so spike-only: hold behaviour and maximum timeout
 | D15 | Storage | JSON and JSONL under `%USERPROFILE%\.strategos` (override `STRATEGOS_HOME`). No SQLite in v1 | Small data. Revisit if events exceed 50 MB/month |
 | D16 | Git and GitHub | Shell out to `git` and `gh` with argument arrays, never a shell string | Both installed and authenticated |
 | D17 | Worktree location | `<repo>/.claude/worktrees/<name>` by default (same as `claude -w`). Add `.claude/worktrees/` to `.git/info/exclude` after asking once per repo | Trust may extend from the repo folder (V10); S10 confirms |
+| D18 | Platform module for both systems from M1 | `platform/win32` and `platform/darwin` are written together in task 1.03 and tested on both systems from M1 (CI matrix, §9). | Writing the Mac half later bakes Windows assumptions into paths, process control and the locator. The cost moves from M9 to M1; the total is about the same (Edit 2) |
+| D19 | Config split | `config.json` has two objects: `machine` (repo paths, `claudePath`, `port`, `worktreeRoot`, Node path) and `portable` (guards, thresholds, notification prefs, keymap overrides, `testCommandPatterns`, `conflicts.*`). | The same owner uses two machines. Sessions and the Map stay per machine (product non-goal), but guard rules and preferences are the same on both and can be copied by hand. Two objects cost nothing now and are expensive to separate later (Edit 2) |
+| D20 | Toast and batch approvals | Toasts (7.03) and 'approve all low-risk' (4.03) may approve only `Read`, `Edit` and `Write` tool calls whose path is inside the session's worktree, never `Bash`, and never a path under `.git/`, `.claude/`, `.github/` or any dotfile. Everything else gets 'Open'. | A Bash command's risk cannot be classified reliably from its text, and an in-repo write to a hook, a settings file or a CI workflow changes what runs next (Edit 2) |
+| D21 | Approve only what you saw | A held request keeps the full tool input in memory. If `inputSummary` was cut at 400 chars, the Approve button on a strip chip or toast opens the full card first instead of approving. The event log still stores only the summary. | A long command must not be approved from its first line (Edit 2) |
 
 ### 3.2 Can wait
 
@@ -160,7 +169,7 @@ C:\dev\strategos\
     git\         git.ts  gh.ts  worktrees.ts  review.ts  pr-poller.ts
     features\    risk.ts  guards.ts  stuck.ts  conflicts.ts  usage.ts  digest.ts  initiatives.ts  resources.ts
     notify\      policy.ts
-    platform\    index.ts  win32\{paths,locator,process,sampler,open,autostart}.ts  darwin\ (M9)
+    platform\    index.ts  win32\{paths,locator,process,sampler,open,autostart}.ts  darwin\{paths,locator,process,sampler,open,autostart}.ts   (both from M1, D18)
   packages\ui\
     index.html  vite.config.ts
     src\ main.tsx  app.tsx  shell-bridge.ts
@@ -192,8 +201,8 @@ C:\dev\strategos\
 | `git/*` | Status, diff, worktree create/remove, review data, `gh` PR create and poll | Delete a branch or a dirty worktree without the typed confirmation | new |
 | `features/*` | Risk, guards, stuck, conflicts, usage, digest, initiatives, resources. Each is a pure function over events plus a small store | Act on its own, except guards (deny only) | new |
 | `notify/policy` | Transition-only, none at startup, at most 1 per 2.5 s, escalation at 5 and 15 min | Fire for the session you are looking at | Bot Crossing `chimeForNewWaiting` (port) |
-| `platform/*` | Paths (`CLAUDE_CONFIG_DIR`, canonicalisation), Claude locator, process liveness, tree kill and sampling, URL and folder opener, autostart | Use a binary from another app's bundle; drop `CLAUDE_CONFIG_DIR` | Bot Crossing `scan.mjs` `canonical`, `windows.mjs` (fronting), `api.mjs` opener (adapt) |
-| `ui/*` | Map, drawer, palette, dialogs, keyboard, shell bridge | Hold authoritative state; write files; talk to anything but the daemon | prototype look B; Bot Crossing `hud.js` escape and "set only if changed" ideas |
+| `platform/*` | Paths (`CLAUDE_CONFIG_DIR`, canonicalisation), Claude locator, process liveness, tree kill and sampling, URL and folder opener, autostart. Both `win32` and `darwin` implementations exist from 1.03 (D18). The injected Node path for the status-line tap comes from `process.execPath` at spawn time, never a fixed path | Use a binary from another app's bundle; drop `CLAUDE_CONFIG_DIR` | Bot Crossing `scan.mjs` `canonical`, `windows.mjs` (fronting), `api.mjs` opener (adapt) |
+| `ui/*` | Map, drawer, palette, dialogs, keyboard, shell bridge. Keymap is a per-platform table: `Ctrl+Alt+M` leaves the terminal on Windows, `Cmd+Shift+M` on macOS; `Ctrl+K` / `Cmd+K` for the palette | Hold authoritative state; write files; talk to anything but the daemon | prototype look B; Bot Crossing `hud.js` escape and "set only if changed" ideas |
 | `shell-electron` | Window, tray, badge, toasts, hotkey; launches or connects to the daemon | Contain business logic | new |
 | `tools/fake-claude` | A stand-in `claude` that reads `--settings`, posts scripted hooks, writes a scripted transcript, prints TUI-like output | Run real tools | new |
 
@@ -262,6 +271,7 @@ export interface Pending {
   requestId: string; kind: 'permission' | 'question'; held: boolean;  // held=false: answer only in terminal
   toolName: string; toolUseId?: string; agentId?: string;             // agentId: asked by a subagent
   inputSummary: string;                 // ≤ 400 chars: command, file path or first question
+  inputTruncated: boolean;              // true → Approve opens the full card first (D21); full input kept in memory only
   risk: RiskClass[];                    // highest first
   suggestions?: unknown[];              // permission_suggestions, passed back verbatim as updatedPermissions
   questions?: { question: string; header?: string; multiSelect?: boolean; options: { label: string; description?: string }[] }[];
@@ -345,14 +355,14 @@ export type UiCommand = { id: string } & (
 |---|---|---|
 | `daemon.lock` | `{pid, procStart}` | Created exclusively at start. A live holder means a second daemon exits. A stale holder (dead pid or other start time) is replaced |
 | `daemon.json` | `{pid, port, startedAt, version}`. **No token** | Rewritten at start |
-| `config.json` | Repos, `claudePath?`, `port`, `worktreeRoot`, `env.keep[]`, `env.set{}`, guards, notification prefs, thresholds, `testCommandPatterns[]`, `conflicts.*`, `statusLine.mode` | Written only on an explicit UI save; validated; previous copy kept as `config.json.bak` |
+| `config.json` | `machine: {repos, claudePath?, port, worktreeRoot, nodePath?}` and `portable: {env.keep[], env.set{}, guards, notification prefs, thresholds, testCommandPatterns[], conflicts.*, statusLine.mode, keymap}` (D19) | Written only on an explicit UI save; validated; previous copy kept as `config.json.bak` |
 | `state.json` | `{schema, writtenAt, daemonVersion, sessions[] (no pty/resource; pending saved with held:false), initiatives[], layout:{planetCells, groupCells}, prefs, dismissedSuggestions[]}` | **Single serialised writer queue; unique temp name `state.json.<pid>.<seq>.tmp` then rename; no write until load finished (a flag set after a successful parse or an explicit "start empty"); debounce 500 ms; flush on exit; keep `state.json.bak` hourly. A parse failure renames the file to `state.json.corrupt-<ts>`, loads the `.bak`, and shows a banner** |
 | `events-YYYY-MM-DD.jsonl` | `{ts, sid?, type, data}`; types `status`, `hook` (event name, tool, summary only), `decision`, `guard`, `cost`, `usage`, `notify`, `error`, `activity` | Append only, one writer. Roll at 20 MB. **Retention 30 days.** Never full tool inputs or file contents |
 | `audit.jsonl` | Every allow, deny, always, release, answer and guard deny: `{ts, sid, claudeSessionId, requestId, tool, inputSummary, risk, decision, via: 'map'\|'strip'\|'drawer'\|'toast'\|'palette'\|'guard'\|'lowRiskBatch', connId}` | Append only. **Retention 180 days** |
 | `run/<strategosId>.settings.json` | Hooks, statusLine, `disableAgentView`, deny rules (§10) | Written before spawn and fixed for the process's life. Deleted on exit. `run/` is swept at start (files with no live owner) |
 | `logs/daemon-YYYY-MM-DD.log` | Diagnostics | 7-day retention |
 
-**Injected settings (v1):** `SessionStart`, `SessionEnd` (timeout 3), `UserPromptSubmit`, `PreToolUse` `*` (timeout 5; guards answer here), `PreToolUse` `AskUserQuestion` (timeout 86400, held), `PermissionRequest` `*` (timeout 86400, held), `PostToolUse` `*`, `PostToolUseFailure` `*`, `Notification`, `Stop`, `StopFailure`, `SubagentStart`, `SubagentStop`, `PreCompact`, `PostCompact`, `CwdChanged`. All are `type: "http"` with URL `http://127.0.0.1:<port>/hook/<strategosId>/<Event>`, `headers: {"X-Strategos-Token": "$STRATEGOS_HOOK_TOKEN"}` and `allowedEnvVars: ["STRATEGOS_HOOK_TOKEN"]`. Also `statusLine: {type: "command", command: "<node>/node.exe <home>/tap.mjs <strategosId>"}` with forward slashes, plus `"disableAgentView": true`.
+**Injected settings (v1):** `SessionStart`, `SessionEnd` (timeout 3), `UserPromptSubmit`, `PreToolUse` `*` (timeout 5; guards answer here), `PreToolUse` `AskUserQuestion` (timeout 86400, held), `PermissionRequest` `*` (timeout 86400, held), `PostToolUse` `*`, `PostToolUseFailure` `*`, `Notification`, `Stop`, `StopFailure`, `SubagentStart`, `SubagentStop`, `PreCompact`, `PostCompact`, `CwdChanged`. All are `type: "http"` with URL `http://127.0.0.1:<port>/hook/<strategosId>/<Event>`, `headers: {"X-Strategos-Token": "$STRATEGOS_HOOK_TOKEN"}` and `allowedEnvVars: ["STRATEGOS_HOOK_TOKEN"]`. Also `statusLine: {type: "command", command: "<process.execPath, forward slashes> <home>/tap.mjs <strategosId>"}` with forward slashes (on macOS the same command runs under `sh` [inf]), plus `"disableAgentView": true`.
 
 ---
 
@@ -369,7 +379,7 @@ Sources: **H** hook, **P** pty (exit, keystrokes typed through Strategos), **T**
 | `question` | AskUserQuestion or elicitation | H: PreToolUse(AskUserQuestion) (held), Notification `elicitation_dialog` (held: false) | Answer sent; PostToolUse(AUQ); UserPromptSubmit; exit |
 | `done` | Turn handed back to you | H: Stop. T: `awaitingReply` true. R: `status: idle` (both inferred) | UserPromptSubmit → working; U seen → `seen` |
 | `seen` | Done and you've looked | U: drawer opened ≥ 1.5 s, `x` key, or "Seen" button (`seenAt ≥ doneAt`) | Any new activity → working (re-arms) |
-| `interrupted` | You pressed Esc or Ctrl+C mid-turn | P: Esc or Ctrl+C typed while working or permission sets `interruptPendingAt`; confirmed by T marker `[Request interrupted by user`, or H PostToolUseFailure `is_interrupt`, or R idle within 5 s. Unconfirmed after 10 s → flag dropped | UserPromptSubmit → working; U seen |
+| `interrupted` | You pressed Esc or Ctrl+C mid-turn | P: Esc or Ctrl+C typed while working or permission sets `interruptPendingAt`; confirmed by T marker `[Request interrupted by user`, or H PostToolUseFailure `is_interrupt`, or R idle within 5 s. Unconfirmed after 10 s → flag dropped. A lone Esc is `\x1b` with no following byte within about 50 ms; otherwise it is the start of an arrow or function key sequence and is ignored (task 1.09) | UserPromptSubmit → working; U seen |
 | `errored` | Turn failed or the process died | H: StopFailure (`error`). P: exit ≠ 0 without SessionEnd while not stopping | U resume → `starting` |
 | `stopped` | Ended normally; resumable | P: exit after U stop, or after SessionEnd `prompt_input_exit`/`other`. Daemon restart: every non-live record | U resume |
 | `parked` | Stopped by you to free memory; resumable | U park (same mechanics as stop) | U resume |
@@ -383,6 +393,7 @@ Sources: **H** hook, **P** pty (exit, keystrokes typed through Strategos), **T**
 5. **Needs-you priority**, for the strip and Tab order: permission > question > errored > trust_pending > interrupted > done (unseen). Within a tier, the oldest `waitingSince` comes first. `waitingSince` is set on entering any of these and cleared on leaving.
 6. **`lastIsQuestion`.** A Stop whose last message ends in "?" keeps status `done` and adds a "?" badge. It no longer creates a fake `question` state (the write-up's heuristic is dropped).
 7. Every transition is appended to `events-*.jsonl` with its source. A disagreement between H and R older than 30 s is logged as `drift`.
+8. **A held request is cleared only by its own resolution.** While the hold connection for a request is open, no hook event clears `pending` or moves the session out of `permission`/`question`, including a `PostToolUse` or `Stop` for the same session. Only a UI decision, a release, the hold connection closing, or process exit does. Reason: the hook token sits in the child's environment, so a session's own Bash tool can POST a forged event. A forged event must not unblock a request (Edit 2, R8).
 
 ---
 
@@ -434,10 +445,12 @@ Sources: **H** hook, **P** pty (exit, keystrokes typed through Strategos), **T**
 | `t` | Drawer: terminal ↔ chat | `v` | Review tab |
 | `c` | New session | `s` / `p` | Stop / park (with confirmation) |
 | `x` | Mark seen | `g` | Group by repo ↔ initiative |
-| `i` | Assign an initiative | `Ctrl+K` | Command palette |
-| `Ctrl+Alt+M` | Leave a focused terminal and go back to the map | `?` | Key help |
+| `i` | Assign an initiative | `Ctrl+K` (Windows) / `Cmd+K` (macOS) | Command palette |
+| `Ctrl+Alt+M` (Windows) / `Cmd+Shift+M` (macOS) | Leave a focused terminal and go back to the map | `?` | Key help |
 
-When an xterm pane has focus, every key goes to Claude except `Ctrl+Alt+M`. Focusing a terminal sends `pty.focus`, which auto-releases any held request of that session so the real dialog appears (D13).
+When an xterm pane has focus, every key goes to Claude except `Ctrl+Alt+M` (Windows) or `Cmd+Shift+M` (macOS). Focusing a terminal sends `pty.focus`, which auto-releases any held request of that session so the real dialog appears (D13).
+
+The keymap is a per-platform table in `keys/keymap.ts` from task 3.04, not two code paths.
 
 **Accessibility.**
 - Tokens are focusable `role="button"`. The `aria-label` reads name, status, waiting time and context.
@@ -453,7 +466,7 @@ Each task row gives: id | what | hd | depends | files | how to test | done when.
 ### M0 Spike (9 hd). Goal: kill the biggest unknowns before writing product code.
 
 Setup:
-1. `C:\dev\strategos\spike` with `npm i node-pty@1.1.0 ws @xterm/xterm @xterm/addon-fit`.
+1. `C:\dev\strategos\spike` with `npm i node-pty@1.1.0 ws @xterm/xterm @xterm/addon-fit`. If `npm i node-pty` fails for lack of build tools, install `@lydell/node-pty` instead and note it in REPORT.md (S0).
 2. A scratch repo, `C:\dev\strategos-sandbox`, created by `spike/mkrepo.ts` (`git init`, one README, one commit, `.claude/settings.local.json` with deny rules `Bash(rm *)`, `Bash(del *)`, `Bash(Remove-Item *)`, `Bash(git push *)`).
 3. Permission tests only ask Claude to run `echo strategos-probe > probe.txt` or to write `probe.md`.
 4. Never use `--dangerously-skip-permissions`.
@@ -469,14 +482,15 @@ Scripts:
 
 | Order | # | Check | Pass | Fail → |
 |---|---|---|---|---|
+| 0 | S0 | `node-pty` installs and spawns `cmd.exe` on Windows and `zsh` on the Mac without build tools | `npm i` succeeds on both machines; a 5-line script spawns a shell, echoes, and exits with code 0 | Use `@lydell/node-pty`; if that also fails on Windows, install the MSVC build tools (one-time) and record it |
 | 1 | S1 | `--settings` injects http hooks with the header token | Every listed event arrives with our `session_id` and `X-Strategos-Token` set; your own plugins still load (clawd-pet band visible, auto-handoff bar visible); `~/.claude/settings.json` hash unchanged; the deny rule `Read(~/.strategos/**)` is accepted (no Settings Warning) | Try the token in the URL path; then a command hook (`hook-relay.mjs`); then `--plugin-dir` with hooks. All fail → **no-go**, re-plan |
 | 2 | S2 | Hold a PermissionRequest | Held 15 min with timeout 86400, then each of allow, deny with a message, always (one suggestion → rule applied), `none` (the TUI dialog appears) behaves as documented. Record: is the TUI dialog visible **while held**? If answered in the TUI while held, does our request get `close`? | Run **S2b**: with the hook immediately empty, can `1`/`Enter`/`Esc` typed into the pty answer the dialog reliably 10/10? Yes → GO, degraded (approve by keystrokes). No → approvals become "open terminal" only |
-| 3 | S3 | ConPTY renders your TUI | 10 min of real use side by side with a normal console: no garbled redraws; resize; mouse; Shift+Enter; paste; Ctrl+C; `/` picker; permission dialog; clawd-pet band | Retry with `--conpty-dll`; then `"tui"` classic via `--settings`; then the external-window mode (§12, R2). All fail → run S8 as the alternative host |
-| 4 | S9 | Answer AskUserQuestion from outside | Held PreToolUse(AUQ) + `allow` + `updatedInput` {questions, answers} continues the turn with that answer; `none` shows the TUI question | Questions are "answer in terminal" only |
+| 3 | S3 | ConPTY (Windows) and forkpty (macOS) render your TUI | 10 min of real use side by side with a normal console: no garbled redraws; resize; mouse; Shift+Enter; paste; Ctrl+C; `/` picker; permission dialog; clawd-pet band. Run the 10-minute session on both machines; the Mac run is the fallback host if ConPTY fails | Retry with `--conpty-dll`; then `"tui"` classic via `--settings`; then the external-window mode (§12, R2). All fail → run S8 as the alternative host |
+| 4 | S9 | Answer AskUserQuestion from outside | Held PreToolUse(AUQ) + `allow` + `updatedInput` {questions, answers} continues the turn with that answer; `none` shows the TUI question. The `*` guard hook also matches AskUserQuestion; it must return an empty response for that tool so only the held hook carries a decision. | Questions are "answer in terminal" only |
 | 5 | S11 | Identity churn | `/clear`, in-TUI `/resume`, `/branch`, plan-mode "clear context" and `/handoff-now` (auto-handoff) each produce SessionEnd + SessionStart **to the same hook URL** with the new `session_id` and `transcript_path`; the status line reports the new id and reset cost | If hooks stop after a switch → lineage from the reconciler (sessions file) plus a watcher on the project dir |
 | 6 | S12 | Interrupts | Esc mid-text, Esc mid-tool, Esc at the permission dialog, Ctrl+C: record which hooks fire (expect no Stop), the final transcript record, and `sessions/<pid>.json` status within 5 s | If no confirmation exists → mark interrupted from keystrokes alone, labelled "probably" |
 | 7 | S18 | Agent View escape | With `disableAgentView: true` via `--settings`: `←` on an empty prompt and `/bg` do **not** move the session. Without it: record what the pty shows | Can't disable → detect `open_elsewhere` and show "moved to background; open with `claude attach`" |
-| 8 | S5 | Status line through `--settings` | The tap receives `context_window.used_percentage`, `context_window_size`, `cost.total_cost_usd`, `rate_limits.*`, `prompt_cache.*`, `session_id`; runs in under 300 ms under Git Bash; the chained status line prints. Note whether plain-talk's status display is affected | Transcript ctx% plus a price table; usage gauge cut (no other `rate_limits` source) |
+| 8 | S5 | Status line through `--settings` | The tap receives `context_window.used_percentage`, `context_window_size`, `cost.total_cost_usd`, `rate_limits.*`, `prompt_cache.*`, `session_id`; runs in under 300 ms under Git Bash; the chained status line prints. Note whether plain-talk's status display is affected. The tap prints the chained status line first, then POSTs to the daemon fire-and-forget, so your display never waits on the daemon. | Transcript ctx% plus a price table; usage gauge cut (no other `rate_limits` source) |
 | 9 | S4 | Reply through the pty | Bracketed paste of 3 lines + `\r` = one UserPromptSubmit with the exact text; `/compact` sent the same way runs the command; record what Ctrl+U does in the prompt | Reply only from the terminal; slash actions become "copy command" |
 | 10 | S10 | Trust in new worktrees | Record whether a worktree under `<repo>/.claude/worktrees/x` and one under `C:\dev\x-wt` prompt for trust; the pty text pattern and `sessions/<pid>.json` during the prompt | Show a "Trust this folder" step in the new-session flow |
 | 11 | S16 | Cache TTL | `prompt_cache.ttl/expires_at/warm` present and consistent with transcript `ephemeral_*` fields; one idle session crosses expiry | Show "age since last call" only |
@@ -488,17 +502,17 @@ Scripts:
 | 17 | S8 | Option E (timebox 2 h) | `claude --bg --settings X` starts; hooks fire; `claude attach` renders in node-pty | Record only |
 | 18 | S7 | Cross-mode resume (timebox 1 h) | Record only | Already out of scope |
 
-**Go/no-go:** GO to M1 if S1 passes, S3 passes in any variant, and S2 or S2b passes. S11 and S12 must be *understood* (results recorded), not necessarily favourable. Every other failure has a cut listed above. The output is `spike/REPORT.md` plus `fixtures/claude/2.1.292/**` (redacted: home path → `~`, tool inputs over 2 KB cut).
+**Go/no-go:** GO to M1 if S0 and S1 pass, S3 passes in any variant on at least one machine, and S2 or S2b passes. S11 and S12 must be *understood* (results recorded), not necessarily favourable. Every other failure has a cut listed above. The output is `spike/REPORT.md` plus `fixtures/claude/2.1.292/**` (redacted: home path → `~`, tool inputs over 2 KB cut).
 
-**M0 tasks:** M0.1 scaffold and sandbox (1). M0.2 hostpty + page (2). M0.3 hooklog + mksettings + tap (2). M0.4 run S1–S18, fixtures, report (4). Done when REPORT.md has a result row per check and the go/no-go table is filled.
+**M0 tasks:** M0.1 scaffold and sandbox on both machines, S0 (1). M0.2 hostpty + page (2). M0.3 hooklog + mksettings + tap (2). M0.4 run S1–S18, fixtures, report (4). Done when REPORT.md has a result row per check and the go/no-go table is filled.
 
-### M1 Daemon (29 hd). Goal: a headless daemon that runs real sessions with correct status, persistence and security, testable without Claude.
+### M1 Daemon (32 hd). Goal: a headless daemon that runs real sessions with correct status, persistence and security, testable without Claude.
 
 | id | What | hd | Dep | Files | Test | Done when |
 |---|---|---|---|---|---|---|
 | 1.01 | Monorepo scaffold, `npm run check` (tsc strict + vitest + eslint no-restricted-imports) | 1 | M0 | root `package.json`, `tsconfig.base.json` | CI script runs | `npm run check` green on an empty repo |
 | 1.02 | Shared types and protocol from §5; status ranking | 1 | 1.01 | `shared/src/*` | type tests | Reviewed and frozen at gate G1 |
-| 1.03 | Platform win32: paths (`CLAUDE_CONFIG_DIR`, canonical drive case, `\\?\`), locator (PATHEXT, `claude.cmd` → exe, bundle denylist), process (alive + start time, `taskkill /T /F`), opener, persistent sampler | 2 | 1.02 | `platform/**` | unit: locator temp dirs; canonical table; kill-tree of a 3-level tree | Tests pass **on Windows** (none skipped) |
+| 1.03 | Platform win32 **and darwin** (D18): paths (`CLAUDE_CONFIG_DIR`, canonical drive case and `\\?\` on Windows, `realpath` on macOS), locator (Windows: PATHEXT, `claude.cmd` → exe; macOS: `~/.local/bin/claude`, npm global; both: bundle denylist), process (Windows: alive + start time, `taskkill /T /F`; macOS: process group kill, `ps`), opener (`rundll32` / `open`), app window (Chrome install path on each), autostart (Startup folder / LaunchAgent), persistent sampler (PowerShell / `ps`) | 4 | 1.02 | `platform/**` | unit: locator temp dirs; canonical table; kill-tree of a 3-level tree | Tests pass on Windows **and** macOS (CI matrix, none skipped) |
 | 1.04 | Stores: state (queue, unique temp, no write before load, `.bak`, corrupt handling), event log (roll, retention), audit log; `safe-fs` refusing the Claude config dir | 2 | 1.02 | `store/**`, `safe-fs.ts` | unit: 50 concurrent writes, kill mid-write, write-before-load refused | No lost write in 1000-iteration fuzz |
 | 1.05 | Config: schema, defaults, stable port | 1 | 1.02 | `config.ts` | unit | Invalid config → a clear error, not a crash |
 | 1.06 | Server: http, guards (§10), pairing, WS hub (hello, snapshot, seq deltas, acks, resync), static UI | 3 | 1.04, 1.05 | `server/**` | unit + integration with `ws` client; guard matrix test | Every row of the §10 guard table has a test |
@@ -507,16 +521,17 @@ Scripts:
 | 1.09 | pty host: spawn with scrubbed env, 2 MB scrollback ring, resize, input origin, `dirtyInput`, Esc/Ctrl+C detection, bracketed paste helper | 2 | 1.03 | `pty/**` | integration with fake-claude and `cmd.exe` | Scrollback replays the same bytes; exit codes correct |
 | 1.10 | Session manager: start (`git rev-parse --git-common-dir` → `planetKey`), stop (Ctrl+C ×2, `/exit`, 5 s, tree kill), park, resume (single-writer check, regenerated settings), forget, archive; restart recovery | 3 | 1.07–1.09 | `sessions/manager.ts`, `launch.ts` | e2e with fake-claude | Kill the daemon → restart → sessions show `stopped`, resumable |
 | 1.11 | Transcript: fsutil port, tailer, meta, `awaitingReply` + interrupt markers | 2 | 1.02 | `transcript/**` | partial lines, UTF-8 split, shrink, 12 MB file | Tail latency ≤ 600 ms; never parses a partial line |
-| 1.12 | Status-line ingest and the final `tap.mjs` (chain, timeout 250 ms) | 1 | 1.06 | `statusline/**` | unit; timed run under Git Bash | Under 300 ms p95 |
+| 1.12 | Status-line ingest and the final `tap.mjs` (chain, timeout 250 ms); tap prints the chained line first, then POSTs (S5) | 1 | 1.06 | `statusline/**` | unit; timed run under Git Bash | Under 300 ms p95 |
 | 1.13 | Reconciler: sessions dir (3 s), agents CLI (60 s and on demand), transcript inference, `open_elsewhere`, drift log | 2 | 1.08, 1.11 | `reconciler/**` | fake `CLAUDE_CONFIG_DIR` fixtures | Inferred states labelled; never clears a pending request (test) |
 | 1.14 | `tools/fake-claude.ts`, `fake-claude-home.ts`, `snapshot-claude-dir.ts` | 2 | 1.02 | `tools/**` | self-tests | Scripts for: plain turn, permission, question, subagent, `/clear`, interrupt, crash |
 | 1.15 | `main.ts` and `cli.ts`: lock, detached start, `strategos start\|stop\|status\|open` | 1 | 1.06, 1.10 | `main.ts`, `cli.ts` | manual | `strategos open` launches the app window, already paired |
+| 1.16 | Version guard (tested range) and the 'run contract tests' banner, moved from 8.05 | 1 | 1.07 | `main.ts` | run against 2.1.292 | Out-of-range version → banner, not a crash |
 
 **Demo:** with fake-claude, start 3 sessions and walk one through permission → allow → done over a WS client script. Then start one real `claude` session and watch statuses in `strategos status --watch`.
-**Exit:** all tests green; the M0 fixtures replay; the listing of `CLAUDE_CONFIG_DIR` is unchanged in every integration test.
+**Exit:** all tests green; the M0 fixtures replay; the listing of `CLAUDE_CONFIG_DIR` is unchanged in every integration test; the unit suite is green on both operating systems in CI.
 **Cut if late:** the agents-CLI half of 1.13 (keep the sessions dir); hourly `.bak`.
 
-### M2 Terminals (11 hd). Goal: use real sessions in the browser window.
+### M2 Terminals (16 hd). Goal: use real sessions in the browser window and answer permission requests from one screen before the Map exists (Edit 2).
 
 | id | What | hd | Dep | Files | Test | Done when |
 |---|---|---|---|---|---|---|
@@ -526,12 +541,16 @@ Scripts:
 | 2.04 | Drawer shell: header (status, ctx, ≈$, repo/branch, last), tabs Terminal/Chat/Review (Chat and Review placeholders) | 1 | 2.01 | `drawer/Drawer.tsx` | component test | Header updates live |
 | 2.05 | App window: `strategos open`, pairing on launch, title badge "(n) Strategos" | 1 | 1.15 | `platform/win32/open.ts`, `ui/state/connection.ts` | manual | One command opens a paired window |
 | 2.06 | Acceptance soak and fixes | 2 | all | — | Accept M2 | Below |
+| 2.07 | Approve/Deny/Always end to end from the session rows, the drawer and keys; audit log; truncated-input rule (D21) | 2 | 1.07, 2.02 | `PendingCard.tsx`, `hooks/pending.ts` | fake-claude e2e; real check in the sandbox | Under 5 s from request to approval without opening a terminal |
+| 2.08 | Waiting numbers on rows; top bar 'waiting now / today' | 1 | 2.02 | `topbar/TopBar.tsx` | unit | Matches `events` replay |
+| 2.09 | Notifications: in-page toast, Web Notification, policy (transition-only, none at startup, ≤ 1 per 2.5 s, escalate at 5/15 min, never for the open session), favicon + title badge | 2 | 2.02 | `notify/policy.ts`, `shell-bridge.ts` | unit for policy; manual | A reload produces no notification (test) |
 
 **Demo / Accept M2:**
 1. Start 6 real sessions across 3 repos.
 2. Status is right within 1 s for 30 minutes of mixed work.
 3. Closing the window leaves the sessions running, and reopening restores them.
 4. Killing the daemon leaves them resumable with history.
+5. A permission request in a session you aren't viewing is approved from the rows in under 5 s.
 
 **Cut if late:** web-links addon; the look A rows' extra columns.
 
@@ -550,16 +569,16 @@ Scripts:
 **Demo:** 8 sessions on 4 planets. Start a 9th: nothing moves. Stop one: nothing moves. Hover an initiative: dim and lines.
 **Cut if late:** drag (3.07); the fold memory beyond the current session.
 
-### M4 Attention (18 hd). Goal: the daily driver. Notice and act in seconds.
+### M4 Attention (15 hd). Goal: the daily driver. Notice and act in seconds.
 
 | id | What | hd | Dep | Files | Test | Done when |
 |---|---|---|---|---|---|---|
-| 4.01 | Approve/Deny/Always end to end from strip, token, drawer, keys; audit log | 2 | 1.07, 3.03 | `PendingCard.tsx`, `hooks/pending.ts` | fake-claude e2e; real check in a sandbox | Under 5 s from request to approval without opening a terminal |
+| 4.01 | Wire the M2 approve/deny (2.07) to the strip and tokens | 1 | 2.07, 3.03 | `NeedsStrip.tsx`, `Token.tsx` | e2e | Same 5 s result from the strip |
 | 4.02 | Questions: held AUQ, option buttons and `1`–`9`, "Answer in terminal" | 2 | 4.01, S9 | same | fake-claude e2e | Answer reaches the model (real check) |
-| 4.03 | Risk classifier + tags on token/card/strip; "Approve all low-risk" per initiative (read and write-in-repo only, with a confirmation listing each) | 2 | 4.01 | `features/risk.ts` | table test of 60 commands | No `delete`/`network`/`outside_repo` case approved by the batch (test) |
+| 4.03 | Risk classifier + tags on token/card/strip; "Approve all low-risk" per initiative (read and write-in-repo only, with a confirmation listing each); batch approves only per D20 | 2 | 4.01 | `features/risk.ts` | table test of 60 commands | No `delete`/`network`/`outside_repo` case approved by the batch; never a `Bash` call or a path under `.git/`, `.claude/`, `.github/` (test) |
 | 4.04 | Auto-deny guards: starter rules in PreToolUse; logged; read-only list in settings | 2 | 1.07 | `features/guards.ts` | fake payloads incl. obfuscations; labelled honestly | Starter rules deny in under 20 ms; each denial is visible on the token |
-| 4.05 | Notifications: in-page toast, Web Notification, policy (transition-only, none at startup, ≤ 1 per 2.5 s, escalate at 5/15 min, never for the open session), favicon + title badge | 2 | 3.03 | `notify/policy.ts`, `shell-bridge.ts` | unit for policy; manual | A reload produces no notification (test) |
-| 4.06 | Waiting numbers on tokens and chips; top bar "waiting now / today" | 1 | 3.02 | `topbar/TopBar.tsx` | unit | Matches `events` replay |
+| 4.05 | Notification policy (2.09) unchanged; add escalation badge on tokens | 0.5 | 2.09, 3.02 | `Token.tsx` | unit | — |
+| 4.06 | Waiting numbers (2.08) on tokens and chips | 0.5 | 2.08, 3.02 | `map/*` | unit | — |
 | 4.07 | Seen state (drawer ≥ 1.5 s, `x`), interrupted display | 1 | 1.08 | UI + reducer | e2e | The strip empties after you look |
 | 4.08 | Usage gauge: 5-hour and 7-day, burn rate (slope over 30 min), ETA, park suggestion at 85% (never automatic) | 2 | 1.12 | `features/usage.ts`, `TopBar.tsx` | unit on synthetic samples | ETA within 10% on a synthetic line |
 | 4.09 | Command palette over a shared action registry | 2 | 3.04 | `palette/CommandPalette.tsx`, `keys/keymap.ts` | Playwright | Every key action is also a palette command |
@@ -570,7 +589,7 @@ Scripts:
 2. With the daemon stopped, the same request shows the normal TUI dialog.
 3. A guard denies `git push --force` (fake payload) and the token shows it.
 
-**Gate G4:** dogfood for 3 working days before M5. Log annoyances in `docs/dogfood.md`.
+**Gate G4:** dogfood for 3 working days before M5. Log annoyances in `docs/dogfood.md`. Second acceptance run of the M2 and M4 scripts on the MacBook (Edit 2); Mac-only findings go to `docs/dogfood.md` tagged `mac`.
 **Cut if late:** "approve all low-risk"; the burn-rate ETA (keep the gauge).
 
 ### M5 Chat view and in-session helpers (14 hd)
@@ -612,13 +631,13 @@ Scripts:
 |---|---|---|---|---|---|---|
 | 7.01 | Shell: single instance, launch or connect to the daemon, load the UI, preload bridge (token via IPC, never on disk) | 2 | M6 | `shell-electron/{main,preload,daemon-launch}.ts` | manual + Playwright Electron | The browser phase still works unchanged |
 | 7.02 | Tray icon, taskbar overlay badge, click → oldest blocked session | 1 | 7.01 | `tray.ts` | manual | Badge equals the strip count |
-| 7.03 | Native toasts with Approve/Deny/Open (`actions`, `handleActivation`); Approve shown only for `read` and in-repo `write`; others get "Open" | 2 | 7.01, 4.05 | `toasts.ts` | manual on Win10 | Toast approve is logged with `via: toast` |
+| 7.03 | Native toasts with Approve/Deny/Open (`actions`, `handleActivation`); Approve per D20 (Read/Edit/Write inside the worktree only, never Bash, never dotfiles or `.git`/`.claude`/`.github`); the toast shows the path; truncated input opens the card (D21) | 2 | 7.01, 4.05 | `toasts.ts` | manual on Win10 | Toast approve is logged with `via: toast` |
 | 7.04 | Global hotkey (default `Ctrl+Alt+S`), window state | 1 | 7.01 | `main.ts` | manual | — |
 | 7.05 | Packaging: esbuild daemon bundle, electron-builder NSIS unsigned; daemon runs under `ELECTRON_RUN_AS_NODE` or system Node (decide from a 1-hour test; node-pty is N-API) | 2 | 7.01 | build config | install on a clean user profile | Installs and runs without the dev tree |
 
 **Cut if late:** packaging (run from source); global hotkey.
 
-### M8 Remaining features and hardening (14 hd)
+### M8 Remaining features and hardening (13 hd)
 
 | id | What | hd | Dep | Files | Test | Done when |
 |---|---|---|---|---|---|---|
@@ -626,7 +645,7 @@ Scripts:
 | 8.02 | Resource view: per-session process tree memory/CPU, total in the top bar, panel with Park | 2 | 1.03 | `features/resources.ts`, UI | sampler test | Within 10% of Task Manager |
 | 8.03 | "While you were away" digest: idle > 10 min (UI `activity`); finished, blocked + durations, cost delta, auto-denied, errors; grouped by initiative | 2 | 1.04 | `features/digest.ts`, `dialogs/Digest.tsx` | replay tests | Matches a hand-made replay |
 | 8.04 | Resume all after a reboot; autostart opt-in (Startup-folder shortcut, after your confirmation) | 1 | 1.10 | `platform/win32/autostart.ts` | manual reboot | One click restores the open set |
-| 8.05 | Version guard (tested range) + `npm run contract` + `tools/record-session.ts` | 2 | 1.14 | `tools/*`, `main.ts` | run against 2.1.292 | Out-of-range version → banner, not a crash |
+| 8.05 | `npm run contract` + `tools/record-session.ts` (the version guard moved to 1.16) | 1 | 1.14, 1.16 | `tools/*` | run against 2.1.292 | Contract run passes on the recorded fixtures |
 | 8.06 | Retention: archive/forget, fold planets, transcript age warning (V14), log rotation | 1 | 3.01 | store + UI | unit | — |
 | 8.07 | Soak and performance: 20 sessions (fake) + 6 real for 4 h; list view toggle above 24 sessions | 2 | all | — | measured | Daemon < 200 MB RSS; UI < 300 MB; no event backlog |
 | 8.08 | Guard rules editor and settings page | 1 | 4.04 | UI | e2e | — |
@@ -634,25 +653,24 @@ Scripts:
 
 **Cut if late:** list view; guard editor (edit `config.json` by hand).
 
-### M9 macOS port (7 hd)
+### M9 macOS packaging and acceptance (4 hd)
 
 | id | What | hd | Dep | Files | Test | Done when |
 |---|---|---|---|---|---|---|
-| 9.01 | `platform/darwin`: paths, locator (`~/.local/bin/claude`, npm; never inside an `.app`), `ps`-based process ops, `open`, LaunchAgent autostart | 2 | M8 | `platform/darwin/**` | the unit suite on macOS | All platform tests pass on both OSes |
-| 9.02 | Fix path and case issues; forkpty smoke test | 2 | 9.01 | various | full suite on macOS | Green |
-| 9.03 | Electron dmg, `Cmd` keymap, dock badge, notifications | 2 | 9.01 | shell | manual | — |
+| 9.01 | Mac-only fixes found in CI and the M4 second run; forkpty smoke test on the real machine; Gatekeeper note (unsigned build: clear the quarantine flag by hand, documented in README) | 1 | M8 | various | full suite on macOS | Green |
+| 9.03 | Electron dmg, `Cmd` keymap, dock badge, notifications | 2 | 9.01 | shell | manual; Mac notification action buttons from an unsigned Electron app are unverified [inf]; record the result | — |
 | 9.04 | Mac acceptance (M2 + M4 scripts) | 1 | 9.03 | — | Accept M9 | — |
 
 ### 8.1 First 10 working days
 
 | Day | Work | End-of-day output |
 |---|---|---|
-| 1 | M0.1 scaffold + sandbox; M0.2 hostpty starts; run **S1** basic (one event arrives) | Hook bodies on disk |
+| 1 | S0 on both machines; M0.1 scaffold + sandbox; M0.2 hostpty starts; run **S1** basic (one event arrives) | Hook bodies on disk |
 | 2 | Finish M0.2/M0.3; **S1** full; **S3** 10-minute side-by-side session | S1, S3 rows in REPORT.md |
 | 3 | **S2** (+S2b if needed), **S9**, **S11**, **S12**, **S18** | The riskiest five answered |
 | 4 | **S5, S4, S10, S16, S17, S14, S13, S6, S15**; S8/S7 if time; go/no-go meeting with yourself | REPORT.md + fixtures; gate **G0** |
 | 5 | 1.01 scaffold; 1.02 types/protocol from §5 adjusted to findings; fixtures moved in | Gate **G1**: contracts frozen |
-| 6 | 1.03 platform (lead); lanes start: A 1.04 store, B 1.11 transcript, C 1.14 fake-claude | Three PRs open |
+| 6 | 1.03 platform, both OSes (lead); lanes start: A 1.04 store, B 1.11 transcript, C 1.14 fake-claude | Three PRs open |
 | 7 | 1.05 config; A 1.06 server; B 1.07 hooks; C 1.09 pty | Guard tests green |
 | 8 | 1.08 reducer (lead); A finishes 1.06; B 1.12 tap; C 1.10 manager starts | Reducer table tests green |
 | 9 | C 1.10; B 1.13 reconciler; A 2.01 UI scaffold | Fake e2e: start → permission → allow |
@@ -662,14 +680,14 @@ Scripts:
 
 | Feature | Milestone | Tasks | Gating check |
 |---|---|---|---|
-| Actionable notifications | M4, M7 | 4.05, 7.03 | S2, S15 (V15 for Electron) |
-| Waiting time as a number | M3, M4 | 3.03, 4.06 | — |
+| Actionable notifications | M2, M4, M7 | 2.09, 4.05, 7.03 | S2, S15 (V15 for Electron) |
+| Waiting time as a number | M2, M3, M4 | 2.08, 4.06 | — |
 | "While you were away" digest | M8 | 8.03 | — |
 | Shared usage and rate limits | M4 | 4.08 | S5 |
 | Stuck/loop detection | M8 | 8.01 | S12 (so interrupts aren't read as stuck) |
 | Cache-warmth indicator | M5 | 5.07 | S16 (C2) |
 | Context-full actions | M5 | 5.05 | S4 |
-| Risk-tagged permission requests | M4 | 4.03 | S2 |
+| Risk-tagged permission requests | M2, M4 | 2.07, 4.01, 4.03 | S2 |
 | Auto-deny guards | M4, M8 | 4.04, 8.08 | S1 |
 | Review inbox | M6 | 6.03, 6.04 | S17 (test-result detection) |
 | Git and CI on the marker | M6 | 6.01, 6.05 | — |
@@ -684,11 +702,11 @@ Scripts:
 
 | Milestone | M0 | M1 | M2 | M3 | M4 | M5 | M6 | M7 | M8 | M9 | Total |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| hd | 9 | 29 | 11 | 13 | 18 | 14 | 16 | 8 | 14 | 7 | **139 hd ≈ 70 dev-days** |
+| hd | 9 | 32 | 16 | 13 | 15 | 14 | 16 | 8 | 13 | 4 | **140 hd = 70 dev-days** |
 
 - **One developer working serially with Claude:** 14 weeks of task time. With 15% for review and rework, the range is **13–16 weeks** to Windows + Mac v1, or **12–15 weeks** for Windows only (M0–M8).
 - **With 3 sub-agent lanes from day 6 (§11):** calendar time is about **9–11 weeks**, because review gates and the single shared contract stay serial.
-- **Daily use** starts at the end of M4: 80 hd, about **6 weeks** in lanes or 8 weeks serially.
+- **Daily use** starts at the end of M2 for approvals from rows (M0 + M1 + M2 = 9 + 32 + 16 = 57 hd, about 29 dev-days, roughly **6 weeks** serially) and at the end of M4 for the full Map (57 + M3 13 + M4 15 = 85 hd, about 43 dev-days, roughly **8.5 weeks** serially or 6 to 7 weeks in lanes) (Edit 2).
 
 **Against the earlier 7–9 weeks (9.5–11.5 with the features):**
 - *Optimistic* there, because it had no budget for:
@@ -730,11 +748,14 @@ Scripts:
 - `settings.json` and `settings.local.json` hashes must be equal.
 - Claude itself writes to `~/.claude` (transcripts, the sessions folder), so a whole-folder hash can't isolate Strategos on a real machine. That guarantee comes from `safe-fs` (the daemon's only write path) and from the fake-home tests above.
 
-**Windows-specific tests** (all must run on Windows; nothing skipped as "posixOnly"):
+**Platform tests** (run on both Windows and macOS in a GitHub Actions matrix with a `windows-latest` and a `macos-latest` runner from M1; nothing skipped as 'posixOnly' or 'win32Only'; real-Claude tests stay manual):
 - **Locator:** extensionless shim + `.cmd` + `.exe` combinations; a bundle path refused.
 - **Paths:** canonical drive case, `\\?\C:\` and `\\?\UNC\` kept apart, forward vs back slashes, project-dir encoding including the over-200-character hash case [docs].
 - **ConPTY:** spawn, resize, exit code, `killTree` of grandchildren. Plus the crash test: start a daemon child, kill it hard, and assert its pty children are gone within 5 s.
 - **Status-line tap:** runs under Git Bash and under PowerShell.
+- **Locator (macOS):** `~/.local/bin/claude`, npm global, and a path inside `/Applications/Claude.app` refused.
+- **Paths (macOS):** `realpath` case, `/private/var` vs `/var`, project-dir encoding of `/Users/...`.
+- **forkpty:** spawn, resize, exit code, process-group kill of grandchildren; the same crash test as ConPTY.
 
 **UI tests.**
 - Vitest + `@testing-library/preact` for components and `layout.ts` (property tests).
@@ -763,14 +784,15 @@ Scripts:
 | Hook routes | `/hook/<strategosId>/<Event>` only. **Refuse any request carrying an `Origin` header** (hooks never send one; browsers always do). Require `X-Strategos-Token` equal to that session's token (constant-time compare). Unknown session → 404 with an empty body (= no decision). A hook token can only report events for its own session. It can never decide a request |
 | Body caps | Hooks 8 MiB (large Write inputs); status line 256 KiB; UI commands 64 KiB; WS frames 1 MiB. Over the cap → 413 and the connection closed |
 | Rate limits | Pairing 5/min; hook routes 200/s per session |
-| Secrets | Hook tokens live in memory and in each child's env (`STRATEGOS_HOOK_TOKEN`), never in files or on command lines. `~/.strategos` gets a user-only ACL at creation (`icacls /inheritance:r /grant:r <user>:F`) |
+| Secrets | Hook tokens live in memory and in each child's env (`STRATEGOS_HOOK_TOKEN`), never in files or on command lines. `~/.strategos` gets a user-only permission at creation (Windows: `icacls /inheritance:r /grant:r <user>:F`; macOS: `chmod 700`) |
 | Same-user honesty | Any process running as you (including Claude's own Bash tool) can read your files and process list. Strategos can't fully stop a session from reading its own env token or poking at `~/.strategos`. Mitigations: decisions require the UI cookie; the injected settings add deny rules `Read(~/.strategos/**)` and `Edit(~/.strategos/**)` (S1 checks the syntax); every decision lands in the audit log with its connection id. This is a **safety net, not a sandbox**, and the UI says so in Settings |
+| Forged hook events | A session can read its own hook token from its environment and POST events about itself. Such events can change its displayed status but never clear a held request (§6 rule 8) and never decide anything. The audit log records the connection id of every decision |
 | Auto-deny guards | Labelled in the UI: "Safety net, not a security boundary. Pattern matching on command text can be bypassed; your own `deny` rules remain the real control." Guards only deny, never allow |
 | Fail open | Daemon down, timeout or unknown session → no decision → the normal TUI dialog. Strategos never auto-approves. Held requests are released 30 s before their timeout |
-| Toast approvals | Only for `read` and in-repo `write`, and the toast shows the command or path |
+| Toast approvals | Per D20: only `Read`, `Edit`, `Write` with a path inside the worktree; never `Bash`; never `.git/`, `.claude/`, `.github/` or dotfiles; the toast shows the path; truncated input opens the card (D21) |
 | Audit log | `audit.jsonl` (§5): every decision, release, answer, batch approve and guard deny, kept 180 days, viewable in the UI |
 | No network exposure | No telemetry, no update checks; `gh` and `git` are the only network users, plus Claude itself |
-| Other apps' binaries | ClaudeLocator accepts only `config.claudePath`, the npm global `claude.cmd` → `…\@anthropic-ai\claude-code\bin\claude.exe`, or `%USERPROFILE%\.local\bin\claude.exe`. It refuses paths under `Program Files\Claude`, `%LOCALAPPDATA%\AnthropicClaude`, `WindowsApps`, `Packages\Claude_*` and any `.app` bundle. The desktop app's bundled 2.1.295 is never used |
+| Other apps' binaries | ClaudeLocator accepts only `config.claudePath`, the npm global `claude.cmd` → `…\@anthropic-ai\claude-code\bin\claude.exe`, or `%USERPROFILE%\.local\bin\claude.exe`. It refuses paths under `Program Files\Claude`, `%LOCALAPPDATA%\AnthropicClaude`, `WindowsApps`, `Packages\Claude_*` and any `.app` bundle. The desktop app's bundled 2.1.295 is never used. On macOS it refuses any path inside an `.app` bundle, including `/Applications/Claude.app` |
 | `~/.claude` | Never written (`safe-fs`). Never use `claude://resume` links (they fork the transcript [review, code]). Never "fix" titles in Claude's files |
 | Env scrubbing | Child env drops `CLAUDECODE`, `CLAUDE_CODE_*`, `CLAUDE_AGENT_SDK_*` and `ANTHROPIC_*` (keys outrank `/login`), **keeps** `CLAUDE_CONFIG_DIR`, then applies `config.env.keep` and `env.set` |
 | Licence | Ported Bot Crossing code keeps its MIT notice in `THIRD_PARTY_NOTICES.md` (copyright 2026 Jarren Rocks), plus a header comment `Adapted from Station-Sciences/bot-crossing <file> (MIT)` in each ported file. Never use the name "Bot Crossing" or its character designs (post-16 Sep 2026 designs are reserved [review]). Add node-pty, xterm.js, Preact, diff2html and markdown-it notices at packaging |
@@ -815,7 +837,7 @@ Rules for sub-agents:
 | # | Risk | Early warning | Fallback | Retired in |
 |---|---|---|---|---|
 | R1 | PermissionRequest can't be held, or a hidden cap kills the hold | S2: dialog never appears, or the hook dies at about 600 s | S2b keystrokes; auto-release before the cap; else "open terminal" approvals | M0 |
-| R2 | Windows 10 ConPTY can't render the fullscreen TUI or mods well | S3 garbling; M2 soak glitches | `useConptyDll`; classic TUI; **external-window mode** (`wt`/`cmd /k` per session; the Map still gets hooks; reply via the "open" button); Option E | M0 / M2 |
+| R2 | Windows 10 ConPTY can't render the fullscreen TUI or mods well | S3 garbling; M2 soak glitches | the Mac (S3 runs there too); `useConptyDll`; classic TUI; **external-window mode** (`wt`/`cmd /k` per session; the Map still gets hooks; reply via the "open" button); Option E | M0 / M2 |
 | R3 | Claude Code churn: transcript format "internal", hooks evolve, Agent View is a research preview | Contract test diff; reducer `drift` logs | Version guard banner; tolerant parsing; hook-only status; fixtures per version | Ongoing; harness in M8 |
 | R4 | Session identity churn (`/clear` from auto-handoff, `/resume`, `/branch`) breaks tracking | S11; a token goes stale after a handoff | Lineage; reconciler from the sessions file | M0 / M1 |
 | R5 | Agent View moves a session out of our pty (`←`, `/bg`) | S18 | `disableAgentView`; `open_elsewhere` state | M0 |
@@ -830,6 +852,8 @@ Rules for sub-agents:
 | R14 | `gh` rate limits or auth expiry | 403/429 from the poller | Backoff, cached state, "gh needs login" banner | M6 |
 | R15 | Effort overrun | Milestone over by more than 30% | Cut lists per milestone; M8/M9 slip, M4 is protected | Each gate |
 | R16 | First-party overlap (Agent View gains an approve API) | Changelog | Adopt it as the transport; keep the Map | Watch |
+| R17 | Chromium support for Windows 10 ends. Google has committed to Chrome on Windows 10 only for enterprises on Microsoft's paid extended updates, through October 2028, and has published no consumer date [inf, read on Google's support forum 11 Oct 2026]. Electron follows Chromium | Chrome's system-requirements page at each gate | The daemon is shell-independent (D2); the Mac carries the Electron shell; the Windows side can run an older pinned Electron | Watch at each gate |
+| R18 | `node-pty` needs build tools the Windows machine lacks | S0 | `@lydell/node-pty` fork; one-time MSVC install as last resort | M0 |
 
 ---
 
@@ -837,7 +861,7 @@ Rules for sub-agents:
 
 | # | Question | Recommended default |
 |---|---|---|
-| Q1 | Repo location and hosting? | `C:\dev\strategos`, private GitHub repo under Amel-DZRV, MIT licence |
+| Q1 | Repo location and hosting? | **Answered.** `C:\dev\strategos` on Windows, `~/dev/strategos` on the Mac, GitHub repo `Amel-DZRV/Strategos`, MIT |
 | Q2 | Worktrees inside the repo (`.claude/worktrees/<name>`) or beside it? | Inside, if S10 shows trust carries over; otherwise beside it (`C:\dev\<repo>.worktrees\<name>`) |
 | Q3 | May Strategos replace your status line inside its own sessions (chaining your original)? | Yes, chained |
 | Q4 | Turn off Agent View (`←`, `/bg`) inside Strategos sessions? | Yes |
@@ -845,14 +869,17 @@ Rules for sub-agents:
 | Q6 | Allow Approve straight from a Windows toast? | Only for read and in-repo write, with the command shown |
 | Q7 | Start Strategos at login? | Off; opt-in toggle in M8 |
 | Q8 | Which repos go in the first `config.json`? | The ones you run sessions in this week; others added from the New session dialog |
+| Q9 | Which machine is the daily driver for dogfood? | The Windows PC; the Mac runs the M2 and M4 acceptance scripts as a second pass at gate G4 |
 
 **If we start tomorrow:**
 - [ ] Answer Q1–Q8 (defaults are fine).
+- [ ] Turn off Claude Code's auto-updater on both machines for the build period (your own setting, set by hand; V26).
+- [ ] Install the Xcode Command Line Tools on the Mac (one line) and clone the repo there.
 - [ ] Create `C:\dev\strategos` (git init) and `C:\dev\strategos-sandbox` (M0.1).
 - [ ] Close any desktop-app session working in the sandbox repo.
 - [ ] Note `claude --version` (2.1.292) and do **not** run `claude update` until M0 is done.
 - [ ] Record SHA-256 of `~/.claude/settings.json` (`spike/hash-claude-dir.ts`).
-- [ ] Day 1: M0.1 and M0.2, then S1. Day 2: S3. Day 3: S2, S9, S11, S12, S18. Day 4: the rest, then the go/no-go decision.
+- [ ] Day 1: S0, M0.1 and M0.2, then S1. Day 2: S3. Day 3: S2, S9, S11, S12, S18. Day 4: the rest, then the go/no-go decision.
 - [ ] Copy §5 into `packages/shared/src` on day 5, adjusted for spike findings, and freeze it (G1).
 - [ ] Create `THIRD_PARTY_NOTICES.md` before the first Bot Crossing port.
 - [ ] Keep `docs/dogfood.md` open from M2 on.
@@ -890,4 +917,6 @@ Rules for sub-agents:
 - https://code.claude.com/docs/en/agent-view: `agents --json` fields, `/bg` and `←`, `disableAgentView`, idle reaping, two-writer refusal.
 - https://www.electronjs.org/docs/latest/api/notification: Windows `actions`, `toastXml`, `handleActivation`.
 - https://unpkg.com/node-pty@1.1.0/typings/node-pty.d.ts: `useConpty`, `useConptyDll` (experimental), `IPty`.
+- Google Chrome Enterprise community, Windows 10 support announcement (read 11 Oct 2026, not an official product page): https://support.google.com/chrome/a/thread/332420301/support-for-chrome-and-windows-10-update
+- `@lydell/node-pty` package page (prebuilt binaries, no node-gyp): https://classic.yarnpkg.com/en/package/@lydell/node-pty
 - Local runs: `claude --version` (2.1.292), `node` (24.21.0, runs `.ts`), `git` (2.40.1), `where claude`, `PATHEXT`, `~/.claude/sessions/*.json` fields, transcript grep (interrupt markers, record types, `ephemeral_*` fields). The only writes were a 3-line `.ts` file in the scratchpad and this plan.

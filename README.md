@@ -10,7 +10,7 @@ One screen that shows every running Claude Code session at a glance, and lets yo
 
 ## What it is
 
-- A Windows desktop tool (macOS later) that **replaces the Claude window** for your own Claude Code work.
+- A desktop tool for Windows and macOS (Windows first in order) that **replaces the Claude window** for your own Claude Code work.
 - It **starts every session itself**, as an ordinary interactive `claude` running in a pseudo-terminal that a background program (the "daemon") owns. Closing the Strategos window does not stop the sessions.
 - Only sessions started from Strategos appear. Sessions from the Claude desktop app or a plain terminal are not shown.
 - Inside a session you can switch between **the real Claude Code terminal** (so your slash commands and mods keep working) and **a chat view Strategos draws** from the same live session. Switching is instant, because both read the same process.
@@ -48,7 +48,7 @@ Agreed additions that are in the plan but not yet drawn in the prototype: groupi
 - **Actions:** approve or deny permissions, answer questions and reply, start and stop sessions (in a repo or a worktree), review diffs and open pull requests.
 - **Input:** mouse and keyboard equally.
 - **Theme:** a strategy-game look only. Plain words (session, permission request), no voice lines.
-- **Platform:** Windows 10 now, macOS later. A personal tool first.
+- **Platform:** Windows 10 and macOS, Windows first in order. A personal tool first.
 - **Chosen extra features:** actionable notifications, waiting time as a number, a "while you were away" digest, shared usage and rate-limit gauge, stuck and loop detection, cache-warmth indicator, context-full actions, risk-tagged permission requests, auto-deny guards, a review inbox, git and CI status on each marker, conflict warnings across repos, surviving a restart, a resource view, a tray icon with a blocked-count badge, a command palette, and initiative grouping.
 
 ## How it will be built (summary)

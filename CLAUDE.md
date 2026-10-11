@@ -21,7 +21,7 @@ These come from the owner. Do not reopen them without a reason, and say so if yo
 - Each session has both the real Claude Code terminal and a chat view that Strategos draws. They read the same live session, so switching is instant. There is no process switch.
 - Mouse and keyboard work equally. The strategy-game look is visual only: plain words, no voice lines.
 - The browser is **Chrome**, not Edge. The launcher must find Chrome at its install path and must not assume it is on `PATH`.
-- Windows 10 first, macOS later. Personal tool first.
+- Windows 10 and macOS, Windows first in order. The Windows PC is the daily machine. Platform-specific code is written for both systems from M1. Personal tool first.
 - Licence: MIT.
 
 ## Rules
@@ -36,6 +36,7 @@ These come from the owner. Do not reopen them without a reason, and say so if yo
 ## Working here
 
 - Machine: Windows 10 Pro, Node 24.21, npm 11.19, git 2.40, GitHub CLI 2.102 (logged in as Amel-DZRV), Claude Code 2.1.292, Chrome 155. No Rust, no MSVC build tools, no .NET SDK, no Python.
+- Second machine: a MacBook (details to be recorded when the repo is cloned there). Platform code and tests must work on both.
 - Mark claims in documents the way the plan does: read in the docs, read in code, ran it on this machine, or inferred. Do not state an inference as a fact.
 - When a plan task depends on a check that is still open (S2 and S3 matter most), say so instead of assuming it passes.
 - The owner is not a specialist. When you talk to them, explain technical terms in plain words, and give a short summary before the detail.
