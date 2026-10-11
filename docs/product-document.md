@@ -2,7 +2,7 @@
 
 *One screen that shows every Claude Code session you are running, tells you which one needs you, and lets you act on it.*
 
-Status: Draft v2, 11 Oct 2026 · Owner: Amel · Platform: Windows 10 first, macOS later · Licence: MIT
+Status: Draft v2, 11 Oct 2026 · Owner: Amel · Platform: Windows 10 and macOS, Windows first in order · Licence: MIT
 
 This replaces the first product document ([docs/history/product-brief-v1-macos.md](history/product-brief-v1-macos.md)), which described a macOS app with a Total War style parchment map and voice lines. Since then the owner chose a different look, platform and scope. The first document is kept for history.
 
@@ -46,7 +46,7 @@ Underneath is the real Claude Code. Your slash commands, your mods, your setting
 ## 4. Scope
 
 **In v1:**
-- Windows 10; Claude Code only.
+- Windows 10 and macOS; Claude Code only. The Windows PC is the daily machine and goes first in order. The Mac is a committed target: the same code runs on both, and the platform-specific parts are written for both from the start.
 - Sessions started from Strategos, held by a program that runs in the background, so closing the window doesn't stop them.
 - The Map, the Needs-you strip, and a drawer with a Terminal tab, a Chat tab and a Review tab.
 - Approve, deny, reply, answer questions, start, stop, park and resume sessions, in a repo or a new worktree.
@@ -62,9 +62,9 @@ Underneath is the real Claude Code. Your slash commands, your mods, your setting
 - Automatic grouping of sessions. Grouping is never guessed.
 - Any action that spends tokens or approves something without your click.
 
-**Later:** the Mac version, a phone client with proper pairing and security, zoom levels, control groups, and an open-source release.
+**Later:** a phone client with proper pairing and security, zoom levels, control groups, and an open-source release.
 
-**Non-goals:** replacing a full git client, reimplementing Claude Code's agent loop, team or multi-user features, syncing across machines.
+**Non-goals:** replacing a full git client, reimplementing Claude Code's agent loop, team or multi-user features, syncing sessions across machines (the Map shows the sessions of the machine it runs on; guard rules and preferences live in a portable part of the config you can copy by hand).
 
 ## 5. Vocabulary
 
@@ -84,7 +84,7 @@ Underneath is the real Claude Code. Your slash commands, your mods, your setting
 
 **The user:** a developer running 3 to 10 Claude Code sessions in parallel across several repos, delegating most work to the agents and acting as reviewer.
 
-1. **Glance.** "Which of my eight sessions need me?" One look at the Map, or press `n`.
+1. **Glance.** "Which of my eight sessions need me?" One look at the Map, or press `n` or Tab.
 2. **Approve.** A permission request appears. Read the command, the risk label and the diff, and click Approve or Deny in seconds, without opening the session.
 3. **Converse.** Read a session's progress as a chat and reply, or drop into its real terminal.
 4. **Dispatch.** Start a session in a repo, or on a new branch in a new worktree, with a first prompt.
@@ -125,7 +125,8 @@ Layout rules:
 | Seen | You looked at a finished session, so it leaves the strip until it does something new |
 | Interrupted | You pressed Esc or Ctrl+C. Not an error, and not done |
 | Errored | The process died unexpectedly, or Claude Code reported a failure |
-| Stopped | Ended normally, or parked. Resumable |
+| Stopped | Ended normally. Resumable |
+| Parked | You stopped it to free memory. Resumable |
 | Trust pending | Claude Code is asking whether to trust this folder, so its signals are not flowing yet |
 | Open elsewhere | The same session is also open in another program |
 
@@ -133,7 +134,7 @@ Layout rules:
 
 - **Needs-you strip:** one chip per blocked session, oldest first, with Approve and Deny on permission chips. It scrolls sideways and is never cut off.
 - **Waiting time as a number:** each blocked marker shows "waiting 14 min", and the top bar shows the total waiting now and today.
-- **Notifications you can act on:** an alert when a session starts needing you. At first it opens Strategos on that session. In the desktop version (with Electron) it has Approve and Deny buttons. Notifications fire only when a session *starts* needing you, never for sessions already waiting when Strategos opens, and at most one every 2.5 seconds. If a session stays blocked, the alert repeats after a set time.
+- **Notifications you can act on:** an alert when a session starts needing you. At first it opens Strategos on that session. In the desktop version (with Electron) it has Approve and Deny buttons. Notifications fire only when a session *starts* needing you, never for sessions already waiting when Strategos opens, and at most one every 2.5 seconds. If a session stays blocked, the alert repeats after a set time. Approve from a notification follows the same rule as 'approve all low-risk': file reads and edits inside the session's folder only, with the path shown; anything else opens the request.
 - **Tray icon with a blocked-count badge:** the taskbar shows how many sessions need you. Before the desktop version, the browser tab title shows "(3) Strategos".
 - **`n`** jumps to the next session that needs you, and **Tab** cycles through them.
 
@@ -143,7 +144,7 @@ Click a marker, or press Enter on a selected one. The Map stays visible and live
 
 - **Terminal:** the real Claude Code interface, so slash commands, dialogs and your mods work. When the terminal has focus, every key goes to Claude Code except one chord that returns you to the Map.
 - **Chat:** the same live session drawn as a conversation: your messages, Claude's replies, tool calls as collapsed cards, edits as diffs, sub-agent work as nested threads, and any pending request as an inline card with Approve and Deny. Updates arrive per message rather than word by word, with a live activity line in between.
-- **Reply box:** types into the session's terminal. It is enabled only when the session is done or has a question, so it never clobbers a half-typed prompt.
+- **Reply box:** types into the session's terminal. It is enabled only when the session is done, seen, interrupted, or has a question you can answer there, and it refuses to send while you have half-typed something in the terminal, so it never clobbers a prompt.
 - **Review:** the diff, the commit list and the PR.
 - Switching between Terminal and Chat is instant. It is one session read two ways, so nothing restarts.
 
@@ -151,7 +152,8 @@ Click a marker, or press Enter on a selected one. The Map stays visible and live
 
 - Every request shows the tool, the command or diff, and a risk label: read, write, run, network, delete, or outside the repo. The label is a hint, never a guarantee.
 - **Approve**, **Deny** (with an optional message to Claude), **Always allow** (when Claude Code offers a rule) and **Answer in terminal** (hands the request back to the normal dialog).
-- "Approve all low-risk" applies to the selected initiative only.
+- **You approve what you saw.** If a command is too long to show in full on a chip or a notification, the Approve button opens the full request first.
+- 'Approve all low-risk' applies to the selected initiative only, and only to file reads and edits inside the session's own folder. It never approves a shell command, and never a file under `.git`, `.claude`, `.github` or a dotfile, because those change what runs next.
 - Questions Claude asks you appear with their options, and you can answer from the Map.
 - **Auto-deny guards:** one editable list of patterns that are always refused, such as force-push, `rm -rf`, reading `.env` files or writing outside the repo. Every denial is logged. Guards only deny. They can be bypassed by a rewritten command, so they are a safety net.
 - **Audit log:** every approval and denial you make is recorded with the time.
@@ -187,7 +189,7 @@ Click a marker, or press Enter on a selected one. The Map stays visible and live
 - **Stop, park, resume:** stopping asks first. Parking stops the process and keeps the session resumable. Resuming re-applies Strategos's settings. Claude Code deletes transcripts after 30 days by default, so a session stopped for about four weeks is marked "may not be resumable".
 - **Trust:** Claude Code asks you to trust a folder before its signals flow. A brand-new worktree can trigger that question, so Strategos shows it as "needs you: trust this folder".
 - **Archive:** checks for uncommitted or unpushed work, warns with details, removes the worktree and keeps the branch.
-- **Surviving a restart:** closing the window leaves sessions running. After a crash or reboot, sessions show as stopped and resumable, with a "resume everything that was open" button and an option to start Strategos at login.
+- **Surviving a restart:** closing the window leaves sessions running. After a crash or reboot, sessions show as stopped and resumable, with a "resume everything that was open" button and an option to start Strategos at login. Restarting or upgrading the Strategos background program stops every session (they are resumable, but the next message costs more because Claude's prompt cache is cold). Strategos warns before it does this.
 
 ### 7.10 Conflict warnings
 
@@ -204,17 +206,24 @@ Strategos goes further than the mod: it compares every Strategos session, includ
 
 | Key | Action |
 |---|---|
-| `Tab` / `Shift+Tab` | Next or previous session that needs you |
-| Arrows | Move the selection between markers |
+| `n` / `Tab` | Next session that needs you (`Shift`: previous) |
+| Arrows or `h j k l` | Move the selection between markers |
 | `Enter` | Open the drawer |
-| `T` | Switch the drawer between Terminal and Chat |
-| `A` / `D` | Approve or deny the selected request |
-| `R` | Reply |
-| `N` | New session (repo or worktree) |
-| `S` | Stop |
-| `V` | Review the diff |
-| `Ctrl+K` | Command palette: jump to a session, run any action, change grouping |
-| `Esc` | Close the drawer and return to the Map |
+| `Esc` | Close the drawer or palette |
+| `a` / `d` | Approve / deny the selected request (`d` opens an optional message) |
+| `A` | Always allow (only when Claude Code offers a rule) |
+| `1`–`9` | Pick an answer option |
+| `r` | Reply |
+| `t` | Switch the drawer between Terminal and Chat |
+| `v` | Review tab |
+| `c` | New session (repo or worktree) |
+| `s` / `p` | Stop / park (with confirmation) |
+| `x` | Mark seen |
+| `g` | Group by repo / initiative |
+| `i` | Assign an initiative |
+| `Ctrl+K` (Windows) / `Cmd+K` (Mac) | Command palette: jump to a session, run any action, change grouping |
+| `Ctrl+Alt+M` (Windows) / `Cmd+Shift+M` (Mac) | Leave the terminal and return to the Map |
+| `?` | Key help |
 
 ## 8. How it works, briefly
 
@@ -222,11 +231,12 @@ Strategos goes further than the mod: it compares every Strategos session, includ
 - Status and permission requests arrive through **hooks**: small signals Claude Code sends when something happens. Strategos hands them to each session at start-up with `claude --settings`, so your own settings files are never edited. Context, cost and rate limits come from Claude Code's **status line**.
 - The **interface** is a web page (the Map drawn in SVG, terminals drawn with xterm.js) that talks to the daemon over a local connection. In v1 it opens in a Chrome app window. Later it is wrapped in Electron for a tray icon, notification buttons and a global hotkey. The shell can be swapped without touching the daemon.
 - The chat view reads the same live session's log file plus the hooks, so there is no process switch.
-- Estimated effort, from the plan: 13 to 16 weeks for one person working in sequence, or 9 to 11 weeks with three helper lanes working in parallel. Daily use is possible after milestone M4.
+- Estimated effort, from the plan: about 14 weeks for one person working in sequence for Windows and Mac, or 9 to 11 weeks with three helper lanes. Approving requests from one screen is possible after milestone M2 (about 6 weeks); the full Map after M4.
+- The parts that differ between Windows and macOS (finding `claude`, starting and stopping processes, opening windows, start at login) live in one small module with a version for each system, written together from the start. Everything else is shared.
 
 ## 9. Configuration
 
-`~/.strategos/config.json` (the folder is `%USERPROFILE%\.strategos` on Windows):
+`~/.strategos/config.json` (the folder is `%USERPROFILE%\.strategos` on Windows and `~/.strategos` on the Mac) has two parts: a machine part (repo paths, the path to `claude`, the port) and a portable part (guard rules, thresholds, notification preferences, key overrides) that you can copy between machines by hand:
 - repos, display names, planet colours, base branches, worktree location (default `<repo>/.claude/worktrees/<name>`) and setup commands;
 - the path to your `claude` program and any extra arguments;
 - the price table and notification preferences;
@@ -240,13 +250,14 @@ Strategos goes further than the mod: it compares every Strategos session, includ
 - Hook secrets are never stored in the settings files or the repo.
 - Hooks fail open. A permission hook that can't reach the daemon gives no decision, and the normal dialog appears. Nothing is approved on a timeout.
 - Strategos never writes to `~/.claude`. It never runs a Claude program bundled inside another app, and it never uses `claude://` links to open Strategos sessions, because that copies the session into the desktop app.
+- A session can read its own signal token, so it could send Strategos a made-up status about itself. That can only change what the Map shows. It can never approve a request or unblock one that is waiting on you.
 - Everything read from logs, other people's repos and web pages is treated as data, not instructions.
 
 ## 11. Success criteria (personal)
 
 - Terminal tab-switching for agent work drops to near zero.
 - A permission request in a session you aren't viewing is noticed and answered in under 5 seconds, without opening its terminal.
-- Status is correct within 1 second of reality across 30 minutes of mixed work with 6 sessions in 3 repos.
+- For status fed by Claude Code's own signals, status is correct within 1 second of reality across 30 minutes of mixed work with 6 sessions in 3 repos. Guessed statuses (marked 'probably') may lag by up to 10 seconds.
 - Running 8 or more sessions across 3 repos feels calm rather than chaotic.
 - Closing the Strategos window and reopening it loses nothing. After a crash, every session is resumable with its history.
 - Stale worktrees get archived instead of piling up.
@@ -254,7 +265,6 @@ Strategos goes further than the mod: it compares every Strategos session, includ
 
 ## 12. Later phases
 
-- **The Mac version.** Only the platform layer and packaging change. The plan sizes it at about a week.
 - **Phone client:** read the Map and answer permission requests from anywhere. It needs real pairing and encryption first, because approving a request means running code on your machine.
 - **Zoom levels, control groups and a minimap.**
 - **Open-source release:** installer, documentation and contribution guide. Never ship the Agent SDK together with a claude.ai login. Strategos launches your own installed `claude`, which avoids the problem.
@@ -262,8 +272,9 @@ Strategos goes further than the mod: it compares every Strategos session, includ
 
 ## 13. Open questions
 
-These are settled by milestone M0, the four-day experiment in the plan, before any product code is written:
+These are settled by milestone M0, the roughly five-day experiment in the plan, before any product code is written:
 
+- **Does the terminal library install and run without build tools** on both machines (check S0)? This is the very first thing to try.
 - **Can Strategos answer a permission request itself** while Claude's own dialog waits (check S2), and is there a maximum time a request can be held? This is the core of "act from the overview".
 - **Does Claude Code's fullscreen interface draw correctly** in Strategos's terminal on Windows 10's built-in terminal layer, with your mods (check S3)?
 - **Does the status line** accept settings passed with `--settings` and chain to yours (check S5)?
