@@ -28,6 +28,7 @@ import {
 import type { Config } from '../config.ts';
 import type { UsageTracker } from '../features/usage.ts';
 import { expireCache, keepTranscriptCache, mergeTranscriptCache } from '../features/cache.ts';
+import { createStuckDetector, sameStuck, type StuckDetector } from '../features/stuck.ts';
 import { addConflict, createConflictTracker, pruneConflicts } from '../features/conflicts.ts';
 import type { Mods } from '../features/mods.ts';
 import { createNotifyPolicy, type NotifyOut, type NotifyPolicy } from '../notify/policy.ts';
@@ -240,6 +241,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
   let latestUsage: Usage | undefined;
   let runtimePrefs: Partial<UiPrefs> = {};
   const waits: { sid: string; from: number; to?: number }[] = [];
+  const stuckBy = new Map<string, StuckDetector>();
   let shuttingDown = false;
   let tickTimer: NodeJS.Timeout | undefined;
   let stopReconciler: (() => void) | undefined;
@@ -390,11 +392,22 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       logger.error(`reducer threw on ${input.k}`, err);
       return [];
     }
-    const changed = r.next !== before;
+    let nextRec = r.next;
+    // 8.01: stuck badge. Fed by the same input, judged on the record AFTER the reducer (status and ctx are current).
+    let det = stuckBy.get(sid);
+    if (det === undefined) { det = createStuckDetector(); stuckBy.set(sid, det); }
+    const stuck = det.observe(input, nextRec, now());
+    if (!sameStuck(nextRec.flags.stuck, stuck)) {
+      const flags = { ...nextRec.flags };
+      if (stuck === undefined) delete flags.stuck;
+      else flags.stuck = stuck;
+      nextRec = { ...nextRec, flags, updatedAt: now() };
+    }
+    const changed = nextRec !== before;
     if (changed) {
-      live.rec = r.next;
+      live.rec = nextRec;
       persistRec(live);
-      if (r.next.status !== before.status) notifications.setStatus(sid, r.next.status); // before the effects: offer() relies on it
+      if (nextRec.status !== before.status) notifications.setStatus(sid, nextRec.status); // before the effects: offer() relies on it
     }
     if (input.k === 'hook') {
       const h = input.hook;
@@ -410,7 +423,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       }
     }
     if (changed) {
-      trackWaiting(before, r.next);
+      trackWaiting(before, nextRec);
       publishUpsert(live);
     }
     return r.effects;
@@ -806,6 +819,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       notifications.forget(id);
       live.unfollow?.();
       sessions.delete(id);
+      stuckBy.delete(id);
       if (store.loaded) store.update((st) => { st.sessions = st.sessions.filter((s) => s.strategosId !== id); });
       await removeRunSettings(safeFs, home, id).catch(() => undefined);
       hub.publish({ t: 'session.removed', strategosId: id });

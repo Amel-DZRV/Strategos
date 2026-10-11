@@ -26,6 +26,7 @@ import { createReview } from './git/review.ts';
 import { compileTestPatterns } from './git/test-detect.ts';
 import { createWorktrees } from './git/worktrees.ts';
 import { classifyRisk, riskCtxOf } from './features/risk.ts';
+import { createResourceMonitor } from './features/resources.ts';
 import { createUsageTracker } from './features/usage.ts';
 import { cliSecretPath, daemonJsonPath, type DaemonInfo } from './home-files.ts';
 import { createLogger, errText, type Logger } from './logger.ts';
@@ -275,6 +276,9 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
       onError: (what, err) => { logger.error(`command ${what}`, err); },
     });
 
+    // 8.02: memory/CPU of every session's process tree; the sampler runs only while a session has a process
+    const resources = createResourceMonitor({ platform, manager: m, hub: server.hub, onError: (what, err) => { logger.warn(`${what}: ${errText(err)}`); } });
+
     // ---- control routes for the CLI (loopback, no Origin, secret from a user-only file) ----------
     server.registerControl('pair', (_req, res) => { replyJson(res, 200, { url: server.pairUrl() }); });
     server.registerControl('status', (_req, res) => {
@@ -309,6 +313,7 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
     await sfs.chmodUserOnly(cliSecretPath(home)).catch((err: unknown) => { logger.warn(`could not restrict cli.secret: ${errText(err)}`); });
     await sfs.writeFileAtomic(daemonJsonPath(home), JSON.stringify(info) + '\n');
     m.startBackground();
+    resources.start();
     gitPoller.start();
     prPoller.start();
     initiatives.start();
@@ -322,6 +327,7 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
         gitPoller.stop();
         prPoller.stop();
         initiatives.stop();
+        resources.stop();
         await m.shutdown().catch((err: unknown) => { logger.error('manager shutdown', err); });
         await server.close().catch((err: unknown) => { logger.error('server close', err); });
         await store.close().catch((err: unknown) => { logger.error('state close', err); });
