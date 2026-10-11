@@ -110,6 +110,7 @@ No third-party code is included. The plan lists about three days of small pieces
 ```
 README.md
 LICENSE                 MIT
+CLAUDE.md               notes that Claude Code reads when a session starts in this folder
 docs/
   product-brief.md
   strategos-technical-writeup.md
