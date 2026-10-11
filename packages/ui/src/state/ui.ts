@@ -13,6 +13,12 @@ export const stopTarget = signal<string | null>(null);
 /** Bumped by the `d` key: the pending card focuses its optional deny message. */
 export const denyFocusTick = signal(0);
 
+/** Bumped by the `r` key: the chat reply box takes focus. */
+export const replyFocusTick = signal(0);
+export const paletteOpen = signal(false);
+/** The "Approve all low-risk" confirmation (4.03). */
+export const lowRiskOpen = signal(false);
+
 /** A visible error from a refused or failed command (role="alert"). */
 export const errorNotice = signal('');
 

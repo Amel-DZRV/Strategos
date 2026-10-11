@@ -5,7 +5,8 @@ import type { SessionRecord } from '@strategos/shared';
 import { fmtWait, repoName, statusInfo, waitingMs } from '../format.ts';
 import { now } from '../state/clock.ts';
 import { store } from '../state/store.ts';
-import { openDrawer, selectedId } from '../state/ui.ts';
+import { lowRiskItems } from '../features/lowrisk.ts';
+import { lowRiskOpen, openDrawer, selectedId } from '../state/ui.ts';
 import { tokenLabel } from './Token.tsx';
 
 function Chip({ s, nowMs }: { s: SessionRecord; nowMs: number }) {
@@ -28,6 +29,7 @@ function Chip({ s, nowMs }: { s: SessionRecord; nowMs: number }) {
 export function NeedsStrip() {
   const list = store.needsYou.value;
   const nowMs = now.value;
+  const lowRisk = lowRiskItems(list).length;
   return (
     <section class="strip mapstrip" aria-label="Needs you">
       <h4>Needs you</h4>
@@ -38,6 +40,11 @@ export function NeedsStrip() {
           {list.map((s) => <Chip key={s.strategosId} s={s} nowMs={nowMs} />)}
         </div>
       )}
+      {lowRisk > 0 ? (
+        <button type="button" class="lowrisk" title="Approve every waiting read or in-repo write after a check" onClick={() => { lowRiskOpen.value = true; }}>
+          Approve all low-risk ({lowRisk})
+        </button>
+      ) : null}
     </section>
   );
 }

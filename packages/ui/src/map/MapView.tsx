@@ -46,6 +46,15 @@ function HoverCard({ h, t }: { h: HoverState; t: TokenScene }) {
       <div class="hc-row mono">{st.label}{s.pending ? ` · ${fmtWait(now.value - s.pending.since)}` : ''}</div>
       {branch ? <div class="hc-row mono">{branch}{sync ? ` · ${sync}` : ''}{git?.dirty ? ' · uncommitted changes' : ''}</div> : null}
       <div class="hc-row mono">ctx {pct === null ? 'unknown' : `${pct}%`} · {money(s.cost.lineageUsd)}{s.resource ? ` · ${Math.round(s.resource.treeWorkingSetMb)} MB` : ''}</div>
+      {s.flags.conflicts.map((c) => (
+        <div key={`${c.file}|${c.other}`} class="hc-row hc-warn mono">
+          <span aria-hidden="true">⚠</span> {c.file} is also being changed by {store.sessions.value.get(c.other)?.displayName ?? c.other}
+        </div>
+      ))}
+      {s.flags.contractChanged.map((f) => <div key={f} class="hc-row hc-warn mono"><span aria-hidden="true">⚠</span> contract file changed: {f}</div>)}
+      {s.flags.guardDenials > 0 ? (
+        <div class="hc-row mono">{s.flags.guardDenials} {s.flags.guardDenials === 1 ? 'command' : 'commands'} blocked by safety rules</div>
+      ) : null}
       {s.last ? <div class="hc-last">{s.last}</div> : null}
     </div>
   );

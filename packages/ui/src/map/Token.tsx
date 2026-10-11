@@ -79,6 +79,8 @@ export function Token({ t, selected, dimmed, reduced, nowMs, tabbable, onActivat
   const p4 = atClock(4, 28);
   const p8 = atClock(8, 28);
   const p10 = atClock(10, 28);
+  const p5 = atClock(5, 28);
+  const denied = flags.guardDenials;
   const a0 = atClock(11, 24.5);
   const a1 = atClock(1, 24.5);
   const rw = risk ? RISK_LABEL[risk].length * 5.2 + 8 : 0;
@@ -148,6 +150,13 @@ export function Token({ t, selected, dimmed, reduced, nowMs, tabbable, onActivat
         <g class="mark mark-stuck" transform={`translate(${p10.x} ${p10.y})`}>
           <circle r="4.6" fill="var(--c-approve)" stroke="#06080f" stroke-width="1" />
           <text y="2.6" text-anchor="middle" font-size="7" font-weight="800" fill="#06080f">!</text>
+        </g>
+      ) : null}
+      {denied > 0 ? (
+        <g class="mark mark-guard" transform={`translate(${p5.x} ${p5.y})`}>
+          <title>{`${denied} ${denied === 1 ? 'command' : 'commands'} blocked by safety rules`}</title>
+          <circle r="4.6" fill="#0c1020" stroke="var(--c-reply)" stroke-width="1.2" />
+          <path d="M-2.4 -2.4 L2.4 2.4 M2.4 -2.4 L-2.4 2.4" stroke="var(--c-reply)" stroke-width="1.4" stroke-linecap="round" />
         </g>
       ) : null}
       {risk ? (

@@ -1,7 +1,10 @@
+import { useState } from 'preact/hooks';
 import type { SessionRecord } from '@strategos/shared';
+import { ChatPane } from '../chat/ChatPane.tsx';
 import { branchOf, ctxColour, ctxPct, fmtWait, money, repoName, statusInfo, waitingMs } from '../format.ts';
 import { now } from '../state/clock.ts';
 import { drawerTab, type DrawerTab } from '../state/ui.ts';
+import { ContextActions } from './ContextActions.tsx';
 import { PendingCard } from './PendingCard.tsx';
 import { TerminalPane } from './TerminalPane.tsx';
 
@@ -54,6 +57,9 @@ export interface DrawerProps {
 
 export function Drawer({ session, onClose, onLeaveTerminal }: DrawerProps) {
   const tab = drawerTab.value;
+  // The chat mounts the first time it is shown and then stays, like the terminal: switching tabs loses nothing.
+  const [chatSeen, setChatSeen] = useState(tab === 'chat');
+  if (tab === 'chat' && !chatSeen) setChatSeen(true);
   const live = session.status !== 'stopped' && session.status !== 'parked' && session.status !== 'open_elsewhere';
   return (
     <aside class="drawer" aria-label={`Session ${session.displayName}`}>
@@ -78,14 +84,16 @@ export function Drawer({ session, onClose, onLeaveTerminal }: DrawerProps) {
         )}
       </div>
       <div id="panel-chat" role="tabpanel" aria-labelledby="tab-chat" hidden={tab !== 'chat'} class="panel">
-        <p class="placeholder">The chat view comes in a later milestone (M5).</p>
+        {chatSeen ? <ChatPane key={session.strategosId} session={session} active={tab === 'chat'} /> : null}
       </div>
       <div id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden={tab !== 'review'} class="panel">
         <p class="placeholder">The review view comes in a later milestone (M6).</p>
       </div>
-      {session.pending ? (
+      <ContextActions session={session} />
+      {session.pending || tab === 'chat' ? (
         <footer class="drawer-foot">
-          <PendingCard session={session} onOpenTerminal={() => { drawerTab.value = 'term'; }} />
+          {/* In the chat view the pending card sits inline in the conversation instead. */}
+          {session.pending && tab !== 'chat' ? <PendingCard session={session} onOpenTerminal={() => { drawerTab.value = 'term'; }} /> : null}
           <p class="footnote">{tab === 'chat' ? CHAT_NOTE : TERM_NOTE}</p>
         </footer>
       ) : null}

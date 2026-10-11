@@ -1,6 +1,11 @@
 import { useEffect } from 'preact/hooks';
 import { ConfirmParkDialog, ConfirmStopDialog } from './dialogs/ConfirmStop.tsx';
 import { KeyHelpDialog } from './dialogs/KeyHelp.tsx';
+import { LowRiskDialog } from './dialogs/LowRiskDialog.tsx';
+import { CommandPalette } from './palette/CommandPalette.tsx';
+import { Toasts, useNotifications } from './notify/notifications.tsx';
+import { startViewFocus } from './state/focus.ts';
+import { SuggestionBanners } from './topbar/UsageGauge.tsx';
 import { NewSessionDialog } from './dialogs/NewSession.tsx';
 import { Drawer } from './drawer/Drawer.tsx';
 import { handleKey, focusRow } from './keys/global-keys.ts';
@@ -10,7 +15,7 @@ import { SessionRows } from './rows/SessionRows.tsx';
 import { shell, titleFor } from './shell-bridge.ts';
 import { startClock } from './state/clock.ts';
 import { store } from './state/store.ts';
-import { closeDrawer, drawerOpen, errorNotice, helpOpen, newSessionOpen, parkTarget, selectedId, stopTarget, view } from './state/ui.ts';
+import { closeDrawer, drawerOpen, errorNotice, helpOpen, lowRiskOpen, newSessionOpen, paletteOpen, parkTarget, selectedId, stopTarget, view } from './state/ui.ts';
 import { TopBar } from './topbar/TopBar.tsx';
 
 export function App() {
@@ -19,6 +24,8 @@ export function App() {
   const needs = store.needsYou.value.length;
 
   useEffect(() => startClock(), []);
+  useEffect(() => startViewFocus(), []);
+  useNotifications();
   useEffect(() => {
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
@@ -44,6 +51,7 @@ export function App() {
           Claude Code {store.hello.value.claudeVersion} is outside the tested range ({store.hello.value.testedRange}). Status may be less reliable.
         </div>
       ) : null}
+      <SuggestionBanners />
       <NeedsStrip />
       <div class="body">
         <main id="sessions" class={`main ${view.value === 'map' ? 'mapmain' : ''}`} tabIndex={-1}>
@@ -73,7 +81,10 @@ export function App() {
       </div>
       {/* Polite live region: new needs-you items are announced without stealing focus. */}
       <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">{store.announcement.value}</div>
+      <Toasts />
       {helpOpen.value ? <KeyHelpDialog /> : null}
+      {paletteOpen.value ? <CommandPalette /> : null}
+      {lowRiskOpen.value ? <LowRiskDialog /> : null}
       {parkTarget.value !== null ? <ConfirmParkDialog id={parkTarget.value} /> : null}
       {newSessionOpen.value ? <NewSessionDialog /> : null}
       {stopTarget.value !== null ? <ConfirmStopDialog id={stopTarget.value} /> : null}

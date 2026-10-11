@@ -4,7 +4,7 @@
 // It does NOT enforce Origin or real pairing: any code at POST /api/pair gets a cookie. It exists to see the UI move.
 import { createServer, type IncomingMessage } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
-import type { DaemonEvent, SessionRecord, Status, UiPrefs } from '@strategos/shared';
+import type { ChatItem, DaemonEvent, SessionRecord, Status, UiPrefs, Usage } from '@strategos/shared';
 
 const PORT = Number(process.env['MOCK_PORT'] ?? 47800);
 const COOKIE = 'strategos_session=mock-session';
@@ -12,6 +12,7 @@ const COOKIE = 'strategos_session=mock-session';
 const prefs: UiPrefs = {
   groupBy: 'repo',
   notifications: { enabled: true, sound: true, onPermission: true, onQuestion: true, onErrored: true, onDone: false, escalate: true },
+  mods: { autoHandoff: true },
   keymap: {},
 };
 
@@ -124,6 +125,101 @@ for (const s of [
   }),
 ]) sessions.set(s.strategosId, s);
 
+// M4/M5 scene: a done session with a nearly full context (context actions), guard denials and a conflict on s4, a low-risk
+// Read request (batch approve), and a session with half-typed terminal input (the reply refusal).
+patch('s6', { ctx: { pct: 78, at: t0, source: 'statusline' }, cache: { warm: true, expiresAt: t0 + 4 * min, source: 'statusline' } });
+patch('s4', { flags: { conflicts: [{ file: 'src/hooks.rs', other: 's5', at: t0 }], contractChanged: [], guardDenials: 3 } });
+sessions.set('s12', rec({
+  strategosId: 's12', displayName: 'Docs lint fix', repo: 'docs-site', branch: 'docs/lint', status: 'permission', createdAt: t0 - 15 * min,
+  waitingSince: t0 - 1 * min, statusSince: t0 - 1 * min, ctx: { pct: 18, at: t0, source: 'statusline' }, cost: { lineageUsd: 0.12, byClaudeSession: {} },
+  last: 'I want to read the lint config.',
+  pending: { requestId: 'r12', kind: 'permission', held: true, toolName: 'Read', inputSummary: 'docs/.eslintrc.json', inputTruncated: false, risk: ['read'], since: t0 - 1 * min },
+}));
+patch('s10', { pty: { pid: 1, cols: 100, rows: 30, dirtyInput: true } });
+
+// --- chat (plan 5.01): a believable conversation per session, built from a few templates ----------------------------
+const ago = (m: number) => t0 - m * min;
+const DIFF = [
+  '--- a/src/pty/host.rs', '+++ b/src/pty/host.rs', '@@ -41,7 +41,11 @@ impl PtyHost {',
+  '     pub fn spawn(&mut self, cmd: &str) -> Result<()> {',
+  '-        let pair = native_pty_system().openpty(self.size)?;',
+  '+        let pair = native_pty_system()',
+  '+            .openpty(self.size)',
+  '+            .context("openpty failed")?;',
+  '         let child = pair.slave.spawn_command(CommandBuilder::new(cmd))?;',
+  '-        self.child = Some(child);',
+  '+        self.child = Some(child);',
+  '+        self.reader = Some(pair.master.try_clone_reader()?);',
+  '         Ok(())',
+].join('\n');
+
+function convo(s: SessionRecord): ChatItem[] {
+  const id = s.strategosId;
+  const items: ChatItem[] = [
+    { k: 'user', id: id + 'u1', text: s.displayName, at: ago(50) },
+    { k: 'assistant', id: id + 'a1', at: ago(49), md: `I'll start by looking at how the project is laid out.\n\n- find the entry points\n- read the **existing tests**\n- check \`Cargo.toml\` for the PTY crate\n\nSee [the crate docs](https://docs.rs/portable-pty) for the API.` },
+    { k: 'tool', id: id + 't1', tool: 'Read', summary: 'src/pty/mod.rs', ok: true, result: 'pub mod host;\npub mod size;\n\npub use host::PtyHost;\n', at: ago(48) },
+    { k: 'tool', id: id + 't2', tool: 'Grep', summary: 'openpty', ok: true, result: 'src/pty/host.rs:42:        let pair = native_pty_system().openpty(self.size)?;\n', at: ago(47) },
+    { k: 'assistant', id: id + 'a2', at: ago(46), md: 'The spawn path has no error context. I will add one and keep the reader on the host.' },
+    { k: 'tool', id: id + 't3', tool: 'Edit', summary: 'src/pty/host.rs', ok: true, diff: DIFF, result: 'The file src/pty/host.rs has been updated.', at: ago(45) },
+    {
+      k: 'subagent', id: id + 'sa1', agentId: 'a1', brief: 'Explore: where else is PtyHost constructed?', items: [
+        { k: 'tool', id: id + 'sa1t1', tool: 'Grep', summary: 'PtyHost::new', ok: true, result: 'src/main.rs:12\nsrc/session.rs:88\n', agentId: 'a1' },
+        { k: 'assistant', id: id + 'sa1a1', md: 'Two call sites: `main.rs` and `session.rs`. Neither passes a size.', at: ago(43) },
+      ],
+    },
+    { k: 'tool', id: id + 't4', tool: 'Bash', summary: 'cargo test pty', ok: false, result: 'error[E0599]: no method named `context` found for enum `Result`\n  --> src/pty/host.rs:44:14\n', at: ago(41) },
+    { k: 'compact', id: id + 'c1', at: ago(40) },
+    { k: 'interrupted', id: id + 'i1', at: ago(39) },
+    { k: 'user', id: id + 'u2', text: 'Use anyhow for the context.', at: ago(38) },
+    { k: 'assistant', id: id + 'a3', at: ago(37), md: 'Done. Added `use anyhow::Context;` and the tests pass now.\n\n```rust\nlet pair = native_pty_system().openpty(self.size).context("openpty failed")?;\n```' },
+  ];
+  if (s.pending?.kind === 'permission' && id === 's1') {
+    items.push({ k: 'assistant', id: id + 'a4', at: ago(3), md: 'I need to build to check the PTY bindings compile.' });
+    items.push({ k: 'tool', id: id + 't5', tool: 'Bash', summary: 'cargo build --release', at: ago(2) });
+  } else if (s.pending?.kind === 'question') {
+    items.length = 0;
+    items.push({ k: 'user', id: id + 'u1', text: s.displayName, at: ago(8) });
+    items.push({ k: 'assistant', id: id + 'a1', at: ago(5), md: 'Should the limit apply per API key or per IP address?' });
+  } else if (s.last) {
+    items.push({ k: 'assistant', id: id + 'a9', at: ago(1), md: s.last });
+  }
+  return items;
+}
+
+const chats = new Map<string, ChatItem[]>();
+const chatOf = (sid: string): ChatItem[] => {
+  let c = chats.get(sid);
+  if (!c) {
+    c = convo(sessions.get(sid)!);
+    if (process.env['MOCK_BIG'] && sid === 's5') {
+      const big: ChatItem[] = [];
+      for (let i = 0; i < 5000; i++) {
+        big.push(i % 3 === 0 ? { k: 'user', id: `b${i}`, text: `message ${i}`, at: ago(500) }
+          : i % 3 === 1 ? { k: 'assistant', id: `b${i}`, md: `Reply **${i}**\n\n- one\n- two`, at: ago(500) }
+            : { k: 'tool', id: `b${i}`, tool: 'Read', summary: `src/file${i}.ts`, ok: true, result: 'ok', at: ago(500) });
+      }
+      c = big.concat(c);
+    }
+    chats.set(sid, c);
+  }
+  return c;
+};
+const chatSubs = new Map<WebSocket, Set<string>>();
+function chatPush(sid: string, items: ChatItem[]): void {
+  const c = chatOf(sid);
+  const from = c.length;
+  c.push(...items);
+  for (const [ws, set] of chatSubs) if (set.has(sid)) out(ws, { t: 'chat.items', strategosId: sid, from, items, reset: false });
+}
+
+// --- usage (4.08): burn rate and an ETA that moves ----------------------------------------------------------------
+let usage: Usage = {
+  fiveHour: { pct: 62, resetsAt: t0 + 2 * 60 * min + 10 * min }, sevenDay: { pct: 31, resetsAt: t0 + 4 * 24 * 60 * min },
+  burnPctPerHour: 14, etaFull: t0 + 160 * min, at: t0,
+};
+let suggestionOpen = true;
+
 interface MockPlanet { planetKey: string; label: string; colour: string; cell: { col: number; row: number }; pinned: boolean; folded: boolean }
 let planets: MockPlanet[] = [
   { planetKey: 'strategos-app', label: 'strategos-app', colour: '#3a4c8a', cell: { col: 0, row: 0 }, pinned: false, folded: false },
@@ -170,7 +266,7 @@ function upsert(id: string, patch: Partial<SessionRecord>): void {
   sessions.set(id, next);
   publish({ t: 'session.upsert', session: next });
 }
-const snapshot = (): DaemonEvent => ({ t: 'snapshot', seq, sessions: [...sessions.values()], planets, initiatives, prefs });
+const snapshot = (): DaemonEvent => ({ t: 'snapshot', seq, sessions: [...sessions.values()], planets, initiatives, usage, prefs });
 
 // --- fake terminals -------------------------------------------------------------------------------------------
 const PROMPT = '\x1b[38;5;75m>\x1b[0m ';
@@ -216,6 +312,64 @@ function handle(ws: WebSocket, m: Cmd): string | void {
       planets = planets.map((p) => (p.planetKey === key ? { ...p, cell: { col: Number(m['col']), row: Number(m['row']) }, pinned: true } : p));
       publish({ t: 'planets', planets });
       return;
+    }
+    case 'chat.subscribe': {
+      if (!id || !sessions.has(id)) return 'unknown session';
+      if (!chatSubs.has(ws)) chatSubs.set(ws, new Set());
+      chatSubs.get(ws)!.add(id);
+      const c = chatOf(id);
+      const from = Number(m['from'] ?? 0);
+      const MAX = 2000; // like the daemon: the last 2000 items, and how many older ones were left out
+      if (from > 0 && from <= c.length) out(ws, { t: 'chat.items', strategosId: id, from, items: c.slice(from), reset: false });
+      else if (c.length > MAX) out(ws, { t: 'chat.items', strategosId: id, from: c.length - MAX, items: c.slice(-MAX), reset: true, truncatedBefore: c.length - MAX });
+      else out(ws, { t: 'chat.items', strategosId: id, from: 0, items: c, reset: true });
+      return;
+    }
+    case 'chat.unsubscribe': if (id) chatSubs.get(ws)?.delete(id); return;
+    case 'reply.send': {
+      const s = id ? sessions.get(id) : undefined;
+      if (!id || !s) return 'unknown session';
+      const ok = s.status === 'done' || s.status === 'seen' || s.status === 'interrupted' || (s.status === 'question' && s.pending?.held === false);
+      if (!ok) return `not allowed: the session is ${s.status}`;
+      if (s.pty?.dirtyInput) return 'The terminal has half-typed input. Clear it or finish it there first.';
+      const text = String(m['text'] ?? '');
+      chatPush(id, [{ k: 'user', id: `r${Date.now()}`, text, at: Date.now() }]);
+      upsert(id, { status: 'working', statusSince: Date.now(), doneAt: undefined, now: { tool: 'Bash', summary: 'npm test', since: Date.now() } });
+      setTimeout(() => {
+        chatPush(id, [
+          { k: 'tool', id: `rt${Date.now()}`, tool: 'Bash', summary: 'npm test', ok: true, result: 'Tests  42 passed (42)', at: Date.now() },
+          { k: 'assistant', id: `ra${Date.now()}`, md: `Understood: "${text}". All **42 tests** pass.`, at: Date.now() },
+        ]);
+        upsert(id, { status: 'done', statusSince: Date.now(), doneAt: Date.now(), now: undefined, last: 'All 42 tests pass.' });
+      }, 2500);
+      return;
+    }
+    case 'slash.send': {
+      const s = id ? sessions.get(id) : undefined;
+      const cmd = String(m['cmd'] ?? '');
+      if (!id || !s) return 'unknown session';
+      if (s.status !== 'done' && s.status !== 'seen') return `not allowed: the session is ${s.status}`;
+      if (cmd === '/handoff-now' && !prefs.mods?.autoHandoff) return 'not allowed: the auto-handoff mod is not installed';
+      if (cmd === '/compact') {
+        chatPush(id, [{ k: 'compact', id: `cp${Date.now()}`, at: Date.now() }]);
+        upsert(id, { ctx: { pct: 14, at: Date.now(), source: 'statusline' } });
+      } else if (cmd.startsWith('/keepwarm')) {
+        upsert(id, { cache: { warm: true, expiresAt: Date.now() + 60 * min, source: 'statusline' } });
+      }
+      return;
+    }
+    case 'view.focus': return;
+    case 'suggestion.respond': suggestionOpen = false; return; // note: the envelope id IS the suggestion id
+    case 'perm.approveLowRisk': {
+      const ids = new Set<string>((m['requestIds'] as string[] | undefined) ?? []);
+      let n = 0;
+      for (const s of [...sessions.values()]) {
+        const p = s.pending;
+        if (!p || !ids.has(p.requestId) || p.kind !== 'permission' || !['Read', 'Edit', 'Write'].includes(p.toolName) || p.risk.length !== 1 || p.risk[0] === 'run') continue;
+        upsert(s.strategosId, { status: 'working', statusSince: Date.now(), waitingSince: undefined, pending: undefined, last: 'Approved as low-risk.' });
+        n++;
+      }
+      return n === 0 ? 'nothing to approve: none of those requests is low-risk any more' : undefined;
     }
     case 'prefs.set': Object.assign(prefs, m['prefs']); return;
     case 'session.start': {
@@ -286,7 +440,15 @@ server.on('upgrade', (req, socket, head) => {
     conns.add(ws);
     out(ws, { t: 'hello', protocol: 1, daemonVersion: 'mock', claudeVersion: '2.1.292', testedRange: '2.1.x', inRange: true });
     out(ws, snapshot());
-    ws.on('close', () => { conns.delete(ws); subs.delete(ws); });
+    if (suggestionOpen) {
+      // The park nudge the daemon raises once the 5-hour window passes 85% (here: shortly after connecting).
+      setTimeout(() => {
+        if (suggestionOpen && ws.readyState === ws.OPEN) {
+          publish({ t: 'suggestion', id: 'sg-park-1', kind: 'park', text: 'The 5-hour window is at 85%. Park the idle sessions to keep budget for the ones that need you?', strategosIds: ['s6', 's7'] });
+        }
+      }, 4000);
+    }
+    ws.on('close', () => { conns.delete(ws); subs.delete(ws); chatSubs.delete(ws); });
     ws.on('message', (raw) => {
       let m: Cmd;
       try { m = JSON.parse(String(raw)) as Cmd; } catch { return; }
@@ -303,7 +465,15 @@ setInterval(() => {
     const pct = Math.min(95, (s.ctx?.pct ?? 20) + 1);
     upsert(s.strategosId, { ctx: { pct, at: Date.now(), source: 'statusline' }, cost: { lineageUsd: +(s.cost.lineageUsd + 0.03).toFixed(2), byClaudeSession: {} } });
     ptyBroadcast(s.strategosId, `\x1b[2m· ${s.now?.tool ?? 'Working'} ${s.now?.summary ?? ''}…\x1b[0m\r\n`);
+    if (chats.has(s.strategosId)) {
+      chatPush(s.strategosId, [{ k: 'tool', id: `d${Date.now()}`, tool: s.now?.tool ?? 'Read', summary: s.now?.summary ?? 'file', ok: true, result: 'ok', at: Date.now() }]);
+    }
   }
+  // Usage: the burn rate wobbles and the ETA follows it.
+  const burn = +(12 + Math.sin(Date.now() / 20000) * 4).toFixed(1);
+  const fh = Math.min(99, (usage.fiveHour?.pct ?? 60) + burn / 720);
+  usage = { ...usage, fiveHour: { pct: +fh.toFixed(1), resetsAt: usage.fiveHour!.resetsAt }, burnPctPerHour: burn, etaFull: Date.now() + ((100 - fh) / burn) * 60 * min, at: Date.now() };
+  publish({ t: 'usage', usage });
 }, 5000);
 
 // A short play every 12 s so the Map can be watched for stability: a session finishes, a new one arrives and asks for
@@ -317,10 +487,13 @@ const steps: (() => void)[] = [
     }));
     publish({ t: 'session.upsert', session: sessions.get('sx1') });
   },
-  () => upsert('sx1', {
-    status: 'permission', statusSince: Date.now(), waitingSince: Date.now(), last: 'I want to edit the redirect handler.',
-    pending: { requestId: 'rx1', kind: 'permission', held: true, toolName: 'Edit', inputSummary: 'src/auth/redirect.ts', inputTruncated: false, risk: ['write'], since: Date.now() },
-  }),
+  () => {
+    upsert('sx1', {
+      status: 'permission', statusSince: Date.now(), waitingSince: Date.now(), last: 'I want to edit the redirect handler.',
+      pending: { requestId: 'rx1', kind: 'permission', held: true, toolName: 'Edit', inputSummary: 'src/auth/redirect.ts', inputTruncated: false, risk: ['write'], since: Date.now() },
+    });
+    publish({ t: 'notify', kind: 'permission', strategosId: 'sx1', title: 'Hotfix: login redirect needs permission', body: 'Edit src/auth/redirect.ts', risk: ['write'], requestId: 'rx1' });
+  },
   () => upsert('s4', { status: 'working', statusSince: Date.now(), doneAt: undefined, now: { tool: 'Edit', summary: 'src/hooks.rs', since: Date.now() }, last: 'Next: the second writer.' }),
   () => upsert('sx1', { status: 'stopped', statusSince: Date.now(), waitingSince: undefined, pending: undefined, now: undefined, last: 'Stopped by you.' }),
   () => {
