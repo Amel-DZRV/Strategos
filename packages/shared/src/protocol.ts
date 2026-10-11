@@ -22,7 +22,10 @@ export type DaemonEvent =
   /** `items` replace the client's list from absolute index `from` onward (reset: replace everything). `truncatedBefore`: the history was cut and `from` is that many items in. */
   | { t: 'chat.items'; strategosId: string; from: number; items: ChatItem[]; reset: boolean; truncatedBefore?: number }
   | { t: 'review'; strategosId: string; review: ReviewData }
-  | { t: 'digest'; since: number; digest: DigestData }
+  /** M8 (8.03): away=true is sent by the daemon on its own to the connection that came back after more than 10 minutes idle; the answer to digest.get has no away. */
+  | { t: 'digest'; since: number; digest: DigestData; away?: boolean }
+  /** M8 (8.04): answer to autostart.get / autostart.set. Channel event: the asking connection only. */
+  | { t: 'autostart'; on: boolean; available: boolean; command?: string[]; reason?: string }
   /** M6: answer to `worktree.exclude`: is `.claude/worktrees/` in the repo's .git/info/exclude? Channel event: the asking connection only. */
   | { t: 'worktree.exclude'; repoPath: string; excluded: boolean }
   /** M6 (R14): `gh` is missing or not logged in. Broadcast when it changes; also `prefs.ghNeedsLogin` in the snapshot. */
@@ -69,6 +72,9 @@ export type UiCommand = { id: string } & (
   | { c: 'prefs.set'; prefs: Partial<UiPrefs> }
   | { c: 'guards.set'; rules: GuardRule[] }
   | { c: 'digest.get'; since?: number }
+  /** M8 (8.04): opt in or out of starting the daemon at login. Refused with a reason when the daemon does not know its own launch command. */
+  | { c: 'autostart.set'; on: boolean }
+  | { c: 'autostart.get' }
   | { c: 'activity'; idleMs: number }
 );
 
@@ -91,7 +97,7 @@ export function isDaemonEvent(x: unknown): x is DaemonEvent {
 
 const DAEMON_EVENT_TYPES: ReadonlySet<string> = new Set([
   'hello', 'snapshot', 'session.upsert', 'session.removed', 'planets', 'initiatives', 'usage', 'resources', 'notify',
-  'suggestion', 'pty.data', 'pty.replay', 'chat.items', 'review', 'digest', 'worktree.exclude', 'gh.status', 'pending.full', 'ack',
+  'suggestion', 'pty.data', 'pty.replay', 'chat.items', 'review', 'digest', 'autostart', 'worktree.exclude', 'gh.status', 'pending.full', 'ack',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -197,6 +203,8 @@ const SPECS: Record<UiCommandKind, Check[]> = {
   'prefs.set': [need('prefs', isRecord, 'an object')],
   'guards.set': [need('rules', (v) => Array.isArray(v) && v.every(isGuardRule), 'an array of valid GuardRules')],
   'digest.get': [optional('since', isNum, 'a number')],
+  'autostart.set': [need('on', isBool, 'a boolean')],
+  'autostart.get': [],
   'activity': [need('idleMs', (v) => isNum(v) && (v as number) >= 0, 'a non-negative number')],
 };
 

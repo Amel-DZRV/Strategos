@@ -1,7 +1,7 @@
 // events-YYYY-MM-DD.jsonl: append only, one writer, roll at 20 MB, keep 30 days (plan section 5).
 // "Never full tool inputs or file contents" is enforced by type: each event type has a fixed list of summary
 // fields, every other key is dropped, and every string is cut to a short length.
-import { readdirSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import * as path from 'node:path';
 import type { SafeFs } from '../safe-fs.ts';
 
@@ -16,6 +16,10 @@ export type EventData = {
   error: { message: string; where?: string };
   activity: { idleMs: number };
   drift: { detail: string };
+  /** M8 (8.03): one closed needs-you interval of a session (status = permission, question, errored, trust_pending, interrupted or done). */
+  wait: { status: string; from: number; to: number };
+  /** M8 (8.03): a pull request first seen for a session. */
+  pr: { number: number; url: string };
 };
 export type EventType = keyof EventData;
 
@@ -37,6 +41,8 @@ const FIELDS: { [T in EventType]: readonly (keyof EventData[T] & string)[] } = {
   error: ['message', 'where'],
   activity: ['idleMs'],
   drift: ['detail'],
+  wait: ['status', 'from', 'to'],
+  pr: ['number', 'url'],
 };
 
 export const MAX_FIELD_CHARS = 400;
@@ -66,6 +72,8 @@ export interface EventLogOptions {
 
 export interface EventLog {
   append<T extends EventType>(type: T, data: EventData[T], sid?: string): Promise<void>;
+  /** M8 (8.03): every record with since <= ts <= until (default: now), oldest first, from the day files that can hold them. Waits for queued appends. Unreadable lines are skipped. */
+  read(since: number, until?: number): Promise<EventRecord[]>;
   /** Delete files older than the retention window. Runs at start and whenever the day changes. */
   prune(): Promise<string[]>;
   /** Wait for everything queued so far. */
@@ -164,6 +172,43 @@ export function createEventLog(opts: EventLogOptions): EventLog {
       const p = queue.then(() => pruneNow());
       queue = p.catch(() => undefined);
       return p;
+    },
+    async read(since, until) {
+      await queue;
+      const end = until ?? now();
+      let names: string[];
+      try {
+        names = readdirSync(opts.dir);
+      } catch {
+        return [];
+      }
+      const files: { n: string; day: number; part: number }[] = [];
+      for (const n of names) {
+        const m = FILE_RE.exec(n);
+        if (!m) continue;
+        const day = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime();
+        if (day + 86_400_000 <= since || day > end) continue; // (DST days are 23/25 h: the +1 day bound is only a pre-filter)
+        files.push({ n, day, part: m[4] ? Number(m[4]) : 0 });
+      }
+      files.sort((a, b) => a.day - b.day || a.part - b.part);
+      const out: EventRecord[] = [];
+      for (const f of files) {
+        let text: string;
+        try {
+          text = readFileSync(path.join(opts.dir, f.n), 'utf8');
+        } catch {
+          continue;
+        }
+        for (const line of text.split('\n')) {
+          if (line === '') continue;
+          try {
+            const r = JSON.parse(line) as EventRecord;
+            if (typeof r.ts === 'number' && typeof r.type === 'string' && r.ts >= since && r.ts <= end) out.push(r);
+          } catch { /* a torn last line */ }
+        }
+      }
+      out.sort((a, b) => a.ts - b.ts); // stable: equal timestamps keep file order
+      return out;
     },
     async idle() {
       await queue;

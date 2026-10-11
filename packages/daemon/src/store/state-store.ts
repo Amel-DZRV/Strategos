@@ -18,7 +18,14 @@ export interface StateFile {
   daemonVersion: string;
   sessions: SessionRecord[];
   initiatives: Initiative[];
-  layout: { planetCells: Record<string, { col: number; row: number }>; groupCells: Record<string, { col: number; row: number }> };
+  layout: {
+    planetCells: Record<string, { col: number; row: number }>;
+    groupCells: Record<string, { col: number; row: number }>;
+    /** M8 (8.06): when a planet last had a session; a cell is remembered 30 days after that. */
+    planetSeen?: Record<string, number>;
+    /** M8: planets the person dragged (PlanetInfo.pinned). */
+    pinnedPlanets?: string[];
+  };
   prefs: UiPrefs;
   dismissedSuggestions: string[];
 }

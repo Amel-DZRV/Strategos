@@ -28,6 +28,8 @@ import {
 import type { Config } from '../config.ts';
 import type { UsageTracker } from '../features/usage.ts';
 import { expireCache, keepTranscriptCache, mergeTranscriptCache } from '../features/cache.ts';
+import { createDigestService, type DigestService } from '../features/digest.ts';
+import { isPlanetFolded, pruneLayout } from '../features/retention.ts';
 import { createStuckDetector, sameStuck, type StuckDetector } from '../features/stuck.ts';
 import { addConflict, createConflictTracker, pruneConflicts } from '../features/conflicts.ts';
 import type { Mods } from '../features/mods.ts';
@@ -83,6 +85,8 @@ export interface ManagerTiming {
   tickMs?: number;
   /** Reconciler period. Default 3000. */
   reconcileMs?: number;
+  /** Gap between two resumes of session.resumeAll (8.04), so a dozen Claude processes do not start at once. Default 1000. */
+  resumeGapMs?: number;
 }
 
 /** M6 (6.02): create a worktree for session.start; the manager never runs repository writes itself. */
@@ -158,6 +162,12 @@ export interface SessionManager {
   onChange(cb: (s: SessionRecord) => void): () => void;
   /** M6: patch manager-side fields (git, pr, worktree, initiativeId, archived...) and publish `session.upsert`. A no-op for an unknown id or an empty patch. */
   update(id: string, p: Partial<SessionRecord>): SessionRecord | undefined;
+  /** Merge UI preferences (prefs.set). Unknown keys are refused. Returns an error text or null. */
+  setPrefs(p: Partial<UiPrefs>): string | null;
+  /** The person dragged a planet (layout.setPlanetCell): remember the cell and pin the planet. Returns an error text or null. */
+  setPlanetCell(planetKey: string, col: number, row: number): string | null;
+  /** M8 (8.06): forget Map cells of planets gone for 30 days (and past 80). Returns the keys forgotten. */
+  pruneLayout(): string[];
   /** M6: daemon-wide facts shown in the snapshot prefs (e.g. `ghNeedsLogin`). Not persisted. */
   setRuntimePrefs(p: Partial<UiPrefs>): void;
   // beyond 4.1
@@ -172,8 +182,10 @@ export interface SessionManager {
   /** D13: the owner focused this session's terminal pane: release its held request. */
   focus(id: string, connId?: string): Result | null;
   markers(id: string): Marker[];
-  /** Minimal digest: time spent in needs-you statuses since `since` (in memory, since the daemon started). */
-  digest(since: number): DigestData;
+  /** The digest since a time, built from the event log and the live records (task 8.03). */
+  digest(since: number): Promise<DigestData>;
+  /** Task 8.03: digest.get and the automatic 'while you were away' digest. */
+  readonly digests: DigestService;
   /** Task 5.01: the chat view's feed (transcripts -> ChatItem[]). */
   readonly chat: ChatService;
   readonly registry: PendingRegistry;
@@ -217,9 +229,12 @@ interface Live {
 
 const MARKERS_MAX = 200;
 const DEFAULT_DIMS = { cols: 120, rows: 30 };
+const exists = (p: string): Promise<boolean> => stat(p).then(() => true, () => false);
 const delay = (ms: number): Promise<void> => new Promise((r) => { setTimeout(r, ms); });
 // eslint-disable-next-line no-control-regex
 const ANSI = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]/g;
+const NO_CONVERSATION = "No conversation found: Claude Code has deleted this session's transcript (it keeps them about 30 days). Start a new session in the same folder instead.";
+const NO_CONVERSATION_RE = /No conversation found/i;
 const TRUST_RE = /do you trust|trust the files in this folder|trust this folder|Yes, I trust/i;
 
 export function createSessionManager(deps: ManagerDeps): SessionManager {
@@ -232,6 +247,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     stopGraceMs: deps.timing?.stopGraceMs ?? 5000,
     tickMs: deps.timing?.tickMs ?? 1000,
     reconcileMs: deps.timing?.reconcileMs ?? 3000,
+    resumeGapMs: deps.timing?.resumeGapMs ?? 1000,
   };
   const { logger, hub, store, safeFs, home } = deps;
   const git = deps.git ?? runGit;
@@ -240,7 +256,8 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
   const listeners = new Set<(s: SessionRecord) => void>();
   let latestUsage: Usage | undefined;
   let runtimePrefs: Partial<UiPrefs> = {};
-  const waits: { sid: string; from: number; to?: number }[] = [];
+  const costLogged = new Map<string, { usd: number; at: number }>();
+  let closeWaitsAt: number | undefined; // set while recover() replays an unclean stop: waits end when state.json was last written, not now
   const stuckBy = new Map<string, StuckDetector>();
   let shuttingDown = false;
   let tickTimer: NodeJS.Timeout | undefined;
@@ -283,6 +300,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
 
   function ensurePlanetCell(key: string): boolean {
     const cells = store.get().layout.planetCells;
+    store.update((st) => { (st.layout.planetSeen ??= {})[key] = now(); }); // 8.06: a remembered cell lives 30 days past its last session
     if (cells[key] !== undefined) return false;
     const used = new Set(Object.values(cells).map((c) => `${c.col},${c.row}`));
     let n = 0;
@@ -299,9 +317,12 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     const keys: string[] = [];
     for (const l of sessions.values()) if (!keys.includes(l.rec.planetKey)) keys.push(l.rec.planetKey);
     const cells = store.get().layout.planetCells;
+    const pinned = new Set(store.get().layout.pinnedPlanets ?? []);
+    const t0 = now();
     return keys.map((planetKey, i) => ({
       planetKey, label: planetLabel(planetKey), colour: planetColour(planetKey),
-      cell: cells[planetKey] ?? spiralCell(i), pinned: false, folded: false,
+      cell: cells[planetKey] ?? spiralCell(i), pinned: pinned.has(planetKey),
+      folded: isPlanetFolded([...sessions.values()].filter((l) => l.rec.planetKey === planetKey).map((l) => l.rec), t0), // 8.06
     }));
   }
 
@@ -424,19 +445,29 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     }
     if (changed) {
       trackWaiting(before, nextRec);
+      if (nextRec.cost.lineageUsd !== before.cost.lineageUsd || nextRec.status !== before.status) logCost(nextRec, nextRec.status !== before.status);
       publishUpsert(live);
     }
     return r.effects;
   }
 
+  /** A needs-you interval ended: write it to the event log, so 'waiting today' and the digest survive a restart (8.03). */
   function trackWaiting(before: SessionRecord, next: SessionRecord): void {
-    if (before.waitingSince === next.waitingSince) return;
+    if (before.waitingSince === next.waitingSince || before.waitingSince === undefined) return;
+    const to = closeWaitsAt ?? now();
+    if (to <= before.waitingSince) return;
+    deps.events.append('wait', { status: before.status, from: before.waitingSince, to }, before.strategosId).catch(logErr('event log'));
+  }
+
+  /** Cost for the digest: the lineage total, at most every 30 s per session and always when the status changes. */
+  function logCost(rec: SessionRecord, force: boolean): void {
+    const usd = rec.cost.lineageUsd;
+    const last = costLogged.get(rec.strategosId);
+    if (last?.usd === usd) return;
     const t0 = now();
-    if (before.waitingSince !== undefined) {
-      const open = waits.findLast((w) => w.sid === before.strategosId && w.to === undefined);
-      if (open !== undefined) open.to = t0;
-    }
-    if (next.waitingSince !== undefined) waits.push({ sid: next.strategosId, from: next.waitingSince });
+    if (!force && last !== undefined && t0 - last.at < 30_000) return;
+    costLogged.set(rec.strategosId, { usd, at: t0 });
+    deps.events.append('cost', { usd, claudeSessionId: rec.currentSessionId }, rec.strategosId).catch(logErr('event log'));
   }
 
   function feed(sid: string, input: MachineInput): Effect[] {
@@ -642,6 +673,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     live.stopping = undefined;
     receiver.forget(sid);
     logger.info(`exit ${sid} code ${code}${after === undefined ? '' : ` after ${after}`}`);
+    if (code !== 0 && NO_CONVERSATION_RE.test(live.lastOutput.replace(ANSI, '')) && live.rec.flags.mayNotResume !== true) patch(live, { flags: { ...live.rec.flags, mayNotResume: true } }); // 8.06
     feed(sid, { k: 'pty.exit', code, ...(after === undefined ? {} : { after }) });
     removeRunSettings(safeFs, home, sid).catch(() => undefined);
     for (const w of live.exitWaiters.splice(0)) w();
@@ -711,6 +743,15 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     onError: (err, where) => { logger.warn(`${where}: ${errText(err)}`); },
   });
 
+  const digests = createDigestService({
+    events: deps.events,
+    sessions: () => [...sessions.values()].map((l) => l.rec),
+    initiatives: () => (store.loaded ? store.get().initiatives : []),
+    prefs: () => (store.loaded ? store.get().prefs : {}),
+    now,
+    onError: (what, err) => { logger.warn(`${what}: ${errText(err)}`); },
+  });
+
   const api: SessionManager = {
     async start(o) {
       if (deps.claude === undefined) throw new Error(deps.claudeError ?? 'Claude Code was not found');
@@ -778,6 +819,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     async stop(id) {
       const live = req(id);
       await live.spawnP?.catch(() => undefined);
+      if (live.rec.wasLiveAtStop) patch(live, { wasLiveAtStop: false }); // 8.04: stopped on purpose, not "live at a reboot"
       feed(id, { k: 'user', u: { cmd: 'stop' } });
       await waitExit(live, t.stopGraceMs + 5000);
     },
@@ -785,6 +827,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     async park(id) {
       const live = req(id);
       await live.spawnP?.catch(() => undefined);
+      if (live.rec.wasLiveAtStop) patch(live, { wasLiveAtStop: false });
       feed(id, { k: 'user', u: { cmd: 'park' } });
       await waitExit(live, t.stopGraceMs + 5000);
     },
@@ -797,10 +840,21 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       // Single writer: two processes appending to one transcript interleave. Ask the folder (and the agents CLI) too.
       const other = await otherOwner(live);
       if (other !== undefined) throw new Error(`Another Claude process (pid ${other.pid}) is running this conversation. Close it first.`);
+      // 8.06 (V14, R12): Claude deletes transcripts after about 30 days; `--resume` would only print "No conversation found".
+      const tp = live.rec.transcriptPath;
+      if (tp !== undefined && !(await exists(tp))) {
+        if (live.rec.flags.mayNotResume !== true) patch(live, { flags: { ...live.rec.flags, mayNotResume: true } });
+        throw new Error(NO_CONVERSATION);
+      }
       live.spawnP = undefined;
       feed(id, { k: 'user', u: { cmd: 'resume' } });
       if (live.rec.status !== 'starting') throw new Error(`Cannot resume a session that is ${live.rec.status}.`);
       await live.spawnP;
+      if (live.rec.wasLiveAtStop || live.rec.flags.mayNotResume === true) {
+        const flags = { ...live.rec.flags };
+        delete flags.mayNotResume;
+        patch(live, { wasLiveAtStop: false, flags });
+      }
     },
 
     async forget(id) {
@@ -820,6 +874,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       live.unfollow?.();
       sessions.delete(id);
       stuckBy.delete(id);
+      costLogged.delete(id);
       if (store.loaded) store.update((st) => { st.sessions = st.sessions.filter((s) => s.strategosId !== id); });
       await removeRunSettings(safeFs, home, id).catch(() => undefined);
       hub.publish({ t: 'session.removed', strategosId: id });
@@ -845,11 +900,44 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     update(id, p) {
       const live = sessions.get(id);
       if (live === undefined || Object.keys(p).length === 0) return live?.rec;
+      if (p.pr !== undefined && live.rec.pr?.number !== p.pr.number) deps.events.append('pr', { number: p.pr.number, url: p.pr.url }, id).catch(logErr('event log'));
       patch(live, p);
       return live.rec;
     },
     setRuntimePrefs(p) {
       runtimePrefs = { ...runtimePrefs, ...p };
+    },
+    setPrefs(p) {
+      if (!store.loaded) return 'The state is not loaded yet.';
+      const allowed = new Set(['groupBy', 'reducedMotion', 'notifications', 'keymap', 'awayDigest']);
+      for (const k of Object.keys(p)) if (!allowed.has(k)) return `prefs.${k} cannot be set from the UI`;
+      if (p.groupBy !== undefined && p.groupBy !== 'repo' && p.groupBy !== 'initiative') return 'prefs.groupBy must be repo or initiative';
+      if (p.awayDigest !== undefined && typeof p.awayDigest !== 'boolean') return 'prefs.awayDigest must be a boolean';
+      if (p.reducedMotion !== undefined && typeof p.reducedMotion !== 'boolean') return 'prefs.reducedMotion must be a boolean';
+      if (p.keymap !== undefined && (typeof p.keymap !== 'object' || p.keymap === null || !Object.values(p.keymap).every((v) => typeof v === 'string'))) return 'prefs.keymap must map action ids to key chords';
+      if (p.notifications !== undefined && (typeof p.notifications !== 'object' || p.notifications === null)) return 'prefs.notifications must be an object';
+      store.update((st) => {
+        st.prefs = { ...st.prefs, ...p, notifications: { ...st.prefs.notifications, ...(p.notifications ?? {}) } };
+      });
+      return null;
+    },
+    setPlanetCell(planetKey, col, row) {
+      if (!store.loaded) return 'The state is not loaded yet.';
+      if (![...sessions.values()].some((l) => l.rec.planetKey === planetKey)) return `no such planet: ${planetKey}`;
+      store.update((st) => {
+        st.layout.planetCells[planetKey] = { col, row };
+        st.layout.pinnedPlanets = [...new Set([...(st.layout.pinnedPlanets ?? []), planetKey])];
+      });
+      hub.publish({ t: 'planets', planets: planets() });
+      return null;
+    },
+    pruneLayout() {
+      if (!store.loaded) return [];
+      let gone: string[] = [];
+      const withSessions = new Set([...sessions.values()].map((l) => l.rec.planetKey));
+      store.update((st) => { gone = pruneLayout(st.layout, withSessions, now()); });
+      if (gone.length > 0) hub.publish({ t: 'planets', planets: planets() });
+      return gone;
     },
 
     get: (id) => sessions.get(id)?.rec,
@@ -865,16 +953,20 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     },
 
     async resumeAll() {
+      // 8.04: the sessions that were live when the daemon stopped (clean or not), one at a time with a gap.
       const resumed: string[] = [];
       const failed: { id: string; error: string }[] = [];
-      for (const l of [...sessions.values()]) {
-        const s = l.rec;
-        if (s.archived || (s.status !== 'stopped' && s.status !== 'parked' && s.status !== 'errored') || l.pty !== undefined) continue;
+      const todo = [...sessions.values()].filter((l) => l.rec.wasLiveAtStop === true && !l.rec.archived && l.pty === undefined && l.rec.status !== 'open_elsewhere')
+        .sort((x, y) => x.rec.createdAt - y.rec.createdAt);
+      for (const l of todo) {
+        if (shuttingDown) break;
+        if (resumed.length + failed.length > 0 && t.resumeGapMs > 0) await delay(t.resumeGapMs);
+        const id = l.rec.strategosId;
         try {
-          await api.resume(s.strategosId);
-          resumed.push(s.strategosId);
+          await api.resume(id);
+          resumed.push(id);
         } catch (err) {
-          failed.push({ id: s.strategosId, error: err instanceof Error ? err.message : String(err) });
+          failed.push({ id, error: err instanceof Error ? err.message : String(err) });
         }
       }
       return { resumed, failed };
@@ -923,25 +1015,8 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       return registry.release(id, p.requestId, 'terminal-focus', { ...(connId === undefined ? {} : { connId }) });
     },
 
-    digest(since) {
-      const until = now();
-      const perSession = new Map<string, number>();
-      let waitingMs = 0;
-      for (const w of waits) {
-        const ms = Math.max(0, (w.to ?? until) - Math.max(w.from, since));
-        if ((w.to ?? until) <= since) continue;
-        waitingMs += ms;
-        perSession.set(w.sid, (perSession.get(w.sid) ?? 0) + ms);
-      }
-      return {
-        since, until,
-        sessions: [...sessions.values()].map((l) => ({
-          strategosId: l.rec.strategosId, displayName: l.rec.displayName, planetKey: l.rec.planetKey, turns: 0,
-          costUsd: l.rec.cost.lineageUsd, decisions: { allowed: 0, denied: 0 }, prs: l.rec.pr === undefined ? [] : [{ number: l.rec.pr.number, url: l.rec.pr.url }], finalStatus: l.rec.status,
-        })),
-        totals: { costUsd: [...sessions.values()].reduce((a, l) => a + l.rec.cost.lineageUsd, 0), waitingMs, decisions: 0, guardDenials: [...sessions.values()].reduce((a, l) => a + l.rec.flags.guardDenials, 0) },
-      };
-    },
+    digest: (since) => digests.digest(since),
+    digests,
     markers: (id) => [...(sessions.get(id)?.markers ?? [])],
     chat,
     registry,
@@ -965,10 +1040,16 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       }
       // Restart recovery (task 1.10): the processes died with the previous daemon. Every non-live record becomes stopped
       // (parked stays parked); a pending request is dropped; the conversation can be resumed.
+      // 8.04: what was running when the daemon stopped is what "Resume all" brings back. A clean shutdown marked its sessions
+      // already (shutdown below); a crash left them with a live status.
+      // 8.03: a needs-you interval a crash left open ended when state.json was last written, not now.
+      closeWaitsAt = Math.min(now(), store.get().writtenAt);
       for (const l of sessions.values()) {
+        if (isLive(l.rec.status) && !l.rec.wasLiveAtStop) l.rec = { ...l.rec, wasLiveAtStop: true };
         run(l.rec.strategosId, { k: 'daemon.restart' });
         ensurePlanetCell(l.rec.planetKey);
       }
+      closeWaitsAt = undefined;
       const swept = await sweepRunDir(safeFs, home, []);
       logger.info(`recovered ${sessions.size} session(s)${swept.length > 0 ? `, swept ${swept.length} stale run file(s)` : ''}`);
     },
@@ -1017,6 +1098,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       registry.releaseAll();
       notifications.dispose();
       const live = [...sessions.values()].filter((l) => l.pty !== undefined || l.spawnP !== undefined);
+      for (const l of live) if (!l.rec.wasLiveAtStop) patch(l, { wasLiveAtStop: true }, { publish: false }); // 8.04
       await Promise.all(live.map(async (l) => {
         await l.spawnP?.catch(() => undefined);
         if (l.pty === undefined) return;

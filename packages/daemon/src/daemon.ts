@@ -7,9 +7,11 @@
 import { execFile } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isLive } from '@strategos/shared';
 import { checkClaudeVersion, TESTED_RANGE, type VersionStatus } from './claude-version.ts';
 import { loadConfig, strategosHome, type Config } from './config.ts';
 import { acquireLock } from './daemon-lock.ts';
@@ -26,13 +28,16 @@ import { createReview } from './git/review.ts';
 import { compileTestPatterns } from './git/test-detect.ts';
 import { createWorktrees } from './git/worktrees.ts';
 import { classifyRisk, riskCtxOf } from './features/risk.ts';
+import { AUTOSTART_ENV, registerAutostartCommands, resolveAutostartCommand, type AutostartCommand } from './features/autostart.ts';
 import { createResourceMonitor } from './features/resources.ts';
+import { createRetention, sweepTranscripts } from './features/retention.ts';
 import { createUsageTracker } from './features/usage.ts';
 import { cliSecretPath, daemonJsonPath, type DaemonInfo } from './home-files.ts';
 import { createLogger, errText, type Logger } from './logger.ts';
-import { getPlatform, type Platform } from './platform/index.ts';
+import { createDarwinPlatform, createWin32Platform, type Platform, type PlatformOptions } from './platform/index.ts';
 import { createPtyHost, type PtyHost } from './pty/pty-host.ts';
 import type { ExecFn } from './reconciler/agents-cli.ts';
+import { sweepRunDir } from './hooks/settings-writer.ts';
 import { claudeConfigDir as defaultClaudeDir, createSafeFs, type SafeFs } from './safe-fs.ts';
 import { replyJson } from './server/guards.ts';
 import { createStrategosServer, type StrategosServer } from './server/http.ts';
@@ -144,13 +149,28 @@ const execFn: ExecFn = (exe, args, o) =>
     });
   });
 
+function createPlatform(o: PlatformOptions): Platform {
+  if (process.platform === 'win32') return createWin32Platform(o);
+  if (process.platform === 'darwin') return createDarwinPlatform(o);
+  throw new Error(`unsupported platform: ${process.platform}`);
+}
+
 export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
   const env = opts.env ?? process.env;
   const home = path.resolve(opts.home ?? strategosHome(env));
   const claudeDir = opts.claudeConfigDir ?? defaultClaudeDir(env);
-  const platform = opts.platform ?? getPlatform();
   const baseFs = createSafeFs({ claudeDir, roots: [home] });
   const sfs = opts.wrapFs === undefined ? baseFs : opts.wrapFs(baseFs);
+  // 8.04: the platform's autostart writes the Startup entry through safe-fs (allowed for that one folder; the Claude config dir stays banned)
+  // and launches whatever command resolveAutostartCommand found. It is resolved below, once the config is known.
+  let autostartCmd: AutostartCommand = { ok: false, reason: 'The launch command is not known yet.' };
+  const platform = opts.platform ?? createPlatform({
+    writer: {
+      writeFile: async (p, content) => { await sfs.mkdirp(path.dirname(p), { allow: [path.dirname(p)] }); await sfs.writeFile(p, content, { allow: [path.dirname(p)] }); },
+      remove: (p) => sfs.rm(p, { force: true, allow: [path.dirname(p)] }),
+    },
+    autostartCommand: () => { if (!autostartCmd.ok) throw new Error(autostartCmd.reason); return autostartCmd.command; },
+  });
 
   // ---- home folder, user-only permission at creation -----------------------------
   const existed = existsSync(home);
@@ -185,6 +205,10 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
       config = loaded.config;
     }
 
+    autostartCmd = resolveAutostartCommand({
+      env, nodePath: opts.nodePath ?? config.machine.nodePath ?? process.execPath, isElectron: process.versions['electron'] !== undefined,
+    });
+
     // ---- Claude Code + version guard (never fatal) ---------------------------------------
     let claude: ClaudeLauncher | undefined;
     let claudeError: string | undefined;
@@ -205,8 +229,6 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
     const store = createStateStore({ fs: sfs, dir: home, daemonVersion: VERSION });
     const events = createEventLog({ fs: sfs, dir: home });
     const audit = createAuditLog({ fs: sfs, dir: home });
-    events.prune().catch(() => undefined);
-    audit.prune().catch(() => undefined);
 
     // ---- server + manager (they refer to each other through closures) ---------------------------
     const controlSecret = randomBytes(32).toString('hex');
@@ -277,6 +299,11 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
     });
 
     // 8.02: memory/CPU of every session's process tree; the sampler runs only while a session has a process
+    const autostart = registerAutostartCommands({
+      hub: server.hub, platform, command: autostartCmd, onError: (what, err) => { logger.warn(`${what}: ${errText(err)}`); },
+      onState: (s) => { m.setRuntimePrefs({ autostart: s.on, autostartAvailable: s.available }); },
+    });
+    if (!autostartCmd.ok && env[AUTOSTART_ENV] !== undefined && env[AUTOSTART_ENV] !== '') logger.warn(autostartCmd.reason);
     const resources = createResourceMonitor({ platform, manager: m, hub: server.hub, onError: (what, err) => { logger.warn(`${what}: ${errText(err)}`); } });
 
     // ---- control routes for the CLI (loopback, no Origin, secret from a user-only file) ----------
@@ -301,6 +328,7 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
 
     // ---- recover, listen, announce --------------------------------------------------------------
     await m.recover();
+    m.setRuntimePrefs({ autostart: (await autostart.state()).on, autostartAvailable: autostartCmd.ok });
     let port: number;
     try {
       port = await server.listen();
@@ -314,6 +342,18 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
     await sfs.writeFileAtomic(daemonJsonPath(home), JSON.stringify(info) + '\n');
     m.startBackground();
     resources.start();
+    // 8.06: log/event/audit pruning, run/ sweep, transcript age and Map cell memory, at start and then every 24 hours
+    const retention = createRetention({
+      logger, events, audit,
+      sweepRun: () => sweepRunDir(sfs, home, m.list().filter((s) => isLive(s.status)).map((s) => s.strategosId)), // a session that is starting has its file before it has a pty
+      sweepTranscripts: () => sweepTranscripts({
+        list: () => m.list(), update: (id, p) => m.update(id, p), now: Date.now, claudeDir, projectDirName: platform.paths.projectDirName,
+        stat: (p) => stat(p).then((st) => ({ mtimeMs: st.mtimeMs }), () => null),
+      }),
+      sweepLayout: () => m.pruneLayout(),
+      onError: (what, err) => { logger.warn(`retention (${what}): ${errText(err)}`); },
+    });
+    retention.start();
     gitPoller.start();
     prPoller.start();
     initiatives.start();
@@ -328,6 +368,7 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
         prPoller.stop();
         initiatives.stop();
         resources.stop();
+        retention.stop();
         await m.shutdown().catch((err: unknown) => { logger.error('manager shutdown', err); });
         await server.close().catch((err: unknown) => { logger.error('server close', err); });
         await store.close().catch((err: unknown) => { logger.error('state close', err); });

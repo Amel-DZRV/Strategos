@@ -112,9 +112,25 @@ export function registerSessionCommands(hub: WsHub, m: SessionManager, onError: 
     ctx.send({ t: 'pending.full', strategosId: c.strategosId, requestId: c.requestId, event: f.event, toolName: f.toolName, input: f.toolInput });
   });
 
-  hub.registerCommand('digest.get', (c, ctx) => {
+  hub.registerCommand('digest.get', async (c, ctx) => {
     const since = c.since ?? Date.now() - 86_400_000;
-    ctx.send({ t: 'digest', since, digest: m.digest(since) });
+    ctx.send({ t: 'digest', since, digest: await m.digest(since) });
+  });
+  // Task 8.03: the UI reports the person is back after idleMs of nothing. After more than 10 minutes the daemon sends the
+  // "while you were away" digest on its own, to this connection only, unless prefs.awayDigest is false.
+  hub.registerCommand('activity', async (c, ctx) => {
+    await m.digests.activity(ctx.connId, c.idleMs, (since, digest) => { ctx.send({ t: 'digest', since, digest, away: true }); });
+  });
+  hub.onDisconnect((connId) => { m.digests.forgetConnection(connId); });
+
+  // ---- preferences and Map layout (prefs.set, layout.setPlanetCell) ------------------------
+  hub.registerCommand('prefs.set', (c) => {
+    const err = m.setPrefs(c.prefs);
+    if (err !== null) return fail(err);
+  });
+  hub.registerCommand('layout.setPlanetCell', (c) => {
+    const err = m.setPlanetCell(c.planetKey, c.col, c.row);
+    if (err !== null) return fail(err);
   });
 
   // ---- chat view (task 5.01) -------------------------------------------------------

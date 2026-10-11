@@ -82,6 +82,8 @@ export interface SessionRecord {
     conflicts: { file: string; other: string; at: number }[];
     contractChanged: string[];
     guardDenials: number;
+    /** M8 (8.06, V14): a stopped session whose transcript was last written about 28 days ago or more (Claude keeps transcripts 30 days by default): resume may say 'No conversation found'. */
+    mayNotResume?: boolean;
     lastTest?: { command: string; ok: boolean | null; at: number };
   };
   subagents: SubagentInfo[];
@@ -92,6 +94,8 @@ export interface SessionRecord {
   lastActivityAt: number;
   lastHookAt?: number; // last hook event: drives the 10 s quiet gate (rule 2) and drift (rule 7)
   driftLoggedAt?: number; // last drift log, so a lasting disagreement is logged once per 5 min
+  /** M8 (8.04): the session had a Claude process when the daemon last stopped (clean or not): 'Resume all' brings it back. Set at daemon.restart, cleared on resume or an explicit stop. */
+  wasLiveAtStop?: boolean;
   archived: boolean;
   view: 'term' | 'chat' | 'review';
 }
@@ -156,6 +160,12 @@ export interface UiPrefs {
   claudeVersionOutOfRange?: boolean;
   /** Set by the daemon in the snapshot only (M6, R14): `gh` is missing or not logged in. */
   ghNeedsLogin?: boolean;
+  /** M8 (8.03): publish a 'while you were away' digest when the person comes back after more than 10 minutes. Default on; false opts out. */
+  awayDigest?: boolean;
+  /** Set by the daemon in the snapshot only (M8, 8.04): a Startup entry for the daemon exists. */
+  autostart?: boolean;
+  /** Set by the daemon in the snapshot only (M8, 8.04): the daemon knows the command that would start it (autostart.set {on:true} can work). */
+  autostartAvailable?: boolean;
   /** Set by the daemon in the snapshot only: state.json was corrupt and was restored or started empty. */
   stateBanner?: string;
   /** Set by the daemon in the snapshot only (task 5.05): owner mods found read-only in the Claude config dir. */
@@ -185,21 +195,78 @@ export interface ReviewData {
   stat: { files: number; add: number; del: number };
 }
 
+/** One session in the digest. The fields after finalStatus are additive (M8, 8.03) and always present from an M8 daemon. */
+export interface DigestSession {
+  strategosId: string;
+  displayName: string;
+  planetKey: string;
+  summary?: string;
+  /** Turns that finished in the window (status -> done). */
+  turns: number;
+  /** Cost added in the window, list-price estimate (lineage: survives /clear and resume). */
+  costUsd: number;
+  decisions: { allowed: number; denied: number };
+  prs: { number: number; url: string }[];
+  finalStatus: Status;
+  initiativeId?: string;
+  /** Needs-you time in the window (permission, question, errored, trust, interrupted AND done-unseen), as in 'waiting today'. */
+  waitingMs?: number;
+  /** The part of waitingMs where work was blocked (everything except done). */
+  blockedMs?: number;
+  /** Guard denials (auto-denied tool calls) in the window. */
+  guardDenials?: number;
+  errors?: number;
+}
+
+export interface DigestBlocked {
+  strategosId: string;
+  displayName: string;
+  /** What it waited on: permission, question, errored, trust_pending or interrupted. */
+  status: string;
+  from: number;
+  /** Absent while still blocked. */
+  to?: number;
+  /** Clipped to the window. */
+  ms: number;
+}
+
+/** Sessions of one initiative (initiativeId null: not in one). Present only for groups that have a session in the digest. */
+export interface DigestGroup {
+  initiativeId: string | null;
+  name: string;
+  colour?: string;
+  strategosIds: string[];
+  costUsd: number;
+  finished: number;
+  blockedMs: number;
+  errors: number;
+  guardDenials: number;
+}
+
 export interface DigestData {
   since: number;
   until: number;
-  sessions: {
-    strategosId: string;
-    displayName: string;
-    planetKey: string;
-    summary?: string;
-    turns: number;
+  sessions: DigestSession[];
+  totals: {
     costUsd: number;
-    decisions: { allowed: number; denied: number };
-    prs: { number: number; url: string }[];
-    finalStatus: Status;
-  }[];
-  totals: { costUsd: number; waitingMs: number; decisions: number; guardDenials: number };
+    waitingMs: number;
+    decisions: number;
+    guardDenials: number;
+    /** Additive (M8): */
+    blockedMs?: number;
+    errors?: number;
+    prs?: number;
+    finished?: number;
+  };
+  /** Additive (M8, 8.03): sessions whose turn finished in the window, newest first. */
+  finished?: { strategosId: string; displayName: string; at: number; turns: number }[];
+  /** Blocked intervals that overlap the window (open ones included), longest first. */
+  blocked?: DigestBlocked[];
+  errors?: { strategosId: string; displayName: string; at: number; message: string }[];
+  /** Pull requests that appeared for a session in the window. */
+  prsOpened?: { strategosId: string; displayName: string; number: number; url: string; at: number }[];
+  /** Grouped by initiative, the order the UI should list them in. */
+  groups?: DigestGroup[];
 }
 
 export interface PrCreate { cwd: string; title: string; body: string; draft: boolean; base?: string; head?: string }

@@ -41,6 +41,8 @@ const VALID: Record<UiCommandKind, Record<string, unknown>> = {
   'prefs.set': { prefs: { groupBy: 'initiative' } },
   'guards.set': { rules: [rule] },
   'digest.get': {},
+  'autostart.set': { on: true },
+  'autostart.get': {},
   'activity': { idleMs: 1200 },
 };
 
@@ -95,6 +97,7 @@ describe('parseUiCommand', () => {
       { c: 'guards.set', rules: 'x' },
       { c: 'digest.get', since: 'x' },
       { c: 'activity', idleMs: -1 },
+      { c: 'autostart.set', on: 'yes' },
     ];
     for (const b of bad) {
       const r = parseUiCommand({ id: 'z', ...b });
