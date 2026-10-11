@@ -8,7 +8,7 @@ export const PROTOCOL = 1;
 
 export type DaemonEvent =
   | { t: 'hello'; protocol: 1; daemonVersion: string; claudeVersion: string; testedRange: string; inRange: boolean }
-  | { t: 'snapshot'; seq: number; sessions: SessionRecord[]; planets: PlanetInfo[]; initiatives: Initiative[]; usage?: Usage; prefs: UiPrefs }
+  | { t: 'snapshot'; seq: number; sessions: SessionRecord[]; planets: PlanetInfo[]; initiatives: Initiative[]; usage?: Usage; prefs: UiPrefs; repos?: string[] }
   | { t: 'session.upsert'; seq: number; session: SessionRecord }
   | { t: 'session.removed'; seq: number; strategosId: string }
   | { t: 'planets'; seq: number; planets: PlanetInfo[] }
@@ -23,7 +23,7 @@ export type DaemonEvent =
   | { t: 'review'; strategosId: string; review: ReviewData }
   | { t: 'digest'; since: number; digest: DigestData }
   /** Answer to `pending.full` (D21): the whole tool input of a held request. Channel event: goes to the asking connection only. */
-  | { t: 'pending.full'; strategosId: string; requestId: string; event: 'PermissionRequest' | 'PreToolUse'; toolName: string; toolInput: Record<string, unknown> }
+  | { t: 'pending.full'; strategosId: string; requestId: string; event: 'PermissionRequest' | 'PreToolUse'; toolName: string; input: Record<string, unknown> }
   | { t: 'ack'; id: string; ok: boolean; error?: string };
 
 export type UiCommand = { id: string } & (

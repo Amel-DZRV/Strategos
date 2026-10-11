@@ -22,7 +22,7 @@ import { stat } from 'node:fs/promises';
 import * as path from 'node:path';
 import {
   isAllowedSlash, isLive,
-  type Decision, type PreToolUseInput, type Effect, type MachineInput, type Observation, type PlanetInfo, type SendResult, type SessionRecord,
+  type Decision, type PreToolUseInput, type Effect, type MachineInput, type Observation, type DigestData, type PlanetInfo, type SendResult, type SessionRecord,
   type StartOptions, type Usage,
 } from '@strategos/shared';
 import type { Config } from '../config.ts';
@@ -143,6 +143,8 @@ export interface SessionManager {
   /** D13: the owner focused this session's terminal pane: release its held request. */
   focus(id: string, connId?: string): Result | null;
   markers(id: string): Marker[];
+  /** Minimal digest: time spent in needs-you statuses since `since` (in memory, since the daemon started). */
+  digest(since: number): DigestData;
   readonly registry: PendingRegistry;
   readonly receiver: HookReceiver;
   /** `tokenFor` of the server. */
@@ -204,6 +206,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
   const sessions = new Map<string, Live>();
   const listeners = new Set<(s: SessionRecord) => void>();
   let latestUsage: Usage | undefined;
+  const waits: { sid: string; from: number; to?: number }[] = [];
   let shuttingDown = false;
   let tickTimer: NodeJS.Timeout | undefined;
   let stopReconciler: (() => void) | undefined;
@@ -371,8 +374,21 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
         logger.error(`effect ${e.e}`, err);
       }
     }
-    if (changed) publishUpsert(live);
+    if (changed) {
+      trackWaiting(before, r.next);
+      publishUpsert(live);
+    }
     return r.effects;
+  }
+
+  function trackWaiting(before: SessionRecord, next: SessionRecord): void {
+    if (before.waitingSince === next.waitingSince) return;
+    const t0 = now();
+    if (before.waitingSince !== undefined) {
+      const open = waits.findLast((w) => w.sid === before.strategosId && w.to === undefined);
+      if (open !== undefined) open.to = t0;
+    }
+    if (next.waitingSince !== undefined) waits.push({ sid: next.strategosId, from: next.waitingSince });
   }
 
   function feed(sid: string, input: MachineInput): Effect[] {
@@ -742,6 +758,25 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       return registry.release(id, p.requestId, 'terminal-focus', { ...(connId === undefined ? {} : { connId }) });
     },
 
+    digest(since) {
+      const until = now();
+      const perSession = new Map<string, number>();
+      let waitingMs = 0;
+      for (const w of waits) {
+        const ms = Math.max(0, (w.to ?? until) - Math.max(w.from, since));
+        if ((w.to ?? until) <= since) continue;
+        waitingMs += ms;
+        perSession.set(w.sid, (perSession.get(w.sid) ?? 0) + ms);
+      }
+      return {
+        since, until,
+        sessions: [...sessions.values()].map((l) => ({
+          strategosId: l.rec.strategosId, displayName: l.rec.displayName, planetKey: l.rec.planetKey, turns: 0,
+          costUsd: l.rec.cost.lineageUsd, decisions: { allowed: 0, denied: 0 }, prs: [], finalStatus: l.rec.status,
+        })),
+        totals: { costUsd: [...sessions.values()].reduce((a, l) => a + l.rec.cost.lineageUsd, 0), waitingMs, decisions: 0, guardDenials: [...sessions.values()].reduce((a, l) => a + l.rec.flags.guardDenials, 0) },
+      };
+    },
     markers: (id) => [...(sessions.get(id)?.markers ?? [])],
     registry,
     receiver,
@@ -790,7 +825,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       if (banner !== undefined) prefs.stateBanner = banner;
       return {
         sessions: api.list(), planets: planets(), initiatives: store.get().initiatives,
-        ...(latestUsage === undefined ? {} : { usage: latestUsage }), prefs,
+        ...(latestUsage === undefined ? {} : { usage: latestUsage }), prefs, repos: [...deps.config.machine.repos],
       };
     },
 

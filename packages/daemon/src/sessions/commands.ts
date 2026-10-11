@@ -87,7 +87,12 @@ export function registerSessionCommands(hub: WsHub, m: SessionManager, onError: 
   hub.registerCommand('pending.full', (c, ctx) => {
     const f = m.registry.getFull(c.strategosId, c.requestId);
     if (f === undefined) return fail('not_found');
-    ctx.send({ t: 'pending.full', strategosId: c.strategosId, requestId: c.requestId, event: f.event, toolName: f.toolName, toolInput: f.toolInput });
+    ctx.send({ t: 'pending.full', strategosId: c.strategosId, requestId: c.requestId, event: f.event, toolName: f.toolName, input: f.toolInput });
+  });
+
+  hub.registerCommand('digest.get', (c, ctx) => {
+    const since = c.since ?? Date.now() - 86_400_000;
+    ctx.send({ t: 'digest', since, digest: m.digest(since) });
   });
 
   // ---- sending text ---------------------------------------------------------------

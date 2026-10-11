@@ -58,6 +58,8 @@ export interface DaemonOptions {
   /** Called when `strategos stop` asks the daemon to exit (main.ts shuts down and exits the process). */
   onShutdownRequested?: () => void;
   testedRange?: string;
+  /** Tests: wrap the SafeFs to record every path the daemon writes. */
+  wrapFs?: (fs: SafeFs) => SafeFs;
 }
 
 export interface Daemon {
@@ -120,7 +122,8 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
   const home = path.resolve(opts.home ?? strategosHome(env));
   const claudeDir = opts.claudeConfigDir ?? defaultClaudeDir(env);
   const platform = opts.platform ?? getPlatform();
-  const sfs = createSafeFs({ claudeDir, roots: [home] });
+  const baseFs = createSafeFs({ claudeDir, roots: [home] });
+  const sfs = opts.wrapFs === undefined ? baseFs : opts.wrapFs(baseFs);
 
   // ---- home folder, user-only permission at creation -----------------------------
   const existed = existsSync(home);
