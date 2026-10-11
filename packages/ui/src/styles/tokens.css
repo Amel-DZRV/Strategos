@@ -1,0 +1,23 @@
+/* Design tokens, taken from design/prototype/strategos-looks.html (the app window is the dark "sp-" set).
+   System fonts only: the daemon's CSP is default-src 'self', so no web fonts. */
+:root {
+  --bg: #090c15;
+  --panel: #0f1424;
+  --raise: #161d33;
+  --line: #222a3f;
+  --fg: #e8ecf2;
+  --mute: #8b94aa;
+  --accent: #8aa2ff;
+  --accent-ink: #0a0f20;
+
+  --c-approve: #ff6a5a;
+  --c-reply: #f5b83d;
+  --c-ready: #4fcb90;
+  --c-work: #74aaff;
+  --c-crash: #929aa8;
+
+  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Consolas, 'Courier New', monospace;
+  color-scheme: dark;
+}
