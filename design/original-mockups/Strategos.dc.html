@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1d1812;}
+a{color:#7a3b22;}a:hover{color:#3a2e22;}
+@keyframes sgPulse{0%{box-shadow:0 0 0 0 rgba(176,38,28,.6)}70%{box-shadow:0 0 0 14px rgba(176,38,28,0)}100%{box-shadow:0 0 0 0 rgba(176,38,28,0)}}
+@keyframes sgWave{0%,100%{transform:skewY(0deg) scaleX(1)}50%{transform:skewY(-7deg) scaleX(.92)}}
+@keyframes sgBlink{0%,100%{opacity:1}50%{opacity:.25}}
+</style>
+</helmet>
+<div style="width:1440px;height:900px;position:relative;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Helvetica,sans-serif;color:#2e251c;border-radius:10px;box-shadow:0 30px 80px rgba(0,0,0,.5);">
+
+  <div style="height:38px;background:#2b2219;display:flex;align-items:center;padding:0 14px;gap:16px;color:#e9dcbf;position:relative;z-index:30;">
+    <div style="display:flex;gap:8px;">
+      <div style="width:12px;height:12px;border-radius:50%;background:#ff5f57;"></div>
+      <div style="width:12px;height:12px;border-radius:50%;background:#febc2e;"></div>
+      <div style="width:12px;height:12px;border-radius:50%;background:#28c840;"></div>
+    </div>
+    <div style="font-family:'IM Fell English',serif;font-size:18px;letter-spacing:.04em;">Strategos</div>
+    <div style="font-size:12px;color:#a8977a;">Campaign · 8 squads · 3 regions</div>
+    <div style="flex:1;"></div>
+    <div onClick="{{ toggleVoice }}" style="font-size:12px;color:#cdbd9e;cursor:pointer;display:flex;gap:6px;align-items:center;">
+      <div style="width:7px;height:7px;border-radius:50%;background:{{ voiceDot }};"></div>{{ voiceLabel }}
+    </div>
+    <div onClick="{{ openCmd }}" style="font-size:12px;border:1px solid #5a4a38;border-radius:5px;padding:4px 10px;cursor:pointer;display:flex;gap:8px;color:#e9dcbf;">Command <span style="font-family:'JetBrains Mono',monospace;color:#a8977a;">⌘K</span></div>
+  </div>
+
+  <div style="position:absolute;top:38px;left:0;right:0;bottom:0;background-color:#e8d9b6;overflow:hidden;">
+    <div style="position:absolute;inset:0;width:1440px;height:862px;transition:transform .55s cubic-bezier(.3,.7,.2,1);transform:translateX({{ mapOffset }}px);">
+      <div style="position:absolute;inset:0;background-image:radial-gradient(ellipse at 28% 18%, rgba(255,249,232,.75), transparent 55%),radial-gradient(ellipse at 78% 88%, rgba(128,88,40,.2), transparent 55%),radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(92,62,26,.32) 100%);"></div>
+      <div style="position:absolute;inset:0;opacity:.5;mix-blend-mode:multiply;background-image:{{ noise }};"></div>
+
+      <sc-for list="{{ regions }}" as="r" hint-placeholder-count="3">
+        <div onClick="{{ r.onClick }}" style="position:absolute;left:{{ r.x }}px;top:{{ r.y }}px;width:{{ r.w }}px;height:{{ r.h }}px;border-radius:{{ r.br }};border:2px solid {{ r.border }};background:{{ r.tint }};box-shadow:inset 0 0 0 7px {{ r.tint }}, inset 0 0 60px {{ r.tint }};"></div>
+        <div style="position:absolute;left:{{ r.lx }}px;top:{{ r.ly }}px;pointer-events:none;">
+          <div style="font-family:'IM Fell English',serif;font-size:32px;color:{{ r.color }};line-height:1;letter-spacing:.02em;">{{ r.name }}</div>
+          <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:14px;color:#6b5a44;margin-top:4px;">{{ r.sub }}</div>
+        </div>
+      </sc-for>
+
+      <sc-for list="{{ roads }}" as="rd" hint-placeholder-count="8">
+        <div style="position:absolute;left:{{ rd.x }}px;top:{{ rd.y }}px;width:{{ rd.len }}px;height:0;border-top:2px dashed rgba(58,46,34,.42);transform-origin:0 0;transform:rotate({{ rd.angle }}deg);opacity:{{ rd.opacity }};"></div>
+        <sc-if value="{{ rd.showStats }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;left:{{ rd.mx }}px;top:{{ rd.my }}px;transform:translate(-50%,-50%);font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#4a3b2b;background:#eadcbc;padding:1px 5px;border-radius:3px;white-space:nowrap;">{{ rd.stats }}</div>
+        </sc-if>
+      </sc-for>
+
+      <sc-for list="{{ settlements }}" as="s" hint-placeholder-count="11">
+        <div onClick="{{ s.onClick }}" style="position:absolute;left:{{ s.x }}px;top:{{ s.y }}px;width:0;height:0;cursor:pointer;opacity:{{ s.opacity }};filter:{{ s.filter }};">
+          <sc-if value="{{ s.selected }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:-30px;top:-30px;width:56px;height:56px;border-radius:50%;border:2px solid {{ s.color }};box-shadow:0 0 0 5px rgba(255,248,230,.6);"></div>
+          </sc-if>
+          <sc-if value="{{ s.isCap }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:-13px;top:-13px;width:22px;height:22px;background:#f4ead2;border:2px solid #3a2e22;display:flex;align-items:center;justify-content:center;">
+              <div style="width:10px;height:10px;background:{{ s.color }};"></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ s.notCap }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute;left:-8px;top:-8px;width:13px;height:13px;background:#f4ead2;border:2px solid #3a2e22;transform:rotate(45deg);"></div>
+          </sc-if>
+          <sc-if value="{{ s.dirty }}" hint-placeholder-val="{{ false }}">
+            <div title="Uncommitted changes" style="position:absolute;left:10px;top:4px;width:9px;height:8px;background:#2b2119;border-radius:60% 40% 55% 45% / 50% 60% 40% 50%;"></div>
+          </sc-if>
+          <sc-if value="{{ s.pr }}" hint-placeholder-val="{{ false }}">
+            <div title="Open PR" style="position:absolute;left:-30px;top:-4px;width:20px;height:20px;border-radius:50%;background:oklch(0.48 0.16 27);color:#f6e7d0;font-family:'IM Fell English',serif;font-size:9px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 2px oklch(0.40 0.14 27);">PR</div>
+          </sc-if>
+          <div style="position:absolute;left:0;bottom:14px;transform:translateX(-50%);display:flex;gap:6px;align-items:flex-end;">
+            <sc-for list="{{ s.squads }}" as="q" hint-placeholder-count="1">
+              <div onClick="{{ q.onClick }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                <div style="position:relative;height:40px;width:26px;">
+                  <div style="position:absolute;left:2px;top:0;width:2px;height:40px;background:#3a2e22;"></div>
+                  <div style="position:absolute;left:4px;top:2px;width:22px;height:17px;background:{{ q.flagColor }};clip-path:{{ q.clip }};transform-origin:0 50%;animation:{{ q.anim }};display:flex;align-items:center;justify-content:center;padding-right:4px;box-sizing:border-box;color:#f6ecd6;font-size:10px;font-weight:700;">{{ q.glyph }}</div>
+                  <sc-if value="{{ q.isPetition }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;left:14px;top:-10px;width:16px;height:16px;border-radius:50%;background:oklch(0.52 0.19 27);border:1.5px solid oklch(0.38 0.15 27);animation:sgPulse 1.4s ease-out infinite;"></div>
+                  </sc-if>
+                </div>
+                <div style="font-size:10px;font-weight:600;letter-spacing:.02em;padding:2px 6px;border-radius:3px;background:{{ q.chipBg }};color:{{ q.chipFg }};border:1px solid {{ q.chipBorder }};white-space:nowrap;">{{ q.label }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;left:0;top:16px;transform:translateX(-50%);background:#f6eed9;border:1px solid rgba(58,46,34,.45);border-radius:3px;padding:3px 9px 4px;text-align:center;white-space:nowrap;box-shadow:0 1px 0 rgba(58,46,34,.15);">
+            <div style="font-family:'IM Fell English',serif;font-size:16px;line-height:1.1;color:#2e251c;">{{ s.name }}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b5a44;">{{ s.branch }}</div>
+          </div>
+          <sc-if value="{{ s.stale }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:-80px;top:-60px;width:160px;height:140px;border-radius:50%;background:radial-gradient(circle, rgba(244,238,224,.8), rgba(244,238,224,0) 70%);pointer-events:none;"></div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="position:absolute;left:20px;top:20px;width:272px;background:rgba(246,238,217,.94);border:1px solid rgba(58,46,34,.5);border-radius:6px;box-shadow:0 6px 18px rgba(60,40,15,.18);overflow:hidden;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;padding:10px 14px 8px;border-bottom:1px solid rgba(58,46,34,.2);">
+        <div style="font-family:'IM Fell English',serif;font-size:19px;">Needs you · {{ queueCount }}</div>
+        <div style="font-size:11px;color:#6b5a44;display:flex;gap:5px;align-items:center;"><span style="font-family:'JetBrains Mono',monospace;border:1px solid #9c8a6c;border-radius:3px;padding:0 5px;">Tab</span>next</div>
+      </div>
+      <sc-for list="{{ queue }}" as="a" hint-placeholder-count="4">
+        <div onClick="{{ a.onClick }}" style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;background:{{ a.bg }};" style-hover="background:rgba(58,46,34,.07);">
+          <div style="width:4px;height:26px;border-radius:2px;background:{{ a.color }};"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;">{{ a.name }}</div>
+            <div style="font-size:11px;color:#6b5a44;font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ a.where }}</div>
+          </div>
+          <div style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;background:{{ a.chipBg }};color:{{ a.chipFg }};border:1px solid {{ a.chipBorder }};">{{ a.label }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="position:absolute;left:20px;bottom:20px;width:380px;background:rgba(43,34,25,.9);border-radius:6px;color:#e9dcbf;padding:10px 0 6px;box-shadow:0 6px 18px rgba(0,0,0,.25);">
+      <div style="font-family:'IM Fell English',serif;font-size:15px;padding:0 14px 6px;color:#cdbd9e;">Chronicle of events</div>
+      <sc-for list="{{ events }}" as="e" hint-placeholder-count="5">
+        <div onClick="{{ e.onClick }}" style="display:flex;gap:10px;padding:4px 14px;font-size:12px;cursor:pointer;align-items:center;" style-hover="background:rgba(255,255,255,.06);">
+          <div style="font-family:'JetBrains Mono',monospace;color:#8f7f65;font-size:11px;">{{ e.t }}</div>
+          <div style="width:6px;height:6px;border-radius:50%;background:{{ e.color }};flex:none;"></div>
+          <div style="font-family:'JetBrains Mono',monospace;color:#cdbd9e;font-size:11px;white-space:nowrap;">{{ e.where }}</div>
+          <div style="color:#f1e6cc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic;">{{ e.text }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="position:absolute;top:38px;right:0;bottom:0;width:600px;transition:transform .45s cubic-bezier(.3,.7,.2,1);transform:{{ drawerX }};background:#dccba5;border-left:1px solid #6b5a44;padding:10px;box-sizing:border-box;box-shadow:-12px 0 30px rgba(60,40,15,.22);z-index:20;">
+    <div style="height:100%;background:#fbf8f1;border:1px solid rgba(58,46,34,.35);border-radius:6px;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:14px 18px 0;border-bottom:1px solid #e6dcc8;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:18px;height:22px;background:{{ sel.color }};clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%);"></div>
+          <div style="font-family:'IM Fell English',serif;font-size:26px;line-height:1;">{{ sel.name }}</div>
+          <div style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:3px;background:{{ sel.chipBg }};color:{{ sel.chipFg }};border:1px solid {{ sel.chipBorder }};">{{ sel.label }}</div>
+          <sc-if value="{{ sel.external }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:11px;padding:3px 8px;border-radius:3px;border:1px dashed #8a7a60;color:#6b5a44;">External</div>
+          </sc-if>
+          <div style="flex:1;"></div>
+          <div onClick="{{ closeDrawer }}" style="width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6b5a44;font-size:18px;" style-hover="background:#f0e8d8;">×</div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:center;margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#6b5a44;">
+          <div>{{ sel.where }}</div>
+          <div>⎇ {{ sel.branch }}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+          <div style="width:120px;height:5px;border-radius:3px;background:#ece3d2;overflow:hidden;"><div style="height:100%;width:{{ sel.ctxPct }}%;background:#6b5a44;"></div></div>
+          <div style="font-size:11px;color:#6b5a44;">{{ sel.ctxText }}</div>
+          <div style="flex:1;"></div>
+          <div style="display:flex;gap:6px;">
+            <div style="font-size:12px;padding:5px 10px;border:1px solid #d8ccb4;border-radius:5px;cursor:pointer;display:flex;gap:6px;" style-hover="background:#f3ecdf;">Terminal <span style="font-family:'JetBrains Mono',monospace;color:#9c8a6c;">T</span></div>
+            <div onClick="{{ showReview }}" style="font-size:12px;padding:5px 10px;border:1px solid #d8ccb4;border-radius:5px;cursor:pointer;" style-hover="background:#f3ecdf;">Review</div>
+            <div style="font-size:12px;padding:5px 10px;border:1px solid #d8ccb4;border-radius:5px;cursor:pointer;color:#8a2f22;" style-hover="background:#f7e7e2;">Disband</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:22px;margin-top:14px;font-size:13px;">
+          <div onClick="{{ showOrders }}" style="padding-bottom:9px;cursor:pointer;border-bottom:2px solid {{ tabOrdersLine }};color:{{ tabOrdersColor }};font-weight:600;">Orders</div>
+          <div onClick="{{ showReview }}" style="padding-bottom:9px;cursor:pointer;border-bottom:2px solid {{ tabReviewLine }};color:{{ tabReviewColor }};font-weight:600;">Review{{ sel.reviewBadge }}</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ isOrders }}" hint-placeholder-val="{{ true }}">
+        <div style="flex:1;overflow-y:auto;padding:18px 18px 8px;display:flex;flex-direction:column;gap:14px;">
+          <sc-for list="{{ sel.msgs }}" as="m" hint-placeholder-count="5">
+            <sc-if value="{{ m.isUser }}" hint-placeholder-val="{{ false }}">
+              <div style="align-self:flex-end;max-width:82%;background:#f1e8d6;border:1px solid #e3d6bc;border-radius:10px 10px 2px 10px;padding:9px 13px;">
+                <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#8a7a60;margin-bottom:3px;">Your orders</div>
+                <div style="font-size:14px;line-height:1.45;text-wrap:pretty;">{{ m.text }}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ m.isText }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:14px;line-height:1.55;color:#2a241d;text-wrap:pretty;">{{ m.text }}</div>
+            </sc-if>
+            <sc-if value="{{ m.isTool }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:10px;border:1px solid #e6dcc8;border-radius:6px;padding:7px 11px;font-size:12px;background:#fffdf8;">
+                <div style="color:#9c8a6c;">›</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-weight:600;">{{ m.tool }}</div>
+                <div style="font-family:'JetBrains Mono',monospace;color:#5a4c3a;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ m.target }}</div>
+                <div style="color:#8a7a60;white-space:nowrap;">{{ m.result }}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ m.isSub }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:10px;border:1px solid #e6dcc8;border-radius:6px;padding:8px 11px;font-size:12px;background:#f8f3e8;">
+                <div style="color:#9c8a6c;">›</div>
+                <div style="font-weight:600;">Sub-agent</div>
+                <div style="flex:1;color:#5a4c3a;">{{ m.title }}</div>
+                <div style="color:#8a7a60;">{{ m.result }}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ m.isDiff }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1px solid #e6dcc8;border-radius:6px;overflow:hidden;background:#fffdf8;">
+                <div style="display:flex;gap:10px;padding:7px 11px;font-size:12px;border-bottom:1px solid #eee5d4;">
+                  <div style="font-family:'JetBrains Mono',monospace;font-weight:600;">Edit</div>
+                  <div style="font-family:'JetBrains Mono',monospace;flex:1;color:#5a4c3a;">{{ m.file }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;color:#3d7a4a;">{{ m.add }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;color:#a2382b;">{{ m.del }}</div>
+                </div>
+                <sc-for list="{{ m.lines }}" as="l" hint-placeholder-count="4">
+                  <div style="display:flex;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.6;background:{{ l.bg }};color:{{ l.fg }};">
+                    <div style="width:22px;text-align:center;flex:none;opacity:.7;">{{ l.sign }}</div>
+                    <div style="white-space:pre;">{{ l.text }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ m.isPetition }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1.5px solid oklch(0.55 0.17 27);background:oklch(0.97 0.02 30);border-radius:8px;padding:12px 14px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="width:10px;height:10px;border-radius:50%;background:oklch(0.52 0.19 27);animation:sgPulse 1.4s ease-out infinite;"></div>
+                  <div style="font-family:'IM Fell English',serif;font-size:18px;color:oklch(0.40 0.14 27);">Petition · {{ m.tool }}</div>
+                </div>
+                <div style="font-size:13px;color:#4a3b2b;margin:6px 0 8px;">{{ m.reason }}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;background:#2b2219;color:#f1e6cc;border-radius:5px;padding:9px 11px;white-space:pre-wrap;">{{ m.command }}</div>
+                <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+                  <div onClick="{{ m.onGrant }}" style="background:#2b2219;color:#f6ecd6;font-size:13px;font-weight:600;padding:7px 16px;border-radius:5px;cursor:pointer;display:flex;gap:8px;" style-hover="background:#43362a;">Grant <span style="font-family:'JetBrains Mono',monospace;color:#a8977a;font-weight:400;">G</span></div>
+                  <div onClick="{{ m.onDeny }}" style="border:1px solid #b9a98c;font-size:13px;font-weight:600;padding:7px 16px;border-radius:5px;cursor:pointer;display:flex;gap:8px;" style-hover="background:#f3ecdf;">Deny <span style="font-family:'JetBrains Mono',monospace;color:#9c8a6c;font-weight:400;">D</span></div>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ m.isSystem }}" hint-placeholder-val="{{ false }}">
+              <div style="text-align:center;font-size:11.5px;color:#8a7a60;font-style:italic;">{{ m.text }}</div>
+            </sc-if>
+          </sc-for>
+        </div>
+        <sc-if value="{{ sel.hasActivity }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 18px;font-size:12px;color:#5a4c3a;border-top:1px solid #eee5d4;">
+            <div style="width:7px;height:7px;border-radius:50%;background:{{ sel.color }};animation:sgBlink 1.2s ease-in-out infinite;"></div>
+            <div style="font-family:'JetBrains Mono',monospace;">{{ sel.activity }}</div>
+          </div>
+        </sc-if>
+        <div style="padding:10px 14px 14px;border-top:1px solid #e6dcc8;">
+          <div style="border:1px solid #d8ccb4;border-radius:8px;background:#fff;display:flex;flex-direction:column;">
+            <textarea value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onDraftKey }}" placeholder="{{ sel.placeholder }}" style="border:none;outline:none;resize:none;font:inherit;font-size:14px;padding:10px 12px;height:48px;background:transparent;color:#2a241d;"></textarea>
+            <div style="display:flex;align-items:center;padding:0 8px 8px 12px;gap:10px;font-size:11px;color:#9c8a6c;">
+              <div style="font-family:'JetBrains Mono',monospace;">/ commands pass through</div>
+              <div style="flex:1;"></div>
+              <div onClick="{{ sendOrder }}" style="background:#2b2219;color:#f6ecd6;font-size:12px;font-weight:600;padding:6px 12px;border-radius:5px;cursor:pointer;display:flex;gap:8px;">Send orders <span style="font-family:'JetBrains Mono',monospace;color:#a8977a;font-weight:400;">⌘↵</span></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isReview }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ sel.noReview }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#8a7a60;">
+            <div style="font-family:'IM Fell English',serif;font-size:22px;color:#4a3b2b;">No spoils yet</div>
+            <div style="font-size:13px;">{{ sel.name }} hasn't finished work to review.</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ sel.hasReview }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px;">
+            <div style="display:flex;align-items:baseline;gap:12px;">
+              <div style="font-family:'IM Fell English',serif;font-size:21px;">Spoils</div>
+              <div style="font-size:12px;color:#6b5a44;">{{ sel.review.summary }}</div>
+            </div>
+            <div style="border:1px solid #e6dcc8;border-radius:6px;background:#fffdf8;">
+              <sc-for list="{{ sel.review.files }}" as="f" hint-placeholder-count="5">
+                <div style="display:flex;gap:10px;padding:6px 11px;font-family:'JetBrains Mono',monospace;font-size:11.5px;border-bottom:1px solid #f1eadb;">
+                  <div style="width:12px;color:#8a7a60;">{{ f.k }}</div>
+                  <div style="flex:1;">{{ f.path }}</div>
+                  <div style="color:#3d7a4a;">+{{ f.a }}</div>
+                  <div style="color:#a2382b;width:34px;text-align:right;">−{{ f.d }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div>
+              <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a7a60;margin-bottom:6px;">Commits</div>
+              <sc-for list="{{ sel.review.commits }}" as="c" hint-placeholder-count="3">
+                <div style="display:flex;gap:10px;font-size:12.5px;padding:3px 0;">
+                  <div style="font-family:'JetBrains Mono',monospace;color:#8a7a60;">{{ c.h }}</div>
+                  <div>{{ c.m }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border:1px solid #e6dcc8;border-radius:6px;overflow:hidden;background:#fffdf8;">
+              <div style="padding:7px 11px;font-family:'JetBrains Mono',monospace;font-size:12px;border-bottom:1px solid #eee5d4;font-weight:600;">{{ sel.review.diffFile }}</div>
+              <sc-for list="{{ sel.review.lines }}" as="l" hint-placeholder-count="8">
+                <div style="display:flex;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.6;background:{{ l.bg }};color:{{ l.fg }};">
+                  <div style="width:22px;text-align:center;flex:none;opacity:.7;">{{ l.sign }}</div>
+                  <div style="white-space:pre;">{{ l.text }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="padding:12px 14px 14px;border-top:1px solid #e6dcc8;display:flex;flex-direction:column;gap:10px;">
+            <textarea value="{{ notes }}" onChange="{{ onNotes }}" placeholder="Notes for the squad…" style="border:1px solid #d8ccb4;border-radius:6px;outline:none;resize:none;font:inherit;font-size:13px;padding:8px 10px;height:40px;color:#2a241d;"></textarea>
+            <div style="display:flex;gap:8px;">
+              <div onClick="{{ sendBack }}" style="border:1px solid #b9a98c;font-size:13px;font-weight:600;padding:7px 14px;border-radius:5px;cursor:pointer;" style-hover="background:#f3ecdf;">Send back with notes</div>
+              <div style="border:1px solid #b9a98c;font-size:13px;font-weight:600;padding:7px 14px;border-radius:5px;cursor:pointer;" style-hover="background:#f3ecdf;">Order commit</div>
+              <div style="flex:1;"></div>
+              <div onClick="{{ openPR }}" style="background:oklch(0.46 0.15 27);color:#fbeee0;font-size:13px;font-weight:600;padding:7px 16px;border-radius:5px;cursor:pointer;">{{ prLabel }}</div>
+            </div>
+          </div>
+        </sc-if>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ cmdOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeCmd }}" style="position:absolute;inset:38px 0 0 0;background:rgba(30,22,14,.28);z-index:40;"></div>
+    <div style="position:absolute;left:50%;top:120px;transform:translateX(-50%);width:620px;background:#f6eed9;border:1px solid #6b5a44;border-radius:8px;box-shadow:0 20px 60px rgba(30,20,10,.4);z-index:41;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(58,46,34,.2);">
+        <div style="font-family:'IM Fell English',serif;font-size:20px;color:#6b5a44;">›</div>
+        <input autoFocus="{{ true }}" value="{{ cmdText }}" onChange="{{ onCmd }}" placeholder="Order, jump or act…" style="flex:1;border:none;outline:none;background:transparent;font:inherit;font-size:16px;color:#2e251c;">
+        <div style="font-size:11px;color:#6b5a44;">→ {{ sel.name }}</div>
+      </div>
+      <sc-for list="{{ cmdItems }}" as="c" hint-placeholder-count="5">
+        <div onClick="{{ c.onClick }}" style="display:flex;align-items:center;gap:12px;padding:9px 16px;cursor:pointer;font-size:13.5px;" style-hover="background:rgba(58,46,34,.08);">
+          <div style="width:70px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#8a7a60;">{{ c.kind }}</div>
+          <div style="flex:1;">{{ c.text }}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8a7a60;">{{ c.hint }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900},&quot;startOpen&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showRoadStats&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showFog&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const REGIONS = [
+  { id: 'rooblocks', name: 'Rooblocks', hue: 28, c: 0.13, x: 50, y: 70, w: 560, h: 430, br: '46% 54% 42% 58% / 52% 44% 56% 48%', lx: 330, ly: 460, voice: 'Legion voice' },
+  { id: 'pedregal', name: 'Pedregal', hue: 245, c: 0.09, x: 650, y: 60, w: 470, h: 440, br: '55% 45% 50% 50% / 44% 56% 44% 56%', lx: 930, ly: 90, voice: 'Mariner voice' },
+  { id: 'atlas', name: 'Atlas API', hue: 150, c: 0.09, x: 270, y: 530, w: 660, h: 300, br: '50% 50% 46% 54% / 60% 52% 48% 40%', lx: 320, ly: 560, voice: 'Warden voice' }
+];
+const SETTLEMENTS = [
+  { id: 'rb-cap', region: 'rooblocks', name: 'rooblocks', branch: 'main', cap: true, x: 210, y: 320 },
+  { id: 'filter-fix', region: 'rooblocks', name: 'filter-fix', branch: 'amel/filter-fix', x: 450, y: 170, ahead: 3, behind: 0, dirty: true },
+  { id: 'store-header', region: 'rooblocks', name: 'store-header', branch: 'amel/store-header', x: 440, y: 360, ahead: 5, behind: 2, dirty: true },
+  { id: 'onboarding-copy', region: 'rooblocks', name: 'onboarding-copy', branch: 'amel/onboarding-copy', x: 250, y: 450, ahead: 1, behind: 0 },
+  { id: 'pd-cap', region: 'pedregal', name: 'pedregal', branch: 'main', cap: true, x: 790, y: 240 },
+  { id: 'search-v2', region: 'pedregal', name: 'search-v2', branch: 'amel/search-v2', x: 990, y: 220, ahead: 7, behind: 1 },
+  { id: 'payments-retry', region: 'pedregal', name: 'payments-retry', branch: 'amel/payments-retry', x: 780, y: 420, ahead: 2, behind: 0, dirty: true },
+  { id: 'legacy-cleanup', region: 'pedregal', name: 'legacy-cleanup', branch: 'amel/legacy-cleanup', x: 1000, y: 410, ahead: 0, behind: 14, stale: true },
+  { id: 'at-cap', region: 'atlas', name: 'atlas-api', branch: 'main', cap: true, x: 440, y: 690 },
+  { id: 'rate-limit', region: 'atlas', name: 'rate-limit', branch: 'amel/rate-limit', x: 650, y: 630, ahead: 4, behind: 0, dirty: true },
+  { id: 'schema-migrate', region: 'atlas', name: 'schema-migrate', branch: 'amel/schema-migrate', x: 820, y: 740, ahead: 6, behind: 0, pr: true }
+];
+const STATES = {
+  petition: { label: 'Petitioning', glyph: '!', bg: 'oklch(0.52 0.19 27)', fg: '#fff6ee', bd: 'oklch(0.42 0.16 27)', prio: 0 },
+  fallen: { label: 'Fallen', glyph: '✕', bg: '#2b2219', fg: '#e9dcbf', bd: '#2b2219', prio: 1 },
+  awaiting: { label: 'Awaiting orders', glyph: '?', bg: 'oklch(0.80 0.11 80)', fg: '#3a2a10', bd: 'oklch(0.62 0.11 75)', prio: 2 },
+  spoils: { label: 'Spoils ready', glyph: '◆', bg: 'oklch(0.72 0.09 150)', fg: '#10301a', bd: 'oklch(0.52 0.09 150)', prio: 3 },
+  marching: { label: 'Marching', glyph: '›', bg: '#f6eed9', fg: '#3a2e22', bd: 'rgba(58,46,34,.45)', prio: 9 },
+  mustering: { label: 'Mustering', glyph: '·', bg: '#f6eed9', fg: '#6b5a44', bd: 'rgba(58,46,34,.3)', prio: 9 }
+};
+const SQUADS = [
+  { id: 'vesper', name: 'Vesper', at: 'filter-fix', state: 'petition', ctx: 84, activity: 'Waiting on petition: xcodebuild test', msgs: [
+    ['u', 'Filter chips on the store page reset when you navigate back from a venue. Fix it and add a test that covers the round trip.'],
+    ['a', 'I\'ll start by finding where the selected filters live and how the view model is created.'],
+    ['s', 'Explore: find filter state ownership', '9 tool calls · 41s'],
+    ['t', 'Read', 'Store/Filters/StoreFilterViewModel.swift', '142 lines'],
+    ['t', 'Grep', 'selectedFilters', '6 matches in 3 files'],
+    ['a', 'Found it. StoreFilterView creates its view model inside onAppear, so a fresh instance replaces the old one each time the page reappears. I\'ll hoist it to the store coordinator so it outlives navigation.'],
+    ['d', 'Store/Filters/StoreFilterView.swift', ['   struct StoreFilterView: View {', '-    @StateObject var model = StoreFilterViewModel()', '+    @ObservedObject var model: StoreFilterViewModel', '     var body: some View {', '-        chips.onAppear { model.reset() }', '+        chips'], '+2', '−2'],
+    ['t', 'Write', 'StoreTests/FilterStateTests.swift', 'new file · 48 lines'],
+    ['p', 'Bash', 'xcodebuild test -scheme Store \\\n  -only-testing:StoreTests/FilterStateTests', 'Run the new filter state tests on the iOS simulator.']
+  ]},
+  { id: 'talon', name: 'Talon', at: 'store-header', state: 'marching', ctx: 51, activity: 'Editing StorePageHeader.swift…', msgs: [
+    ['u', 'Rebuild the store page header to match the new spec: collapsing hero, venue rating inline, sticky category tabs.'],
+    ['a', 'Plan: split the header into HeroImage, VenueMeta and CategoryTabs, then drive the collapse from the scroll offset.'],
+    ['t', 'Read', 'Store/Header/StorePageHeader.swift', '311 lines'],
+    ['t', 'Edit', 'Store/Header/VenueMeta.swift', '+64 −0'],
+    ['t', 'Bash', 'swift build --target StoreUI', 'succeeded · 38s']
+  ]},
+  { id: 'ember', name: 'Ember', at: 'onboarding-copy', state: 'awaiting', ctx: 22, msgs: [
+    ['u', 'Update onboarding copy from the strings file in the doc. Keep keys stable.'],
+    ['t', 'Edit', 'Onboarding/Localizable.strings', '+18 −18'],
+    ['a', 'Done with screens 1–3. Screen 4 in the doc has two variants of the headline. Which one should ship?']
+  ]},
+  { id: 'corvid', name: 'Corvid', at: 'search-v2', state: 'spoils', ctx: 131, msgs: [
+    ['u', 'Move search to the v2 endpoint behind the search_v2 flag, with fallback to v1 on error.'],
+    ['a', 'Finished. Seven commits, tests pass. The client now calls /v2/search when the flag is on and retries once against v1 on 5xx.'],
+    ['x', 'Objective complete · spoils ready for review']
+  ], review: {
+    summary: '7 commits ahead of main · 5 files · +312 −88',
+    files: [['M', 'Search/SearchClient.swift', 96, 41], ['A', 'Search/SearchV2Mapper.swift', 118, 0], ['M', 'Search/SearchViewModel.swift', 34, 29], ['M', 'Flags/FeatureFlags.swift', 6, 0], ['A', 'SearchTests/SearchV2Tests.swift', 58, 18]],
+    commits: [['a41f2c9', 'Add SearchV2Mapper for v2 response shape'], ['7c0e1b3', 'Route search through v2 behind search_v2'], ['e9d44a0', 'Fallback to v1 on 5xx with single retry']],
+    diffFile: 'Search/SearchClient.swift',
+    lines: ['   func search(_ query: String) async throws -> [Result] {', '-    let url = base.appending("/v1/search")', '-    return try await fetch(url, query)', '+    guard flags.searchV2 else { return try await v1(query) }', '+    do {', '+        return try await v2(query).map(SearchV2Mapper.map)', '+    } catch let e as HTTPError where e.isServer {', '+        return try await v1(query)', '+    }', '   }']
+  }},
+  { id: 'wren', name: 'Wren', at: 'payments-retry', state: 'fallen', ctx: 67, msgs: [
+    ['u', 'Add idempotency keys to payment retries.'],
+    ['t', 'Bash', 'npm run test:integration', 'running…'],
+    ['x', 'Process exited unexpectedly (signal 9). We\'ve lost a squad.']
+  ]},
+  { id: 'onyx', name: 'Onyx', at: 'rate-limit', state: 'marching', ctx: 39, activity: 'Running go test ./limiter/…', msgs: [
+    ['u', 'Add a token-bucket rate limiter per API key on the public routes.'],
+    ['t', 'Edit', 'internal/limiter/bucket.go', '+88 −0'],
+    ['t', 'Bash', 'go test ./limiter/...', 'running…']
+  ]},
+  { id: 'sable', name: 'Sable', at: 'schema-migrate', state: 'awaiting', ctx: 95, msgs: [
+    ['a', 'Draft PR #412 is open with the migration and backfill script. Checks are green. Want me to add the rollback migration too?']
+  ]},
+  { id: 'harrow', name: 'Harrow', at: 'at-cap', state: 'marching', ctx: 18, external: true, activity: 'Reading docs/openapi.yaml…', msgs: [
+    ['x', 'External squad started from a terminal. Read-only until you take command.'],
+    ['u', 'Summarize the breaking changes between openapi v3 and v4.'],
+    ['t', 'Read', 'docs/openapi.yaml', '2,140 lines']
+  ]}
+];
+const EVENTS = [
+  ['10:42', 'filter-fix', 'Awaiting your command, Strategos', 'vesper'],
+  ['10:39', 'payments-retry', 'We\'ve lost a squad', 'wren'],
+  ['10:31', 'search-v2', 'Objective complete', 'corvid'],
+  ['10:24', 'schema-migrate', 'The banner is raised · PR #412', 'sable'],
+  ['10:18', 'onboarding-copy', 'Ready for orders', 'ember']
+];
+REGIONS.forEach(r => { r.x += 200; r.lx += 200; r.y += 20; r.ly += 20; });
+SETTLEMENTS.forEach(s => { s.x += 200; s.y += 20; });
+const regionOf = id => REGIONS.find(r => r.id === id);
+const setOf = id => SETTLEMENTS.find(s => s.id === id);
+const col = (r, a) => `oklch(0.50 ${r.c} ${r.hue}${a != null ? ' / ' + a : ''})`;
+const diffLines = arr => arr.map(t => {
+  const s = t[0];
+  return { sign: s === ' ' ? '' : (s === '+' ? '+' : '−'), text: t.slice(1), bg: s === '+' ? '#eaf4e6' : s === '-' ? '#f8e8e4' : 'transparent', fg: s === '+' ? '#24542f' : s === '-' ? '#7d2a20' : '#4a3f33' };
+});
+const NOISE = `url("data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .12 0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(#n)'/></svg>")}")`;
+
+class Component extends DCLogic {
+  state = {
+    squads: SQUADS.map(s => ({ ...s, msgs: s.msgs.slice() })),
+    prs: { 'schema-migrate': true },
+    events: EVENTS.slice(),
+    sel: 'vesper', open: this.props.startOpen ?? true, tab: 'orders',
+    draft: '', notes: '', cmdOpen: false, cmdText: '', voice: true, clock: 43
+  };
+  componentDidMount() {
+    this.onKey = e => {
+      const tag = (e.target.tagName || '').toLowerCase();
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); this.setState(s => ({ cmdOpen: !s.cmdOpen, cmdText: '' })); return; }
+      if (e.key === 'Escape') { this.setState(s => s.cmdOpen ? { cmdOpen: false } : { open: false }); return; }
+      if (tag === 'textarea' || tag === 'input') return;
+      if (e.key === 'Tab') { e.preventDefault(); this.cycle(e.shiftKey ? -1 : 1); }
+      else if (e.key === 'Enter') this.setState({ open: true });
+      else if (e.key === 'g' || e.key === 'd') { const sq = this.cur(); if (sq.state === 'petition') this.answer(e.key === 'g'); }
+    };
+    window.addEventListener('keydown', this.onKey);
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this.onKey); }
+  cur() { return this.state.squads.find(q => q.id === this.state.sel); }
+  queue() { return this.state.squads.filter(q => STATES[q.state].prio < 9).sort((a, b) => STATES[a.state].prio - STATES[b.state].prio); }
+  cycle(dir) {
+    const q = this.queue(); if (!q.length) return;
+    const i = q.findIndex(x => x.id === this.state.sel);
+    const n = i < 0 ? 0 : (i + dir + q.length) % q.length;
+    this.select(q[n].id);
+  }
+  select(id) { this.setState({ sel: id, open: true, tab: 'orders', draft: '', notes: '' }); }
+  now() { const m = this.state.clock; this.setState({ clock: m + 1 }); return `10:${String(m).padStart(2, '0')}`; }
+  log(at, text, id) { const t = this.now(); this.setState(s => ({ events: [[t, at, text, id], ...s.events].slice(0, 6) })); }
+  patch(id, fn) { this.setState(s => ({ squads: s.squads.map(q => q.id === id ? fn(q) : q) })); }
+  answer(grant) {
+    const sq = this.cur();
+    this.patch(sq.id, q => ({ ...q, state: grant ? 'marching' : 'awaiting', activity: grant ? 'Running FilterStateTests…' : null,
+      msgs: q.msgs.filter(m => m[0] !== 'p').concat(grant ? [['x', 'Petition granted · Bash'], ['t', 'Bash', 'xcodebuild test -only-testing:StoreTests/FilterStateTests', 'running…']] : [['x', 'Petition denied · Bash']]) }));
+    this.log(sq.at, grant ? 'Petition granted' : 'Petition denied', sq.id);
+  }
+  renderVals() {
+    const st = this.state;
+    const roadStats = this.props.showRoadStats ?? true;
+    const fog = this.props.showFog ?? true;
+    const sq = this.cur();
+    const sqSet = setOf(sq.at);
+    const sqReg = regionOf(sqSet.region);
+    const meta = STATES[sq.state];
+    const chip = m => ({ label: m.label, chipBg: m.bg, chipFg: m.fg, chipBorder: m.bd });
+
+    const regions = REGIONS.map(r => ({ ...r, color: col(r), border: col(r, 0.55), tint: col(r, 0.08),
+      sub: `${r.voice} · ${SETTLEMENTS.filter(s => s.region === r.id && !s.cap).length} settlements`,
+      lx: r.lx, ly: r.ly, onClick: () => {} }));
+
+    const roads = SETTLEMENTS.filter(s => !s.cap).map(s => {
+      const cap = SETTLEMENTS.find(c => c.cap && c.region === s.region);
+      const dx = s.x - cap.x, dy = s.y - cap.y;
+      const stats = [s.ahead ? `↑${s.ahead}` : '', s.behind ? `↓${s.behind}` : ''].filter(Boolean).join(' ');
+      return { x: cap.x, y: cap.y, len: Math.hypot(dx, dy), angle: Math.atan2(dy, dx) * 180 / Math.PI,
+        mx: cap.x + dx / 2, my: cap.y + dy / 2, stats, showStats: roadStats && !!stats, opacity: s.stale && fog ? 0.35 : 1 };
+    });
+
+    const settlements = SETTLEMENTS.map(s => {
+      const r = regionOf(s.region);
+      const squads = st.squads.filter(q => q.at === s.id).map(q => {
+        const m = STATES[q.state];
+        return { ...chip(m), glyph: m.glyph, flagColor: q.state === 'fallen' ? '#6d5f4f' : col(r),
+          clip: q.state === 'fallen' ? 'polygon(0 0,70% 0,55% 22%,100% 30%,62% 55%,85% 78%,40% 70%,30% 100%,0 100%)' : 'polygon(0 0,100% 0,78% 50%,100% 100%,0 100%)',
+          anim: q.state === 'marching' ? 'sgWave 1.8s ease-in-out infinite' : 'none', isPetition: q.state === 'petition',
+          onClick: e => { e.stopPropagation(); this.select(q.id); } };
+      });
+      const first = st.squads.find(q => q.at === s.id);
+      return { ...s, isCap: !!s.cap, notCap: !s.cap, color: col(r), squads, pr: !!st.prs[s.id], dirty: !!s.dirty,
+        stale: !!s.stale && fog, opacity: s.stale && fog ? 0.5 : 1, filter: s.stale && fog ? 'blur(0.6px) grayscale(.5)' : 'none',
+        selected: st.open && sq.at === s.id,
+        onClick: () => first && this.select(first.id) };
+    });
+
+    const queue = this.queue().map(q => {
+      const s = setOf(q.at), r = regionOf(s.region);
+      return { ...chip(STATES[q.state]), name: q.name, where: `${r.id} / ${s.name}`, color: col(r),
+        bg: q.id === st.sel ? 'rgba(58,46,34,.08)' : 'transparent', onClick: () => this.select(q.id) };
+    });
+
+    const events = st.events.map(([t, at, text, id]) => {
+      const s = setOf(at), r = regionOf(s.region);
+      return { t, where: `${r.id} / ${s.name}`, text, color: col(r), onClick: () => this.select(id) };
+    });
+
+    const msgs = sq.msgs.map(m => {
+      const k = m[0];
+      return { isUser: k === 'u', isText: k === 'a', isTool: k === 't', isSub: k === 's', isDiff: k === 'd', isPetition: k === 'p', isSystem: k === 'x',
+        text: k === 'u' || k === 'a' || k === 'x' ? m[1] : '', tool: m[1], target: m[2], result: k === 's' ? m[2] : m[3], title: m[1],
+        file: m[1], lines: k === 'd' ? diffLines(m[2]) : [], add: m[3], del: m[4], command: m[2], reason: m[3],
+        onGrant: () => this.answer(true), onDeny: () => this.answer(false) };
+    });
+
+    const rv = sq.review;
+    const review = rv ? { summary: rv.summary, diffFile: rv.diffFile, lines: diffLines(rv.lines),
+      files: rv.files.map(([k, path, a, d]) => ({ k, path, a, d })), commits: rv.commits.map(([h, m]) => ({ h, m })) } : null;
+
+    const offset = st.open ? Math.max(-560, Math.min(0, 566 - sqSet.x)) : 0;
+    const isOrders = st.tab === 'orders';
+    const cmdAll = [
+      { kind: 'Order', text: `Send “${st.cmdText || '…'}” to ${sq.name}`, hint: '↵', onClick: () => { if (st.cmdText) this.send(st.cmdText); this.setState({ cmdOpen: false }); } },
+      ...st.squads.map(q => ({ kind: 'Jump', text: `${q.name} · ${setOf(q.at).name}`, hint: STATES[q.state].label, onClick: () => { this.select(q.id); this.setState({ cmdOpen: false }); } })),
+      { kind: 'Action', text: 'Found settlement in pedregal', hint: '', onClick: () => this.setState({ cmdOpen: false }) },
+      { kind: 'Action', text: 'Archive legacy-cleanup', hint: 'fog · 21 days', onClick: () => this.setState({ cmdOpen: false }) }
+    ];
+    const qtext = st.cmdText.toLowerCase();
+    const cmdItems = (qtext ? cmdAll.filter((c, i) => i === 0 || c.text.toLowerCase().includes(qtext)) : cmdAll.filter(c => c.kind !== 'Jump' || STATES[st.squads.find(q => c.text.startsWith(q.name)).state].prio < 9)).slice(0, 7);
+
+    return {
+      noise: NOISE, regions, roads, settlements, queue, queueCount: queue.length, events,
+      mapOffset: offset, drawerX: st.open ? 'translateX(0)' : 'translateX(102%)',
+      voiceLabel: st.voice ? 'Voice lines on' : 'Muted', voiceDot: st.voice ? '#7fb069' : '#6b5a44',
+      toggleVoice: () => this.setState(s => ({ voice: !s.voice })),
+      openCmd: () => this.setState({ cmdOpen: true, cmdText: '' }), closeCmd: () => this.setState({ cmdOpen: false }),
+      cmdOpen: st.cmdOpen, cmdText: st.cmdText, onCmd: e => this.setState({ cmdText: e.target.value }), cmdItems,
+      closeDrawer: () => this.setState({ open: false }),
+      isOrders, isReview: !isOrders,
+      showOrders: () => this.setState({ tab: 'orders' }), showReview: () => this.setState({ tab: 'review' }),
+      tabOrdersLine: isOrders ? '#2e251c' : 'transparent', tabOrdersColor: isOrders ? '#2e251c' : '#8a7a60',
+      tabReviewLine: !isOrders ? '#2e251c' : 'transparent', tabReviewColor: !isOrders ? '#2e251c' : '#8a7a60',
+      sel: { ...chip(meta), name: sq.name, color: col(sqReg), where: `${sqReg.id} / ${sqSet.name}`, branch: sqSet.branch,
+        ctxPct: Math.round(sq.ctx / 2), ctxText: `${sq.ctx}k / 200k context`, external: !!sq.external, msgs,
+        activity: sq.activity, hasActivity: sq.state === 'marching' && !!sq.activity,
+        placeholder: sq.external ? 'External squad · take command to send orders' : `Give orders to ${sq.name}…`,
+        hasReview: !!review, noReview: !review, review: review || {}, reviewBadge: sq.state === 'spoils' ? ' ·  1' : '' },
+      draft: st.draft, onDraft: e => this.setState({ draft: e.target.value }),
+      onDraftKey: e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); this.send(st.draft); } },
+      sendOrder: () => this.send(st.draft),
+      notes: st.notes, onNotes: e => this.setState({ notes: e.target.value }),
+      sendBack: () => { if (!st.notes.trim()) return; this.send(st.notes); this.setState({ notes: '', tab: 'orders' }); },
+      prLabel: st.prs[sq.at] ? 'PR opened' : 'Open draft PR',
+      openPR: () => { if (st.prs[sq.at]) return; this.setState(s => ({ prs: { ...s.prs, [sq.at]: true } })); this.patch(sq.id, q => ({ ...q, state: 'awaiting', msgs: q.msgs.concat([['x', 'Draft PR #418 opened via gh']]) })); this.log(sq.at, 'The banner is raised · PR #418', sq.id); }
+    };
+  }
+  send(text) {
+    const sq = this.cur();
+    if (!text || !text.trim() || sq.external) return;
+    this.patch(sq.id, q => ({ ...q, state: 'marching', activity: 'Thinking…', msgs: q.msgs.filter(m => m[0] !== 'p').concat([['u', text.trim()]]) }));
+    this.setState({ draft: '' });
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,721 @@
+<title>Strategos Looks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Newsreader:ital,wght@0,500;0,600;1,500&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: page header, a view switcher, one dark app window showing the chosen look, then a comparison.
+   The app window is always dark (it depicts the Strategos window); the page around it follows the theme. */
+:root{
+  --bg:#eceff5; --surface:#ffffff; --fg:#141a2b; --muted:#566079; --line:#d3d8e5; --chip:#e1e6f2;
+  --accent:#2f54d6; --accent-ink:#ffffff;
+  --sp-bg:#090c15; --sp-panel:#0f1424; --sp-raise:#161d33; --sp-line:#222a3f; --sp-fg:#e8ecf2; --sp-mute:#8b94aa;
+  --c-approve:#ff6a5a; --c-reply:#f5b83d; --c-ready:#4fcb90; --c-work:#74aaff; --c-crash:#929aa8;
+  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Consolas,'Courier New',monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#080b13; --surface:#0f1422; --fg:#e7eaf3; --muted:#9aa3ba; --line:#222a40; --chip:#1a2136;
+  --accent:#8aa2ff; --accent-ink:#0a0f20; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#080b13; --surface:#0f1422; --fg:#e7eaf3; --muted:#9aa3ba; --line:#222a40; --chip:#1a2136;
+  --accent:#8aa2ff; --accent-ink:#0a0f20; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--sans);padding-inline:16px}
+.wrap{max-width:1180px;margin-inline:auto;padding-block:32px 56px;display:flex;flex-direction:column;gap:24px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1{font:600 clamp(32px,5.5vw,50px)/1.06 var(--serif);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1 em{font-style:italic;font-weight:500;color:var(--muted)}
+.lede{max-width:66ch;color:var(--muted);margin:10px 0 0;text-wrap:pretty}
+h2{font:600 clamp(20px,2.6vw,26px)/1.15 var(--serif);margin:0 0 6px;text-wrap:balance}
+
+/* view switcher */
+.switch{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.switch button{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.switch .k{font:600 11px var(--mono);letter-spacing:.08em;color:var(--muted)}
+.switch .n{font-weight:600;font-size:15px}
+.switch .w{font-size:12.5px;color:var(--muted);text-wrap:pretty}
+.switch button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.switch button[aria-selected="true"] .k,.switch button[aria-selected="true"] .w{color:inherit;opacity:.88}
+
+/* app window */
+.win{background:var(--sp-bg);color:var(--sp-fg);border:1px solid var(--sp-line);border-radius:12px;overflow:hidden;container-type:inline-size}
+.titlebar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--sp-panel);border-bottom:1px solid var(--sp-line);font:12px var(--mono);color:var(--sp-mute)}
+.titlebar i{width:9px;height:9px;border-radius:50%;background:#2a324a;display:inline-block}
+.titlebar .sp{flex:1}
+.titlebar button{background:none;border:1px solid var(--sp-line);color:var(--sp-mute);border-radius:6px;padding:2px 9px;font:11px var(--mono)}
+.titlebar button:hover{color:var(--sp-fg);border-color:var(--sp-mute)}
+.sumbar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--sp-line);font-size:13px}
+.sumbar b{font-weight:600}
+.sumbar .need{display:flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;border:1px solid var(--c-approve);color:var(--c-approve);font-weight:600}
+.sumbar .m{color:var(--sp-mute)}
+.sumbar .m b{color:var(--sp-fg)}
+.sumbar .sp{flex:1}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 340px}
+@container (max-width:880px){.app{grid-template-columns:minmax(0,1fr)}}
+.main{min-width:0}
+.side{border-left:1px solid var(--sp-line);background:var(--sp-bg);min-width:0}
+@container (max-width:880px){.side{border-left:0;border-top:1px solid var(--sp-line)}}
+.foot{display:flex;flex-wrap:wrap;gap:4px 16px;padding:8px 14px;border-top:1px solid var(--sp-line);background:var(--sp-panel);font:11.5px var(--mono);color:var(--sp-mute)}
+.foot kbd{font:inherit;color:var(--sp-fg);background:var(--sp-raise);border:1px solid var(--sp-line);border-radius:4px;padding:0 5px}
+.foot .toast{margin-left:auto;color:var(--c-ready)}
+.tint-approve{color:var(--c-approve)}.tint-reply{color:var(--c-reply)}.tint-ready{color:var(--c-ready)}.tint-work{color:var(--c-work)}.tint-crash{color:var(--c-crash)}
+.dim{color:var(--sp-mute)}
+.mono{font-family:var(--mono)}
+
+/* buttons inside the window */
+.mbtn{background:var(--sp-raise);border:1px solid var(--sp-line);color:var(--sp-fg);border-radius:6px;padding:3px 10px;font:12px var(--mono)}
+.mbtn:hover{border-color:var(--sp-mute)}
+.mbtn.primary{background:#e8ecf2;color:#0b0e16;border-color:#e8ecf2;font-weight:600}
+.mbtn.danger{border-color:var(--c-approve);color:var(--c-approve)}
+.pill{display:inline-block;font:600 9.5px var(--sans);letter-spacing:.08em;text-transform:uppercase;border:1px solid currentColor;border-radius:99px;padding:1px 8px;white-space:nowrap}
+
+/* needs-you strip */
+.strip{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;border-bottom:1px solid var(--sp-line);align-items:center}
+.strip h4,.sec h4{margin:0;font:600 10.5px var(--sans);letter-spacing:.14em;color:var(--sp-mute);text-transform:uppercase}
+.nchip{display:flex;gap:8px;align-items:center;background:var(--sp-panel);border:1px solid var(--sp-line);border-radius:8px;padding:5px 10px;font-size:12.5px;min-width:0;text-align:left}
+.nchip:hover,.nchip.on{border-color:var(--sp-mute)}
+.nchip .g{font-size:14px}
+.nchip small{color:var(--sp-mute);font:11px var(--mono)}
+
+/* map */
+.mapbox{overflow-x:auto;background:#06080f}
+.map{display:block;width:100%;height:auto;min-width:640px}
+.tok{cursor:pointer}
+.tok:focus-visible{outline:none}
+.tok:focus-visible .ring,.tok:hover .ring{stroke-width:4.5}
+.pulse{transform-box:fill-box;transform-origin:center;animation:pulse 1.9s ease-out infinite}
+@keyframes pulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.2);opacity:0}}
+.drift,.sweep{transform-box:view-box}
+.drift{animation:drift 120s linear infinite}
+.sweep{animation:drift 7s linear infinite}
+@keyframes drift{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.pulse,.drift,.sweep,.wf,.led.blink,.vu.on i{animation:none!important}}
+
+/* HUD skin: the window re-tints through the same tokens, so every inner piece follows */
+.win.hud{--sp-bg:#030a11;--sp-panel:#071722;--sp-raise:#0b2433;--sp-line:#12404f;--sp-fg:#d6f7ff;--sp-mute:#6aa6b8;--h-cy:#4de8ff;
+  font-family:'Rajdhani',var(--sans);font-size:15px;border-color:#1b6f84;box-shadow:0 0 0 1px #0b3442 inset,0 0 38px rgba(77,232,255,.12)}
+.hud .titlebar,.hud .sumbar,.hud .foot{font-family:'Rajdhani',var(--sans);letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+.hud .titlebar{color:var(--h-cy)}
+.hud .titlebar i{background:#0e4a5a}
+.hud .foot kbd{font-family:var(--mono);text-transform:none;letter-spacing:0}
+.hudgrid{display:grid;grid-template-columns:240px minmax(0,1fr)}
+@container (max-width:880px){.hudgrid{grid-template-columns:minmax(0,1fr)}}
+.tele{padding:12px 14px;display:flex;flex-direction:column;gap:14px;border-right:1px solid var(--sp-line);background:linear-gradient(180deg,#05111a,#030a11)}
+@container (max-width:880px){.tele{border-right:0;border-bottom:1px solid var(--sp-line)}}
+.tele h4{margin:0 0 6px;font:700 11px 'Rajdhani',var(--sans);letter-spacing:.24em;color:var(--h-cy)}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.big div{border:1px solid var(--sp-line);padding:6px 8px;background:#06131c;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))}
+.big b{display:block;font:600 26px/1 'Rajdhani',var(--sans);color:var(--sp-fg);font-variant-numeric:tabular-nums}
+.big span{font:600 10px 'Rajdhani',var(--sans);letter-spacing:.16em;color:var(--sp-mute);text-transform:uppercase}
+.bars{display:flex;flex-direction:column;gap:7px}
+.bars .b{display:grid;grid-template-columns:78px 1fr 42px;gap:8px;align-items:center;font:600 11px 'Rajdhani',var(--sans);letter-spacing:.08em;color:var(--sp-mute);text-transform:uppercase}
+.bars .b i{display:block;height:6px;background:#0d2a38;position:relative}
+.bars .b i u{position:absolute;inset:0 auto 0 0;background:var(--h-cy);box-shadow:0 0 8px var(--h-cy)}
+.bars .b em{font:11px var(--mono);font-style:normal;text-align:right;color:var(--sp-fg);text-transform:none}
+.queue{display:flex;flex-direction:column;gap:6px}
+.queue .nchip{background:#06131c;border-color:#4a2a2e;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,0 100%)}
+.queue .nchip.on{border-color:var(--h-cy)}
+.hudbox{position:relative;overflow-x:auto;background:radial-gradient(circle at 50% 50%,#0b2a3a 0,#040c14 58%,#02060b 100%)}
+.hudbox::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(77,232,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(77,232,255,.045) 1px,transparent 1px);background-size:38px 38px;pointer-events:none}
+.hudbox::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);pointer-events:none}
+.hudsvg{position:relative;z-index:1;display:block;width:100%;height:auto;min-width:520px}
+
+/* rows (dashboard + hybrid) */
+.rows{display:flex;flex-direction:column}
+.rowhead,.row{display:grid;grid-template-columns:26px minmax(150px,1.3fr) minmax(130px,1fr) minmax(150px,1.4fr) 96px 56px;gap:10px;align-items:center;padding:9px 14px}
+.rowhead{font:600 10px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--sp-mute);border-bottom:1px solid var(--sp-line)}
+.row{border-top:1px solid var(--sp-line);cursor:pointer;position:relative}
+.row:first-of-type{border-top:0}
+.row:hover{background:var(--sp-panel)}
+.row.on{background:var(--sp-raise)}
+.row.on::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--stc)}
+.row .g{text-align:center;font-size:15px;color:var(--stc)}
+.row .t{font-weight:600;font-size:13px;line-height:1.3;overflow-wrap:anywhere}
+.row .s{font:11px var(--mono);color:var(--sp-mute);overflow-wrap:anywhere}
+.row .now{font:11.5px var(--mono);color:var(--sp-mute);overflow-wrap:anywhere}
+.row .last{font-size:12px;color:var(--sp-fg);opacity:.86;overflow-wrap:anywhere;text-wrap:pretty}
+.row .cost{font:12px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.ctx{display:flex;align-items:center;gap:6px;font:11px var(--mono);font-variant-numeric:tabular-nums;color:var(--sp-mute)}
+.ctx .bar{flex:1;height:6px;border-radius:3px;background:var(--sp-line);overflow:hidden;min-width:34px}
+.ctx .bar i{display:block;height:100%}
+.ctx span{width:30px;text-align:right}
+.inl{grid-column:2 / -1;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.inl .q{font-size:12px;color:var(--c-reply)}
+@container (max-width:760px){
+  .rowhead{display:none}
+  .row{grid-template-columns:26px minmax(0,1fr) 92px;row-gap:4px}
+  .row .c-now,.row .c-last{grid-column:2 / -1}
+  .row .c-cost{grid-column:3;grid-row:1}
+  .row .c-ctx{grid-column:2 / -1}
+  .row .cost{text-align:right}
+}
+.repohead{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--sp-panel);border-top:1px solid var(--sp-line);border-bottom:1px solid var(--sp-line);font:600 11px var(--mono);letter-spacing:.06em;color:var(--sp-mute)}
+
+/* hybrid repo selector */
+.repos{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:10px 14px;border-bottom:1px solid var(--sp-line)}
+@container (max-width:760px){.repos{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.rp{background:var(--sp-panel);border:1px solid var(--sp-line);border-radius:10px;padding:6px 10px;display:flex;align-items:center;gap:8px;text-align:left;min-width:0}
+.rp:hover{border-color:var(--sp-mute)}
+.rp[aria-pressed="true"]{border-color:var(--sp-fg);background:var(--sp-raise)}
+.rp svg{flex:none}
+.rp .n{font:600 12px var(--mono);overflow-wrap:anywhere;line-height:1.25}
+.rp .c{font-size:11px;color:var(--sp-mute)}
+
+/* drawer */
+.dhead{padding:12px 14px;border-bottom:1px solid var(--sp-line);display:flex;flex-direction:column;gap:4px}
+.dhead .t{font-weight:600;font-size:14.5px;line-height:1.3}
+.dhead .m{font:11.5px var(--mono);color:var(--sp-mute);overflow-wrap:anywhere}
+.dhead .meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:2px}
+.modes{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--sp-line)}
+.modes button{background:none;border:0;border-bottom:2px solid transparent;color:var(--sp-mute);padding:6px 10px;font-size:12px}
+.modes button[aria-selected="true"]{color:var(--sp-fg);border-bottom-color:var(--sp-fg)}
+.term{margin:0;padding:12px 14px;font:12px/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;min-height:220px;background:#06080f}
+.term .u{color:var(--sp-mute)}
+.chat{padding:12px 14px;display:flex;flex-direction:column;gap:10px;font-size:12.5px;min-height:220px}
+.msg{padding:8px 10px;border-radius:8px;background:var(--sp-panel);border:1px solid var(--sp-line);text-wrap:pretty}
+.msg.me{background:#1b2440;margin-left:24px}
+.card{font:11.5px var(--mono);padding:6px 10px;border:1px solid var(--sp-line);border-radius:6px;color:var(--sp-mute);display:flex;gap:8px;flex-wrap:wrap;align-items:center;overflow-wrap:anywhere}
+.card b{color:var(--sp-fg);font-weight:600}
+.pet{border:1px solid var(--c-approve);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:#1a1016}
+.pet code{font:12px var(--mono);background:#0b0e16;padding:6px 8px;border-radius:6px;display:block;overflow-wrap:anywhere}
+.acts{padding:10px 14px;border-top:1px solid var(--sp-line);display:flex;flex-direction:column;gap:8px}
+.acts .rowb{display:flex;gap:6px;flex-wrap:wrap}
+.reply{display:flex;gap:6px}
+.reply input{flex:1;min-width:0;background:var(--sp-panel);border:1px solid var(--sp-line);border-radius:6px;color:var(--sp-fg);padding:6px 8px;font:12px var(--mono)}
+.hint{font-size:11px;color:var(--sp-mute);padding:0 14px 12px;text-wrap:pretty}
+
+/* rail */
+.railbox{background:#06080f;overflow-x:auto}
+.railsvg{display:block;width:100%;height:auto;min-width:560px}
+
+/* skyline */
+.skybox{overflow-x:auto;background:linear-gradient(#050914 0,#0a1226 55%,#16213f 100%)}
+.skysvg{display:block;width:100%;height:auto;min-width:560px}
+.wf{animation:wf 2.6s steps(1) infinite}
+@keyframes wf{0%,70%{opacity:.95}78%{opacity:.35}86%,100%{opacity:.95}}
+
+/* treemap */
+.tm{display:flex;gap:6px;padding:10px 14px;height:640px}
+.tmr{display:flex;flex-direction:column;gap:4px;min-width:130px;flex-basis:0}
+.tmh{display:flex;justify-content:space-between;gap:8px;font:600 11px var(--mono);color:var(--sp-mute);letter-spacing:.06em;overflow-wrap:anywhere}
+.tmc{border:1px solid color-mix(in srgb,var(--stc) 55%,transparent);background:color-mix(in srgb,var(--stc) 14%,var(--sp-panel));border-left:4px solid var(--stc);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:5px;cursor:pointer;min-height:104px;min-width:0;overflow:hidden}
+.tmc:hover{background:color-mix(in srgb,var(--stc) 22%,var(--sp-panel))}
+.tmc.on{outline:2px solid var(--sp-fg);outline-offset:-2px}
+.tmc .t{font-weight:600;font-size:13px;display:flex;gap:6px;line-height:1.3;overflow-wrap:anywhere}
+.tmc .s{font:11px var(--mono);color:var(--sp-mute);overflow-wrap:anywhere}
+.tmc .grow{flex:1}
+.tmc .acts2{display:flex;gap:6px;flex-wrap:wrap}
+@container (max-width:760px){.tm{flex-direction:column;height:auto}.tmr,.tmc{flex:none!important}}
+
+/* console */
+.cons{display:flex;gap:16px;padding:14px;overflow-x:auto;align-items:flex-start;background:linear-gradient(#0b0f1c,#070a14)}
+.grp{display:flex;flex-direction:column;gap:8px;flex:none}
+.gh{font:600 10.5px var(--mono);letter-spacing:.14em;color:var(--gc);border-bottom:2px solid var(--gc);padding-bottom:3px;text-transform:uppercase}
+.strips{display:flex;gap:6px}
+.ch{width:94px;background:#0e1424;border:1px solid var(--sp-line);border-radius:8px;padding:9px 6px;display:flex;flex-direction:column;align-items:center;gap:9px;cursor:pointer}
+.ch:hover{border-color:var(--sp-mute)}
+.ch.on{border-color:var(--sp-fg);background:#151d33}
+.led{width:14px;height:14px;border-radius:50%;background:var(--stc);box-shadow:0 0 10px var(--stc)}
+.led.blink{animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+.vu{display:flex;flex-direction:column-reverse;gap:2px;height:92px;width:12px}
+.vu i{display:block;height:7px;background:#12303c;border-radius:1px}
+.vu.on i:nth-child(-n+4){background:var(--stc)}
+.vu.on i:nth-child(n+5):nth-child(-n+8){animation:vu 1.2s ease-in-out infinite alternate}
+.vu.on i:nth-child(6){animation-duration:.7s}.vu.on i:nth-child(7){animation-duration:1.7s}.vu.on i:nth-child(8){animation-duration:.9s}
+@keyframes vu{0%{background:#12303c}100%{background:var(--stc)}}
+.fader{position:relative;width:30px;height:130px}
+.track{position:absolute;left:50%;top:0;bottom:0;width:6px;margin-left:-3px;background:#050810;border-radius:3px;border:1px solid var(--sp-line)}
+.track b{position:absolute;left:-1px;right:-1px;top:0;height:15%;background:rgba(255,106,90,.4);border-radius:3px 3px 0 0}
+.knob{position:absolute;left:50%;width:28px;height:15px;margin-left:-14px;margin-bottom:-7px;background:linear-gradient(#d5dbe9,#8791a8);border-radius:3px;border-top:2px solid #fff}
+.knob.hot{background:linear-gradient(#ffb0a6,#d9483a)}
+.cname{font:600 11.5px/1.25 var(--sans);text-align:center;height:2.5em;overflow:hidden;overflow-wrap:anywhere}
+.lcd{font:11px var(--mono);background:#04120d;color:#6bf0a9;border-radius:3px;padding:2px 6px;width:100%;text-align:center}
+.cbtns{display:flex;gap:4px;min-height:24px;flex-wrap:wrap;justify-content:center}
+.cbtns .mbtn{padding:2px 7px;font-size:11px}
+
+/* timeline */
+.tlaxis,.tlrow{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(220px,2.4fr) minmax(140px,.9fr);gap:14px;align-items:center;padding:9px 14px}
+.tlaxis{font:600 10px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--sp-mute);border-bottom:1px solid var(--sp-line)}
+.tlaxis .ax{display:flex;justify-content:space-between}
+.tlrow{border-top:1px solid var(--sp-line);cursor:pointer;position:relative}
+.tlrow:hover{background:var(--sp-panel)}
+.tlrow.on{background:var(--sp-raise)}
+.tlrow.on::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--stc)}
+.tlrow .t{font-weight:600;font-size:13px;line-height:1.3;overflow-wrap:anywhere}
+.tlrow .s{font:11px var(--mono);color:var(--sp-mute);overflow-wrap:anywhere}
+.trk{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:2px;height:24px}
+.trk i{background:#18233a;border-radius:2px}
+.trk .h-W{background:var(--c-work)}.trk .h-N{background:var(--c-approve)}.trk .h-N.q{background:var(--c-reply)}.trk .h-D{background:var(--c-ready)}
+.trk .now{box-shadow:0 0 0 1px var(--sp-fg)}
+.tlr{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+@container (max-width:760px){.tlaxis{display:none}.tlrow{grid-template-columns:minmax(0,1fr);gap:6px}}
+.tbl{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.tbl table{border-collapse:collapse;width:100%;min-width:720px;font-size:14px}
+.tbl th{font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
+.tbl td{padding:10px 14px;border-top:1px solid var(--line);vertical-align:top;text-wrap:pretty}
+.tbl tr:first-child td{border-top:0}
+.tbl td:first-child{font-weight:600;white-space:nowrap}
+
+/* comparison */
+.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.opt{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.opt.pick{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.opt h3{font:600 20px var(--serif);margin:0}
+.opt .tag{font:600 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.opt p{margin:0;text-wrap:pretty}
+.opt h4{font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.opt ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.opt li{text-wrap:pretty}
+.take{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;max-width:78ch}
+.take p{margin:6px 0 0;text-wrap:pretty}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Strategos, <em>nine looks</em></h1>
+    <p class="lede">The same eight sessions in each. Click a session to open it, press <b>n</b> to jump to the next one that needs you, <b>t</b> to flip between terminal and chat. Approve and reply work, so you can feel how fast each look is to act on.</p>
+  </header>
+
+  <div class="switch" role="tablist" aria-label="Look">
+    <button role="tab" id="tab-dash" data-view="dash" aria-selected="true"><span class="k">A</span><span class="n">Dashboard</span><span class="w">Rows you scan top to bottom. Fastest to read.</span></button>
+    <button role="tab" id="tab-map" data-view="map" aria-selected="false"><span class="k">B</span><span class="n">Map</span><span class="w">Repos as planets, sessions in orbit, as in your mockup.</span></button>
+    <button role="tab" id="tab-hybrid" data-view="hybrid" aria-selected="false"><span class="k">C</span><span class="n">Hybrid</span><span class="w">Planets pick the repo, rows show the detail.</span></button>
+    <button role="tab" id="tab-hud" data-view="hud" aria-selected="false"><span class="k">D</span><span class="n">HUD</span><span class="w">A radial command display. Angle is repo, distance is context.</span></button>
+    <button role="tab" data-view="rail" aria-selected="false"><span class="k">E</span><span class="n">Rail</span><span class="w">Each repo is a train line. A session's train runs toward "context full".</span></button>
+    <button role="tab" data-view="sky" aria-selected="false"><span class="k">F</span><span class="n">Skyline</span><span class="w">A night city. Height is context, lit windows mean working.</span></button>
+    <button role="tab" data-view="tree" aria-selected="false"><span class="k">G</span><span class="n">Treemap</span><span class="w">Tiles sized by spend and coloured by status.</span></button>
+    <button role="tab" data-view="cons" aria-selected="false"><span class="k">H</span><span class="n">Console</span><span class="w">A mixing desk. One channel per session, the fader is context.</span></button>
+    <button role="tab" data-view="tl" aria-selected="false"><span class="k">I</span><span class="n">Timeline</span><span class="w">The last hour of every session, so waiting time shows.</span></button>
+  </div>
+
+  <div class="win" id="win" aria-live="polite"></div>
+
+  <section>
+    <h2>The first four, compared</h2>
+    <div class="cmp">
+      <div class="opt">
+        <span class="tag">A · Dashboard</span>
+        <h3>Reads fastest</h3>
+        <p>Every session is a line with status, current tool, context and cost in fixed columns. Your eye finds the red ones without hunting.</p>
+        <div><h4>Good for</h4><ul><li>10 to 30 sessions at once</li><li>Keyboard use and inline approve</li><li>Cheapest to build and maintain</li></ul></div>
+        <div><h4>Gives up</h4><ul><li>The strategy-game feel. It looks like mission control, not a campaign.</li></ul></div>
+      </div>
+      <div class="opt">
+        <span class="tag">B · Map</span>
+        <h3>Most distinctive</h3>
+        <p>Each repo is a planet and each session orbits it. Colour and glyph carry status, a ring around the token carries context fill.</p>
+        <div><h4>Good for</h4><ul><li>Seeing which repo is busy</li><li>Feeling like a different product</li><li>Short lists, about 4 to 12 sessions</li></ul></div>
+        <div><h4>Gives up</h4><ul><li>Position means nothing, so you read labels anyway</li><li>Gets crowded past about 12 sessions</li><li>No room for last-message text</li></ul></div>
+      </div>
+      <div class="opt pick">
+        <span class="tag">C · Hybrid · my pick</span>
+        <h3>Map as navigator</h3>
+        <p>The planets act as the repo picker and give a one-glance count. The rows underneath carry everything you need to act.</p>
+        <div><h4>Good for</h4><ul><li>Glance first, detail one click away</li><li>Keeps a bit of the game look</li><li>The map can be improved later without touching the rows</li></ul></div>
+        <div><h4>Gives up</h4><ul><li>Slightly more to build than A alone</li><li>Less dramatic than a full map</li></ul></div>
+      </div>
+      <div class="opt">
+        <span class="tag">D · HUD</span>
+        <h3>The grand overview</h3>
+        <p>The whole fleet on one radial display. Each repo owns a quadrant, and a session sits further out the fuller its context is, so trouble drifts toward the red rim.</p>
+        <div><h4>Good for</h4><ul><li>Position that means something: angle is repo, distance is context</li><li>Spotting context pressure before it bites</li><li>A screen you leave on a second monitor</li></ul></div>
+        <div><h4>Gives up</h4><ul><li>Less text per session than rows</li><li>Labels crowd past about 16 sessions</li><li>More effort to build and keep smooth</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The five new ones</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Look</th><th>What position and size mean</th><th>Best at</th><th>Gives up</th></tr></thead>
+      <tbody>
+        <tr><td>E · Rail</td><td>Each repo is a line. A train's distance along it is the context it has used, and the last stretch is red.</td><td>Reading context pressure per repo in one sweep. A held signal marks a session waiting on you.</td><td>Only one number per session on the axis. Two trains with the same context overlap.</td></tr>
+        <tr><td>F · Skyline</td><td>Each repo is a district. A building's height is its context. Window light shows what it is doing.</td><td>The most memorable look. Reads as a city you manage, and a red beacon is hard to miss.</td><td>Back buildings can hide behind front ones. Hardest to build well.</td></tr>
+        <tr><td>G · Treemap</td><td>Tile area is spend. Colour is status. Tiles group by repo.</td><td>Finding the session eating your budget. Needs-you tiles can carry buttons right on them.</td><td>Says nothing about time or order. A cheap, urgent session gets a small tile.</td></tr>
+        <tr><td>H · Console</td><td>One channel strip per session. The fader is context, the meter moves while it works, the LED is status.</td><td>Feels like running something live. Approve and stop are physical buttons on each strip.</td><td>Wide: about 12 strips fit before you scroll sideways.</td></tr>
+        <tr><td>I · Timeline</td><td>One row per session, one cell per 5 minutes of the last hour. Left is older.</td><td>Seeing who sat waiting on you, and for how long. Long red runs are your bottlenecks.</td><td>Shows history, not the current picture. Needs a day of data collection before it is useful.</td></tr>
+      </tbody></table></div>
+  </section>
+
+  <section class="take">
+    <h2>What I would build first</h2>
+    <p>Start with A, but build the repo chips from C into it from day one. That gives you the fast list now and a path to the full map later, because the map and the HUD only need the same session data the rows already use. If you want the HUD as the hero, I would keep the rows one keypress away for reading what a session actually said. Your goal is seeing everything at a glance in a window that replaces Claude, so scan speed matters more than the scenery.</p>
+  </section>
+</div>
+
+<script>
+const ST={
+  permission:{g:'◆',l:'Needs permission',c:'var(--c-approve)',cls:'tint-approve'},
+  question:{g:'?',l:'Has a question',c:'var(--c-reply)',cls:'tint-reply'},
+  working:{g:'●',l:'Working',c:'var(--c-work)',cls:'tint-work'},
+  done:{g:'✓',l:'Done',c:'var(--c-ready)',cls:'tint-ready'},
+  idle:{g:'○',l:'Stopped',c:'var(--c-crash)',cls:'tint-crash'}
+};
+const REPOS=['strategos-app','api-gateway','mobile-app','docs-site'];
+const PLANET=['#3a4c8a','#5a3f7a','#2f6a6a','#7a5a3a'];
+const SEED=[
+ {id:1,repo:0,branch:'feat/pty-host',name:'Wire the ConPTY host',st:'permission',ctx:71,cost:3.42,now:'Bash: cargo build --release',cmd:'cargo build --release',last:'I need to build to check the PTY bindings compile.',wait:2},
+ {id:2,repo:0,branch:'fix/hook-race',name:'Fix hook race',st:'working',ctx:38,cost:1.10,now:'Edit src/hooks.rs',last:'Switching the status writer to atomic renames.',wait:0},
+ {id:3,repo:0,branch:'main',name:'Review PR 41',st:'done',ctx:55,cost:0.87,now:'',last:'Review finished: two minor issues in the diff.',wait:9},
+ {id:4,repo:1,branch:'feat/rate-limit',name:'Rate limit middleware',st:'question',ctx:63,cost:2.15,now:'',last:'Should the limit apply per API key or per IP address?',wait:4},
+ {id:5,repo:1,branch:'fix/cors',name:'CORS headers',st:'working',ctx:24,cost:0.43,now:'Read test/cors.spec.ts',last:'Running the failing spec to see the exact error.',wait:0},
+ {id:6,repo:2,branch:'feat/onboarding',name:'Onboarding flow',st:'permission',ctx:88,cost:5.60,now:'Bash: npm install react-native-reanimated',cmd:'npm install react-native-reanimated',last:'The animation needs react-native-reanimated.',wait:1},
+ {id:7,repo:2,branch:'chore/deps',name:'Dependency bumps',st:'idle',ctx:12,cost:0.21,now:'',last:'Stopped by you.',wait:41},
+ {id:8,repo:3,branch:'feat/search',name:'Search page',st:'working',ctx:47,cost:1.32,now:'Write components/Search.tsx',last:'Building the search results list.',wait:0}
+];
+const HIST={1:'WWWWWWWWWWWN',2:'IIWWWWWWWWWW',3:'WWWWWWWWNWDD',4:'IIWWWWWWWWWN',5:'IIIIIIIIIWWW',6:'WWWWWWWWWWWN',7:'WWWWIIIIIIII',8:'IIIIWWWWWWWW'};
+SEED.forEach(s=>s.hist=HIST[s.id]);
+const LINEC=['#7b93ff','#c58bff','#35e0c8','#ffc857'];
+let S,sel,view='dash',mode='term',filter=-1,toast='';
+const $=s=>document.querySelector(s);
+const rank=s=>({permission:0,question:0,working:1,done:2,idle:3})[s.st];
+function reset(){S=JSON.parse(JSON.stringify(SEED));sel=1;mode='term';filter=-1;toast=''}
+function order(list){return [...(list||S)].sort((a,b)=>rank(a)-rank(b)||(rank(a)===0?b.wait-a.wait:a.id-b.id))}
+const need=s=>s.st==='permission'||s.st==='question';
+const money=n=>'$'+n.toFixed(2);
+const ctxColor=p=>p>=85?'var(--c-approve)':p>=70?'var(--c-reply)':'var(--c-work)';
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const get=id=>S.find(s=>s.id===id);
+
+function summary(){
+  const n=S.filter(need).length,w=S.filter(s=>s.st==='working').length,d=S.filter(s=>s.st==='done').length,i=S.filter(s=>s.st==='idle').length;
+  const tot=S.reduce((a,s)=>a+s.cost,0);
+  return `<div class="sumbar"><span class="need">◆ ${n} need${n===1?'s':''} you</span>
+    <span class="m"><b class="tint-work">${w}</b> working</span><span class="m"><b class="tint-ready">${d}</b> done</span><span class="m"><b>${i}</b> stopped</span>
+    <span class="sp"></span><span class="m">Spend today <b>${money(tot)}</b></span></div>`;
+}
+function needStrip(){
+  const L=order().filter(need);
+  if(!L.length)return `<div class="strip"><h4>Needs you</h4><span class="dim" style="font-size:12.5px">Nothing waiting. All clear.</span></div>`;
+  return `<div class="strip"><h4>Needs you</h4>${L.map(s=>`<button class="nchip ${s.id===sel?'on':''}" data-sid="${s.id}"><span class="g ${ST[s.st].cls}">${ST[s.st].g}</span><span>${esc(s.name)}<br><small>${REPOS[s.repo]} · waiting ${s.wait}m</small></span></button>`).join('')}</div>`;
+}
+
+/* dashboard rows */
+function rowHtml(s){
+  const st=ST[s.st];
+  const inl=s.st==='permission'?`<div class="inl"><code class="mono" style="font-size:11.5px">${esc(s.cmd)}</code><button class="mbtn primary" data-act="approve" data-sid="${s.id}">Approve</button><button class="mbtn danger" data-act="deny" data-sid="${s.id}">Deny</button></div>`
+    :s.st==='question'?`<div class="inl"><span class="q">Waiting for your answer</span><button class="mbtn" data-act="focusreply" data-sid="${s.id}">Reply</button></div>`:'';
+  return `<div class="row ${s.id===sel?'on':''}" data-sid="${s.id}" tabindex="0" style="--stc:${st.c}" aria-label="${esc(s.name)}, ${st.l}">
+    <span class="g" title="${st.l}">${st.g}</span>
+    <div class="c-name"><div class="t">${esc(s.name)}</div><div class="s">${REPOS[s.repo]} · ${esc(s.branch)}</div></div>
+    <div class="c-now now">${s.now?esc(s.now):'<span style="opacity:.6">'+st.l+(need(s)||s.st==='done'?' · '+s.wait+'m':'')+'</span>'}</div>
+    <div class="c-last last">${esc(s.last)}</div>
+    <div class="c-ctx ctx"><div class="bar"><i style="width:${s.ctx}%;background:${ctxColor(s.ctx)}"></i></div><span>${s.ctx}%</span></div>
+    <div class="c-cost cost">${money(s.cost)}</div>
+    ${inl}</div>`;
+}
+function rowsHead(){return `<div class="rowhead"><span></span><span>Session</span><span>Doing now</span><span>Last message</span><span>Context</span><span style="text-align:right">Cost</span></div>`}
+function dash(){
+  return `${needStrip()}<div class="rows">${rowsHead()}${order().map(rowHtml).join('')}</div>`;
+}
+
+/* map */
+function mapSvg(){
+  const W=760,H=510,cx=[190,570,190,570],cy=[118,118,360,360],OR=80;
+  let o=`<svg class="map" viewBox="0 0 ${W} ${H}" role="group" aria-label="Campaign map of repos and sessions"><defs>`;
+  PLANET.forEach((c,i)=>{o+=`<radialGradient id="pg${i}" cx="35%" cy="30%"><stop offset="0" stop-color="${c}"/><stop offset="1" stop-color="#0c1020"/></radialGradient>`});
+  o+='</defs>';
+  for(let k=0;k<70;k++){const x=(k*137.5)%W,y=(k*71.3+20)%H;o+=`<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${k%7===0?1.2:.7}" fill="#6b7694" opacity=".35"/>`}
+  REPOS.forEach((r,i)=>{
+    const L=order(S.filter(s=>s.repo===i));
+    o+=`<g class="drift" style="transform-origin:${cx[i]}px ${cy[i]}px"><circle cx="${cx[i]}" cy="${cy[i]}" r="${OR}" fill="none" stroke="#2a3350" stroke-dasharray="3 6"/></g>`;
+    o+=`<circle cx="${cx[i]}" cy="${cy[i]}" r="34" fill="url(#pg${i})" stroke="#2a3350"/>`;
+    const p=r.split('-');
+    o+=`<text x="${cx[i]}" y="${cy[i]-1}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="600" fill="#e8ecf2">${p[0]}</text><text x="${cx[i]}" y="${cy[i]+12}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10.5" fill="#b9c0d4">${p[1]}</text>`;
+    L.forEach((s,j)=>{
+      const a=-Math.PI/2+j*(2*Math.PI/L.length)+(L.length===1?Math.PI/2:0);
+      const x=cx[i]+OR*Math.cos(a),y=cy[i]+OR*Math.sin(a),st=ST[s.st],C=2*Math.PI*20;
+      o+=`<g class="tok" data-sid="${s.id}" tabindex="0" role="button" aria-label="${esc(s.name)}, ${st.l}, context ${s.ctx} percent">`;
+      if(need(s))o+=`<circle class="pulse" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="16" fill="none" stroke="${st.c}" stroke-width="2"/>`;
+      o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="20" fill="none" stroke="#222a3f" stroke-width="3"/>`;
+      o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="20" fill="none" stroke="${ctxColor(s.ctx)}" stroke-width="3" stroke-dasharray="${(C*s.ctx/100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 ${x.toFixed(1)} ${y.toFixed(1)})" opacity=".85"/>`;
+      o+=`<circle class="ring" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14.5" fill="#161d33" stroke="${st.c}" stroke-width="3"/>`;
+      if(s.id===sel)o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="25.5" fill="none" stroke="#e8ecf2" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+      o+=`<text x="${x.toFixed(1)}" y="${(y+5).toFixed(1)}" text-anchor="middle" font-size="14" fill="${st.c}">${st.g}</text>`;
+      const lab=s.name.length>20?s.name.slice(0,19)+'…':s.name;
+      o+=`<text x="${x.toFixed(1)}" y="${(y+37).toFixed(1)}" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="11" font-weight="600" fill="#e8ecf2" stroke="#06080f" stroke-width="3" paint-order="stroke">${esc(lab)}</text>`;
+      o+=`<text x="${x.toFixed(1)}" y="${(y+49).toFixed(1)}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#9aa3ba" stroke="#06080f" stroke-width="3" paint-order="stroke">${s.ctx}% · ${money(s.cost)}</text></g>`;
+    });
+  });
+  return o+'</svg>';
+}
+function map(){
+  return `${needStrip()}<div class="mapbox">${mapSvg()}</div>
+   <div class="foot" style="border-top:1px solid var(--sp-line)"><span>Ring colour: status</span><span>Outer arc: context used</span><span>Pulse: waiting on you</span></div>`;
+}
+
+/* hybrid */
+function miniPlanet(i){
+  const L=S.filter(s=>s.repo===i);let o='<svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="19" fill="none" stroke="#2a3350" stroke-dasharray="2 4"/>';
+  o+=`<circle cx="24" cy="24" r="9" fill="${PLANET[i]}"/>`;
+  L.forEach((s,j)=>{const a=-Math.PI/2+j*2*Math.PI/L.length,x=24+19*Math.cos(a),y=24+19*Math.sin(a);o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="${ST[s.st].c}"/>`});
+  return o+'</svg>';
+}
+function hybrid(){
+  const chips=[-1,0,1,2,3].map(i=>{
+    const L=i<0?S:S.filter(s=>s.repo===i),n=L.filter(need).length;
+    return `<button class="rp" data-filter="${i}" aria-pressed="${filter===i}">${i<0?'<svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="10" fill="none" stroke="#8b94aa" stroke-width="2"/><circle cx="24" cy="24" r="3" fill="#8b94aa"/></svg>':miniPlanet(i)}<span><span class="n">${i<0?'All repos':REPOS[i]}</span><br><span class="c">${L.length} sessions${n?` · <b class="tint-approve">${n} need you</b>`:''}</span></span></button>`}).join('');
+  const L=order(filter<0?S:S.filter(s=>s.repo===filter));
+  return `<div class="repos">${chips}</div>${needStrip()}<div class="rows">${rowsHead()}${L.map(rowHtml).join('')}</div>`;
+}
+
+/* shared bits for the newer looks */
+const quick=s=>s.st==='permission'?`<button class="mbtn primary" data-act="approve" data-sid="${s.id}">Approve</button><button class="mbtn danger" data-act="deny" data-sid="${s.id}">Deny</button>`
+  :s.st==='question'?`<button class="mbtn" data-act="focusreply" data-sid="${s.id}">Reply</button>`:'';
+const pts=a=>a.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+
+/* E · Rail: one line per repo, a train's distance along it is context used */
+function rail(){
+  const W=760,H=480,x0=96,x1=696,len=x1-x0;
+  let o=`<svg class="railsvg" viewBox="0 0 ${W} ${H}" role="group" aria-label="One train line per repo. A train's position is the context it has used.">`;
+  REPOS.forEach((r,i)=>{
+    const y=84+i*100,L=S.filter(s=>s.repo===i),c=LINEC[i];
+    o+=`<text x="24" y="${y-34}" font-family="JetBrains Mono,monospace" font-size="11" font-weight="600" letter-spacing="1.4" fill="${c}">${r.toUpperCase()}</text>`;
+    o+=`<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="${c}" stroke-opacity=".3" stroke-width="10" stroke-linecap="round"/>`;
+    o+=`<line x1="${x0+len*.85}" y1="${y}" x2="${x1}" y2="${y}" stroke="#ff6a5a" stroke-opacity=".55" stroke-width="10" stroke-linecap="round"/>`;
+    [0,25,50,75,100].forEach(k=>{o+=`<circle cx="${x0+len*k/100}" cy="${y}" r="${k%100===0?6:4}" fill="#06080f" stroke="#e8ecf2" stroke-width="2"/>`});
+    L.forEach((s,j)=>{
+      const x=x0+len*s.ctx/100,st=ST[s.st],up=j%2===0,lx=Math.max(96,Math.min(676,x-24));
+      o+=`<g class="tok" data-sid="${s.id}" tabindex="0" role="button" aria-label="${esc(s.name)}, ${st.l}, context ${s.ctx} percent">`;
+      if(s.id===sel)o+=`<rect x="${x-76}" y="${y-17}" width="104" height="34" rx="8" fill="none" stroke="#e8ecf2" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+      o+=`<rect x="${x-70}" y="${y-9}" width="28" height="18" rx="4" fill="${st.c}" opacity=".45"/>`;
+      o+=`<rect class="ring" x="${x-38}" y="${y-11}" width="52" height="22" rx="6" fill="${st.c}" stroke="#06080f" stroke-width="2"/><polygon points="${x+14},${y-11} ${x+25},${y} ${x+14},${y+11}" fill="${st.c}"/>`;
+      o+=`<text x="${x-12}" y="${y+5}" text-anchor="middle" font-size="14" font-weight="700" fill="#06080f">${st.g}</text>`;
+      if(need(s)){o+=`<line x1="${x+42}" y1="${y+2}" x2="${x+42}" y2="${y-20}" stroke="#e8ecf2" stroke-width="2"/><circle class="pulse" cx="${x+42}" cy="${y-24}" r="6" fill="none" stroke="${st.c}" stroke-width="2"/><circle cx="${x+42}" cy="${y-24}" r="5" fill="${st.c}"/>`}
+      const ny=up?y-30:y+34,sy=up?y-19:y+45,lab=s.name.length>17?s.name.slice(0,16)+'…':s.name;
+      o+=`<text x="${lx}" y="${ny}" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="11.5" font-weight="600" fill="#e8ecf2" stroke="#06080f" stroke-width="3" paint-order="stroke">${esc(lab)}</text>`;
+      o+=`<text x="${lx}" y="${sy}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#9aa3ba" stroke="#06080f" stroke-width="3" paint-order="stroke">${s.ctx}% · ${money(s.cost)}${need(s)?' · held '+s.wait+'m':''}</text></g>`;
+    });
+  });
+  o+=`<line x1="${x0}" y1="${H-26}" x2="${x1}" y2="${H-26}" stroke="#2a3350"/>`;
+  [[0,'EMPTY'],[25,'25%'],[50,'50%'],[75,'75%'],[100,'FULL']].forEach(([k,t])=>{const x=x0+len*k/100;o+=`<line x1="${x}" y1="${H-31}" x2="${x}" y2="${H-21}" stroke="#2a3350"/><text x="${x}" y="${H-8}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.5" fill="${k===100?'#ff8a7a':'#8b94aa'}">${t}</text>`});
+  return o+'</svg>';
+}
+function railView(){return `${needStrip()}<div class="railbox">${rail()}</div><div class="foot"><span>Position: context used</span><span>Red stretch: past 85%</span><span>Signal: held, waiting on you</span></div>`}
+
+/* F · Skyline: isometric city, height = context, windows = activity, beacon = needs you */
+function sky(){
+  const T=50,CX0=276,CY0=228,W=760,H=620;
+  const P=(x,y,z)=>[CX0+(x-y)*.866*T,CY0+(x+y)*.5*T-z];
+  const ox=[0,5.8,0,5.8],oy=[0,0,3.8,3.8];
+  let o=`<svg class="skysvg" viewBox="0 0 ${W} ${H}" role="group" aria-label="A city with one district per repo. A building's height is its context.">`;
+  for(let k=0;k<46;k++)o+=`<circle cx="${((k*211)%W).toFixed(0)}" cy="${((k*97)%230).toFixed(0)}" r="${k%6===0?1.3:.7}" fill="#9fb4e8" opacity=".45"/>`;
+  REPOS.forEach((r,i)=>{
+    const a=ox[i]-.4,b=oy[i]-.5,c=ox[i]+4.0,d=oy[i]+1.5;
+    o+=`<polygon points="${pts([P(a,b,0),P(c,b,0),P(c,d,0),P(a,d,0)])}" fill="#0a1a2a" stroke="${LINEC[i]}" stroke-opacity=".55"/>`;
+    const [lx,ly]=P(ox[i]+1.8,d+.1,0);
+    o+=`<text x="${lx.toFixed(1)}" y="${(ly+15).toFixed(1)}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="600" letter-spacing="1.4" fill="${LINEC[i]}">${r.toUpperCase()}</text>`;
+  });
+  const B=[];
+  REPOS.forEach((r,i)=>S.filter(s=>s.repo===i).forEach((s,j)=>B.push({s,x:ox[i]+j*1.4,y:oy[i]+.2,h:26+s.ctx*1.5})));
+  B.sort((p,q)=>(p.x+p.y)-(q.x+q.y)||p.x-q.x);
+  B.forEach(({s,x,y,h})=>{
+    const st=ST[s.st],sh=s.id===sel;
+    const top=[P(x,y,h),P(x+1,y,h),P(x+1,y+1,h),P(x,y+1,h)];
+    o+=`<g class="tok" data-sid="${s.id}" tabindex="0" role="button" aria-label="${esc(s.name)}, ${st.l}, context ${s.ctx} percent">`;
+    o+=`<polygon class="ring" points="${pts([P(x,y+1,0),P(x+1,y+1,0),P(x+1,y+1,h),P(x,y+1,h)])}" fill="#0d1b2b" stroke="${sh?'#e8ecf2':'#2a4a66'}" stroke-width="${sh?2:1}"/>`;
+    o+=`<polygon points="${pts([P(x+1,y,0),P(x+1,y+1,0),P(x+1,y+1,h),P(x+1,y,h)])}" fill="#142840" stroke="${sh?'#e8ecf2':'#2a4a66'}" stroke-width="${sh?2:1}"/>`;
+    o+=`<polygon points="${pts(top)}" fill="#1c3a52" stroke="${sh?'#e8ecf2':'#2a4a66'}" stroke-width="${sh?2:1}"/><polygon points="${pts(top)}" fill="${st.c}" opacity=".5"/>`;
+    const fl=Math.floor((h-10)/14);
+    for(let f=0;f<fl;f++)for(let c=0;c<3;c++)for(let face=0;face<2;face++){
+      const u0=.14+c*.28,u1=u0+.17,v0=7+f*14,v1=v0+8,rnd=(s.id*7+f*3+c*5+face)%10;
+      const q=face===0?[P(x+u0,y+1,v0),P(x+u1,y+1,v0),P(x+u1,y+1,v1),P(x+u0,y+1,v1)]:[P(x+1,y+u0,v0),P(x+1,y+u1,v0),P(x+1,y+u1,v1),P(x+1,y+u0,v1)];
+      let col='#0a1624',cl='';
+      if(s.st==='working'&&rnd<7){col='#9fd0ff';cl=' class="wf"'}
+      else if(need(s)&&rnd<5)col='#ffb347';
+      else if(s.st==='done'&&rnd<3)col='#7ff0b5';
+      o+=`<polygon points="${pts(q)}" fill="${col}"${cl}${cl?` style="animation-delay:${(rnd*.37).toFixed(2)}s"`:''}/>`;
+    }
+    if(need(s)){const [bx,by]=P(x+.5,y+.5,h);o+=`<line x1="${bx.toFixed(1)}" y1="${by.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${(by-18).toFixed(1)}" stroke="#e8ecf2"/><circle class="pulse" cx="${bx.toFixed(1)}" cy="${(by-20).toFixed(1)}" r="6" fill="none" stroke="${st.c}" stroke-width="2"/><circle cx="${bx.toFixed(1)}" cy="${(by-20).toFixed(1)}" r="4" fill="${st.c}"/>`}
+    o+='</g>';
+  });
+  B.forEach(({s,x,y,h})=>{const [bx,by]=P(x+.5,y+.5,h),ty=by-(need(s)?36:16),lab=s.name.length>17?s.name.slice(0,16)+'…':s.name;
+    o+=`<g pointer-events="none"><text x="${bx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="11" font-weight="600" fill="#e8ecf2" stroke="#050914" stroke-width="3" paint-order="stroke">${esc(lab)}</text><text x="${bx.toFixed(1)}" y="${(ty+11).toFixed(1)}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#9aa3ba" stroke="#050914" stroke-width="3" paint-order="stroke">${s.ctx}% · ${money(s.cost)}</text></g>`});
+  return o+'</svg>';
+}
+function skyView(){return `${needStrip()}<div class="skybox">${sky()}</div><div class="foot"><span>Height: context used</span><span>Lit windows: working</span><span>Beacon: waiting on you</span><span>Amber windows: blocked</span></div>`}
+
+/* G · Treemap: area = spend, colour = status */
+function treeView(){
+  const rc=REPOS.map((r,i)=>S.filter(s=>s.repo===i).reduce((a,s)=>a+s.cost,0));
+  const cell=s=>{const st=ST[s.st];
+    return `<div class="tmc ${s.id===sel?'on':''}" data-sid="${s.id}" tabindex="0" role="button" style="flex:${s.cost} 1 0;--stc:${st.c};${s.st==='permission'?'min-height:132px':''}" aria-label="${esc(s.name)}, ${st.l}, ${money(s.cost)}">
+      <div class="t"><span class="${st.cls}">${st.g}</span><span>${esc(s.name)}</span></div><div class="s">${esc(s.branch)}</div>
+      <div class="ctx"><div class="bar"><i style="width:${s.ctx}%;background:${ctxColor(s.ctx)}"></i></div><span>${s.ctx}%</span></div>
+      <div class="grow"></div><div class="acts2"><span class="mono" style="font-size:12px">${money(s.cost)}</span>${quick(s)}</div></div>`};
+  return `${needStrip()}<div class="tm">${REPOS.map((r,i)=>`<div class="tmr" style="flex:${rc[i]} 1 0"><div class="tmh"><b>${r}</b><span>${money(rc[i])}</span></div>${order(S.filter(s=>s.repo===i)).map(cell).join('')}</div>`).join('')}</div>
+    <div class="foot"><span>Tile area: spend</span><span>Colour: status</span><span>Bar: context used</span></div>`;
+}
+
+/* H · Console: a channel strip per session */
+function consView(){
+  const strip=s=>{const st=ST[s.st];
+    const btn=s.st==='permission'?`<button class="mbtn primary" data-act="approve" data-sid="${s.id}" title="Approve">OK</button><button class="mbtn danger" data-act="deny" data-sid="${s.id}" title="Deny">No</button>`
+      :s.st==='question'?`<button class="mbtn" data-act="focusreply" data-sid="${s.id}">Reply</button>`
+      :s.st==='working'?`<button class="mbtn" data-act="interrupt" data-sid="${s.id}" title="Interrupt">Stop</button>`
+      :s.st==='done'?`<button class="mbtn" data-act="diff" data-sid="${s.id}">Diff</button>`:`<button class="mbtn" data-act="resume" data-sid="${s.id}">Run</button>`;
+    return `<div class="ch ${s.id===sel?'on':''}" data-sid="${s.id}" tabindex="0" role="button" style="--stc:${st.c}" aria-label="${esc(s.name)}, ${st.l}, context ${s.ctx} percent">
+      <div class="led ${need(s)?'blink':''}" title="${st.l}"></div>
+      <div class="vu ${s.st==='working'?'on':''}">${'<i></i>'.repeat(10)}</div>
+      <div class="fader" title="Context ${s.ctx}%"><div class="track"><b></b></div><div class="knob ${s.ctx>=85?'hot':''}" style="bottom:${s.ctx}%"></div></div>
+      <div class="cname">${esc(s.name)}</div><div class="lcd">${s.ctx}% · ${money(s.cost)}</div><div class="cbtns">${btn}</div></div>`};
+  return `${needStrip()}<div class="cons">${REPOS.map((r,i)=>`<div class="grp" style="--gc:${LINEC[i]}"><div class="gh">${r}</div><div class="strips">${S.filter(s=>s.repo===i).map(strip).join('')}</div></div>`).join('')}</div>
+    <div class="foot"><span>LED: status</span><span>Meter: moves while working</span><span>Fader: context used, red zone past 85%</span></div>`;
+}
+
+/* I · Timeline: the last hour in 5 minute cells */
+function tlView(){
+  const row=s=>{const st=ST[s.st];
+    const cells=[...s.hist].map((c,k)=>`<i class="h-${c}${c==='N'&&s.st==='question'?' q':''}${k===11?' now':''}" title="${c==='W'?'Working':c==='N'?'Waiting on you':c==='D'?'Done':'Idle'}"></i>`).join('');
+    return `<div class="tlrow ${s.id===sel?'on':''}" data-sid="${s.id}" tabindex="0" role="button" style="--stc:${st.c}" aria-label="${esc(s.name)}, ${st.l}">
+      <div><div class="t">${esc(s.name)}</div><div class="s">${REPOS[s.repo]} · ${esc(s.branch)}</div></div>
+      <div class="trk">${cells}</div>
+      <div class="tlr"><span class="pill ${st.cls}">${st.g} ${need(s)?'waiting '+s.wait+'m':st.l}</span>${quick(s)}</div></div>`};
+  return `${needStrip()}<div class="tlaxis"><span>Session</span><span class="ax"><span>−60 min</span><span>−30</span><span>now</span></span><span>State</span></div>
+    ${REPOS.map((r,i)=>`<div class="repohead"><span>${r.toUpperCase()}</span></div>${S.filter(s=>s.repo===i).map(row).join('')}`).join('')}
+    <div class="foot"><span><b class="tint-work">■</b> working</span><span><b class="tint-approve">■</b> waiting on you (permission)</span><span><b class="tint-reply">■</b> waiting on you (question)</span><span><b class="tint-ready">■</b> done</span><span>Each cell is 5 minutes. Sample data.</span></div>`;
+}
+
+/* HUD: angle = repo quadrant, distance from the core = context used */
+function hud(){
+  const W=760,H=600,CX=380,CY=300,R0=70,K=1.7,rad=d=>d*Math.PI/180,rr=c=>R0+c*K;
+  const centers=[-135,-45,45,135],cyan='#4de8ff';
+  const P=(a,r)=>[CX+r*Math.cos(rad(a)),CY+r*Math.sin(rad(a))];
+  let o=`<svg class="hudsvg" viewBox="0 0 ${W} ${H}" role="group" aria-label="Radial overview of all sessions"><defs><linearGradient id="swp" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${cyan}" stop-opacity="0"/><stop offset="1" stop-color="${cyan}" stop-opacity=".22"/></linearGradient></defs>`;
+  // danger band, rings and sector spokes
+  o+=`<circle cx="${CX}" cy="${CY}" r="${rr(92.5)}" fill="none" stroke="#ff6a5a" stroke-opacity=".09" stroke-width="${15*K}"/>`;
+  [0,25,50,75,100].forEach(c=>{
+    o+=`<circle cx="${CX}" cy="${CY}" r="${rr(c)}" fill="none" stroke="${cyan}" stroke-opacity="${c===100?.55:.2}" stroke-width="${c===100?1.4:1}" ${c===50?'stroke-dasharray="2 5"':''}/>`;
+    if(c>0)o+=`<text x="${CX+4}" y="${CY-rr(c)-3}" font-family="JetBrains Mono,monospace" font-size="9" fill="${c>=75?'#ff8a7a':'#6aa6b8'}">${c}%</text>`;
+  });
+  [-90,0,90,180].forEach(a=>{const [x1,y1]=P(a,R0-14),[x2,y2]=P(a,rr(100)+14);o+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${cyan}" stroke-opacity=".22" stroke-dasharray="4 5"/>`});
+  o+=`<g class="drift" style="transform-origin:${CX}px ${CY}px"><circle cx="${CX}" cy="${CY}" r="${rr(100)+8}" fill="none" stroke="${cyan}" stroke-opacity=".35" stroke-dasharray="1 9" stroke-width="3"/></g>`;
+  const [sx,sy]=P(-60,rr(100));
+  o+=`<g class="sweep" style="transform-origin:${CX}px ${CY}px"><path d="M${CX} ${CY} L${CX} ${CY-rr(100)} A${rr(100)} ${rr(100)} 0 0 1 ${sx.toFixed(1)} ${sy.toFixed(1)} Z" fill="url(#swp)"/><line x1="${CX}" y1="${CY}" x2="${sx.toFixed(1)}" y2="${sy.toFixed(1)}" stroke="${cyan}" stroke-opacity=".7"/></g>`;
+  // core: status donut
+  const tot=S.length,C=2*Math.PI*46;let acc=0;
+  o+=`<circle cx="${CX}" cy="${CY}" r="56" fill="#04101a" stroke="${cyan}" stroke-opacity=".5"/>`;
+  Object.keys(ST).forEach(k=>{const n=S.filter(s=>s.st===k).length;if(!n)return;const len=Math.max(2,C*n/tot-3);
+    o+=`<circle cx="${CX}" cy="${CY}" r="46" fill="none" stroke="${ST[k].c}" stroke-width="7" stroke-dasharray="${len.toFixed(1)} ${(C-len).toFixed(1)}" stroke-dashoffset="${(-acc).toFixed(1)}" transform="rotate(-90 ${CX} ${CY})"/>`;acc+=C*n/tot});
+  o+=`<text x="${CX}" y="${CY+8}" text-anchor="middle" font-family="Rajdhani,sans-serif" font-weight="700" font-size="30" fill="#d6f7ff">${tot}</text><text x="${CX}" y="${CY+22}" text-anchor="middle" font-family="Rajdhani,sans-serif" font-weight="600" font-size="9.5" letter-spacing="2.4" fill="#6aa6b8">SESSIONS</text><text x="${CX}" y="${CY-14}" text-anchor="middle" font-family="Rajdhani,sans-serif" font-weight="600" font-size="9.5" letter-spacing="2.4" fill="${cyan}">FLEET</text>`;
+  // repo corner readouts
+  const corners=[[18,30,'start'],[W-18,30,'end'],[W-18,H-32,'end'],[18,H-32,'start']];
+  REPOS.forEach((r,i)=>{
+    const L=S.filter(s=>s.repo===i),n=L.filter(need).length,[x,y,an]=corners[i];
+    o+=`<text x="${x}" y="${y}" text-anchor="${an}" font-family="Rajdhani,sans-serif" font-weight="700" font-size="16" letter-spacing="2.6" fill="#d6f7ff">${r.toUpperCase()}</text>`;
+    o+=`<text x="${x}" y="${y+15}" text-anchor="${an}" font-family="JetBrains Mono,monospace" font-size="10" fill="${n?'#ff8a7a':'#6aa6b8'}">${L.length} SESSIONS${n?' · '+n+' NEED YOU':''}</text>`;
+    const bx=an==='start'?x:x-70;
+    o+=`<rect x="${bx}" y="${y+22}" width="70" height="3" fill="#0d2a38"/><rect x="${bx}" y="${y+22}" width="${(70*L.reduce((a,s)=>a+s.ctx,0)/L.length/100).toFixed(1)}" height="3" fill="${cyan}"/>`;
+  });
+  // tethers, then nodes
+  const pos={};
+  REPOS.forEach((r,i)=>{const L=S.filter(s=>s.repo===i),n=L.length,step=n>1?Math.min(34,56/(n-1)):0;
+    L.forEach((s,j)=>{pos[s.id]=P(centers[i]+(j-(n-1)/2)*step,rr(s.ctx))})});
+  S.forEach(s=>{const [x,y]=pos[s.id];o+=`<line x1="${CX}" y1="${CY}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${s.id===sel?cyan:ST[s.st].c}" stroke-opacity="${s.id===sel?.8:.16}" ${s.id===sel?'stroke-dasharray="5 4"':''}/>`});
+  S.forEach(s=>{
+    const [x,y]=pos[s.id],st=ST[s.st],hex=[0,1,2,3,4,5].map(k=>{const a=rad(60*k-30);return (x+14*Math.cos(a)).toFixed(1)+','+(y+14*Math.sin(a)).toFixed(1)}).join(' ');
+    const right=x>=CX,lx=x+(right?22:-22),an=right?'start':'end',lab=s.name.length>21?s.name.slice(0,20)+'…':s.name;
+    o+=`<g class="tok" data-sid="${s.id}" tabindex="0" role="button" aria-label="${esc(s.name)}, ${st.l}, context ${s.ctx} percent">`;
+    if(need(s))o+=`<circle class="pulse" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="15" fill="none" stroke="${st.c}" stroke-width="2"/>`;
+    o+=`<polygon class="ring" points="${hex}" fill="#04101a" stroke="${st.c}" stroke-width="2.5" style="filter:drop-shadow(0 0 5px ${st.c})"/>`;
+    o+=`<text x="${x.toFixed(1)}" y="${(y+5).toFixed(1)}" text-anchor="middle" font-size="13" fill="${st.c}">${st.g}</text>`;
+    if(s.id===sel){const d=24,t=7;[[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([a,b])=>{o+=`<path d="M${(x+a*d).toFixed(1)} ${(y+b*(d-t)).toFixed(1)} L${(x+a*d).toFixed(1)} ${(y+b*d).toFixed(1)} L${(x+a*(d-t)).toFixed(1)} ${(y+b*d).toFixed(1)}" fill="none" stroke="#d6f7ff" stroke-width="1.6"/>`})}
+    o+=`<text x="${lx.toFixed(1)}" y="${(y-1).toFixed(1)}" text-anchor="${an}" font-family="Rajdhani,sans-serif" font-weight="600" font-size="13.5" letter-spacing=".6" fill="#d6f7ff" stroke="#02060b" stroke-width="3" paint-order="stroke">${esc(lab.toUpperCase())}</text>`;
+    o+=`<text x="${lx.toFixed(1)}" y="${(y+11).toFixed(1)}" text-anchor="${an}" font-family="JetBrains Mono,monospace" font-size="9.5" fill="${st.c}" stroke="#02060b" stroke-width="3" paint-order="stroke">${s.ctx}% · ${money(s.cost)}${need(s)?' · WAIT '+s.wait+'M':''}</text></g>`;
+  });
+  return o+'</svg>';
+}
+function hudView(){
+  const tot=S.reduce((a,s)=>a+s.cost,0),avg=Math.round(S.reduce((a,s)=>a+s.ctx,0)/S.length),n=S.filter(need).length;
+  const repoBars=REPOS.map((r,i)=>{const L=S.filter(s=>s.repo===i),a=Math.round(L.reduce((x,s)=>x+s.ctx,0)/L.length);return `<div class="b"><span>${r.split('-')[0]}</span><i><u style="width:${a}%"></u></i><em>${a}%</em></div>`}).join('');
+  const spendBars=REPOS.map((r,i)=>{const c=S.filter(s=>s.repo===i).reduce((x,s)=>x+s.cost,0);return `<div class="b"><span>${r.split('-')[0]}</span><i><u style="width:${(c/tot*100).toFixed(0)}%"></u></i><em>${money(c)}</em></div>`}).join('');
+  const q=order().filter(need).map(s=>`<button class="nchip ${s.id===sel?'on':''}" data-sid="${s.id}"><span class="g ${ST[s.st].cls}">${ST[s.st].g}</span><span>${esc(s.name)}<br><small>${REPOS[s.repo]} · ${s.wait}m</small></span></button>`).join('')||'<span class="dim" style="font-size:13px">ALL CLEAR</span>';
+  return `<div class="hudgrid"><aside class="tele"><div><h4>FLEET STATUS</h4><div class="big"><div><b>${S.length}</b><span>Sessions</span></div><div><b class="${n?'tint-approve':''}">${n}</b><span>Need you</span></div><div><b>${avg}%</b><span>Avg context</span></div><div><b>${money(tot)}</b><span>Spend</span></div></div></div>
+    <div><h4>CONTEXT BY REPO</h4><div class="bars">${repoBars}</div></div>
+    <div><h4>SPEND BY REPO</h4><div class="bars">${spendBars}</div></div>
+    <div><h4>PRIORITY QUEUE</h4><div class="queue">${q}</div></div></aside>
+    <div class="hudbox">${hud()}</div></div>`;
+}
+
+/* drawer */
+function drawer(){
+  const s=get(sel);if(!s)return '';
+  const st=ST[s.st];
+  let body='';
+  if(mode==='term'){
+    const L=[`<span class="u">&gt;</span> ${esc(s.name)}`,'',`● ${esc(s.last)}`];
+    if(s.st==='permission')L.push('',`● Bash(${esc(s.cmd)})`,'','  Do you want to proceed?','  <span class="tint-ready">❯ 1. Yes</span>',"    2. Yes, and don't ask again",'    3. No');
+    else if(s.st==='question')L.push('','  <span class="tint-reply">❯ 1. Per API key</span>','    2. Per IP address','    3. Something else');
+    else if(s.st==='working')L.push('',`<span class="tint-work">✻ ${esc(s.now)}…</span> <span class="u">(12s · esc to interrupt)</span>`);
+    else if(s.st==='done')L.push('','<span class="tint-ready">✓ Finished</span>','','<span class="u">&gt; </span>▌');
+    else L.push('','<span class="u">Interrupted. What should Claude do instead?</span>','','<span class="u">&gt; </span>▌');
+    body=`<pre class="term" aria-label="Terminal view">${L.join('\n')}</pre>`;
+  }else{
+    body=`<div class="chat" aria-label="Chat view"><div class="msg me">${esc(s.name)}</div><div class="msg">${esc(s.last)}</div>`;
+    if(s.now)body+=`<div class="card"><b>${esc(s.now.split(':')[0].split(' ')[0])}</b><span>${esc(s.now.replace(/^[A-Za-z]+:?\s*/,''))}</span><span class="pill ${st.cls}">${s.st==='permission'?'waiting':'running'}</span></div>`;
+    if(s.st==='permission')body+=`<div class="pet"><span class="pill tint-approve" style="align-self:flex-start">Permission request</span><code>${esc(s.cmd)}</code><div style="display:flex;gap:6px"><button class="mbtn primary" data-act="approve" data-sid="${s.id}">Approve</button><button class="mbtn danger" data-act="deny" data-sid="${s.id}">Deny</button></div></div>`;
+    if(s.st==='done')body+=`<div class="card"><b>Changed files</b><span>3 files · +84 −12</span></div>`;
+    body+='</div>';
+  }
+  let acts='';
+  if(s.st==='permission')acts=`<div class="rowb"><button class="mbtn primary" data-act="approve" data-sid="${s.id}">Approve <kbd class="mono">a</kbd></button><button class="mbtn danger" data-act="deny" data-sid="${s.id}">Deny</button></div>`;
+  else if(s.st==='question')acts=`<div class="reply"><input id="replyIn" type="text" placeholder="Reply to this session" aria-label="Reply to this session"><button class="mbtn primary" data-act="reply" data-sid="${s.id}">Send</button></div>`;
+  else if(s.st==='working')acts=`<div class="rowb"><button class="mbtn" data-act="interrupt" data-sid="${s.id}">Interrupt</button></div>`;
+  else if(s.st==='done')acts=`<div class="rowb"><button class="mbtn primary" data-act="diff" data-sid="${s.id}">Review diff</button><button class="mbtn" data-act="pr" data-sid="${s.id}">Open PR</button></div>`;
+  else acts=`<div class="rowb"><button class="mbtn primary" data-act="resume" data-sid="${s.id}">Resume</button></div>`;
+  return `<div class="dhead"><div class="t">${esc(s.name)}</div><div class="m">${REPOS[s.repo]} · ${esc(s.branch)}</div>
+    <div class="meta"><span class="pill ${st.cls}">${st.g} ${st.l}</span><span class="ctx" style="min-width:130px"><span style="width:auto">ctx</span><span class="bar"><i style="width:${s.ctx}%;background:${ctxColor(s.ctx)}"></i></span><span>${s.ctx}%</span></span><span class="mono dim" style="font-size:11.5px">${money(s.cost)}</span></div></div>
+    <div class="modes" role="tablist" aria-label="Session view"><button role="tab" data-mode="term" aria-selected="${mode==='term'}">Terminal</button><button role="tab" data-mode="chat" aria-selected="${mode==='chat'}">Chat</button></div>
+    ${body}<div class="acts">${acts}</div>
+    <div class="hint">${mode==='term'?'The real Claude Code, so your mods and slash commands work.':'The same session read as a conversation, with tool calls and approvals as cards.'} Switching is instant: both views read the same live session.</div>`;
+}
+
+function render(){
+  const V={dash,map,hybrid,hud:hudView,rail:railView,sky:skyView,tree:treeView,cons:consView,tl:tlView};
+  const main=(V[view]||dash)();
+  $('#win').className='win'+(view==='hud'?' hud':'');
+  $('#win').innerHTML=`<div class="titlebar"><i></i><i></i><i></i><span>${view==='hud'?'Strategos // Command':'Strategos'}</span><span class="sp"></span><button id="reset" type="button">Reset demo</button></div>
+    ${summary()}<div class="app"><div class="main">${main}</div><div class="side">${drawer()}</div></div>
+    <div class="foot"><span><kbd>n</kbd> next needing you</span><span><kbd>j</kbd>/<kbd>k</kbd> move</span><span><kbd>a</kbd> approve</span><span><kbd>t</kbd> terminal / chat</span><span><kbd>1</kbd>–<kbd>9</kbd> look</span><span class="toast">${esc(toast)}</span></div>`;
+  document.querySelectorAll('.switch button').forEach(b=>b.setAttribute('aria-selected',b.dataset.view===view));
+}
+function act(a,id){
+  const s=get(id);if(!s)return;
+  if(a==='focusreply'){sel=id;mode=mode;render();const i=$('#replyIn');if(i)i.focus();return}
+  if(a==='approve'&&s.st==='permission'){s.st='working';s.last='Approved. Running the command.';toast='Approved: '+s.name}
+  else if(a==='deny'&&s.st==='permission'){s.st='working';s.now='Thinking';s.last='Denied. Looking for another way.';toast='Denied: '+s.name}
+  else if(a==='reply'){const v=($('#replyIn')||{}).value;if(!v||!v.trim()){toast='Type a reply first';render();return}s.st='working';s.now='Thinking';s.last='Got it: "'+v.trim()+'". Continuing.';toast='Reply sent to '+s.name}
+  else if(a==='interrupt'){s.st='idle';s.now='';s.last='Stopped by you.';s.wait=0;toast='Stopped: '+s.name}
+  else if(a==='resume'){s.st='working';s.now='Thinking';s.last='Picking up where it left off.';toast='Resumed: '+s.name}
+  else if(a==='diff'||a==='pr'){toast=(a==='diff'?'Would open the diff view':'Would open a pull request')+' (not built in this page)'}
+  s.hist=s.hist.slice(0,-1)+({permission:'N',question:'N',working:'W',done:'D',idle:'I'})[s.st];
+  sel=id;render();
+}
+document.addEventListener('click',e=>{
+  const t=e.target;
+  const a=t.closest('[data-act]');if(a){act(a.dataset.act,+a.dataset.sid);return}
+  const sid=t.closest('[data-sid]');if(sid&&$('#win').contains(sid)){sel=+sid.dataset.sid;toast='';render();return}
+  const m=t.closest('[data-mode]');if(m){mode=m.dataset.mode;render();return}
+  const f=t.closest('[data-filter]');if(f){filter=+f.dataset.filter;render();return}
+  const v=t.closest('[data-view]');if(v){view=v.dataset.view;render();return}
+  if(t.closest('#reset')){reset();render()}
+});
+document.addEventListener('keydown',e=>{
+  const tag=(e.target.tagName||'').toLowerCase();
+  if(tag==='input'){if(e.key==='Enter'&&e.target.id==='replyIn')act('reply',sel);return}
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  const vis=view==='hybrid'&&filter>=0?order(S.filter(s=>s.repo===filter)):order();
+  const k=e.key;
+  if(k==='Enter'&&e.target.dataset&&e.target.dataset.sid){sel=+e.target.dataset.sid;render();return}
+  if(k==='n'){const L=order().filter(need);if(!L.length){toast='Nothing waiting';render();return}const i=L.findIndex(s=>s.id===sel);sel=L[(i+1)%L.length].id;toast='';render()}
+  else if(k==='j'||k==='ArrowDown'){const i=vis.findIndex(s=>s.id===sel);sel=vis[Math.min(vis.length-1,i+1)].id;render();e.preventDefault()}
+  else if(k==='k'||k==='ArrowUp'){const i=vis.findIndex(s=>s.id===sel);sel=vis[Math.max(0,i-1)].id;render();e.preventDefault()}
+  else if(k==='a'){act('approve',sel)}
+  else if(k==='t'){mode=mode==='term'?'chat':'term';render()}
+  else if(k==='1'){view='dash';render()}else if(k==='2'){view='map';render()}else if(k==='3'){view='hybrid';render()}else if('456789'.includes(k)&&k){view=['hud','rail','sky','tree','cons','tl'][+k-4];render()}
+});
+reset();render();
+</script>

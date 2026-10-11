@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#d9d3c7;}
+a{color:#7a3b22;}a:hover{color:#3a2e22;}
+@keyframes sgPulse{0%{box-shadow:0 0 0 0 rgba(176,38,28,.6)}70%{box-shadow:0 0 0 12px rgba(176,38,28,0)}100%{box-shadow:0 0 0 0 rgba(176,38,28,0)}}
+@keyframes sgWave{0%,100%{transform:skewY(0deg) scaleX(1)}50%{transform:skewY(-7deg) scaleX(.9)}}
+</style>
+</helmet>
+
+<section style="padding:48px 48px 0;display:flex;flex-direction:column;gap:20px;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,sans-serif;color:#2e251c;">
+  <div>
+    <div style="font-family:'IM Fell English',serif;font-size:34px;">Turn 5 · Model icons and status names</div>
+    <div style="font-size:14px;color:#5a4c3a;margin-top:6px;max-width:820px;text-wrap:pretty;">Click an option to apply it to <a href="#3b">3b</a> below. The icon color still comes from the repo and the ring color from the status.</div>
+  </div>
+  <div style="font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#6b5a44;">Model icons</div>
+  <div style="display:flex;flex-wrap:wrap;gap:16px;">
+    <sc-for list="{{ b3PickIcons }}" as="o" hint-placeholder-count="4">
+      <div id="{{ o.id }}" onClick="{{ o.onClick }}" style="width:260px;background:#0b0e16;border:{{ o.border }};padding:16px 16px 14px;cursor:pointer;color:#e8ecf2;display:flex;flex-direction:column;gap:12px;" style-hover="background:#121726;">
+        <div style="display:flex;gap:8px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;background:#f3e3c6;color:#2b2219;padding:1px 6px;">{{ o.id }}</div><div style="font-size:14px;font-weight:700;">{{ o.name }}</div></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+          <sc-for list="{{ o.models }}" as="t" hint-placeholder-count="4">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+              <div style="width:34px;height:34px;border-radius:50%;background:rgba(8,10,18,.92);box-shadow:0 0 0 2px #7fb4ff;display:flex;align-items:center;justify-content:center;">
+                <div style="position:relative;width:16px;height:16px;">
+                    <sc-for list="{{ t.layers }}" as="ly" hint-placeholder-count="0"><div style="position:absolute;left:{{ ly.x }}px;top:{{ ly.y }}px;width:{{ ly.w }}px;height:{{ ly.h }}px;background:{{ ly.bg }};clip-path:{{ ly.clip }};border-radius:{{ ly.r }};"></div></sc-for>
+                    <sc-if value="{{ t.hasLetter }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:{{ t.ic }};">{{ t.letter }}</div></sc-if>
+                  </div>
+              </div>
+              <div style="font-size:11px;color:#9aa6b8;">{{ t.name }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-size:12px;line-height:1.45;color:#9aa6b8;text-wrap:pretty;">{{ o.desc }}</div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#6b5a44;margin-top:8px;">Status names</div>
+  <div style="display:flex;flex-wrap:wrap;gap:16px;">
+    <sc-for list="{{ b3PickNames }}" as="o" hint-placeholder-count="4">
+      <div id="{{ o.id }}" onClick="{{ o.onClick }}" style="width:260px;background:#0b0e16;border:{{ o.border }};padding:16px 16px 14px;cursor:pointer;color:#e8ecf2;display:flex;flex-direction:column;gap:12px;" style-hover="background:#121726;">
+        <div style="display:flex;gap:8px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;background:#f3e3c6;color:#2b2219;padding:1px 6px;">{{ o.id }}</div><div style="font-size:14px;font-weight:700;">{{ o.name }}</div></div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <sc-for list="{{ o.rows }}" as="r" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:9px;font-size:13px;"><div style="width:8px;height:8px;transform:rotate(45deg);background:{{ r.c }};"></div>{{ r.label }}</div>
+          </sc-for>
+        </div>
+        <div style="font-size:12px;line-height:1.45;color:#9aa6b8;text-wrap:pretty;">{{ o.desc }}</div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+
+<section style="padding:48px 48px 0;display:flex;flex-direction:column;gap:28px;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,sans-serif;color:#2e251c;">
+  <div>
+    <div style="font-family:'IM Fell English',serif;font-size:34px;">Turn 4 · Every session on one screen</div>
+    <div style="font-size:14px;color:#5a4c3a;margin-top:6px;max-width:820px;text-wrap:pretty;">The system view from <a href="#3a">3a</a>, with every Claude session shown as a token orbiting its repo. Tokens keep a fixed slot, so you learn where each one lives. Click a token to open its chat on the right without leaving the map. If a planet has more than five sessions, marching ones stack into a chip, and sessions that need you are never stacked.</div>
+  </div>
+  <div id="3b" style="display:flex;flex-direction:column;gap:10px;">
+    <div style="display:flex;gap:10px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2b2219;color:#f1e6cc;padding:2px 7px;border-radius:4px;">3b</div><div style="font-size:15px;font-weight:600;">Orbiting sessions and chat</div><div style="font-size:13px;color:#6b5a44;">16 sessions across 4 repos and the root folder, all visible at once.</div></div>
+    <div style="width:1440px;height:820px;position:relative;overflow:hidden;border-radius:8px;background:#03040a;box-shadow:0 12px 36px rgba(10,10,20,.4);color:#e8ecf2;display:flex;">
+
+      <div onClick="{{ b3Bg }}" style="position:relative;width:1040px;height:820px;flex:none;overflow:hidden;background:radial-gradient(ellipse at 50% 50%, #111a2c 0%, #070a13 60%, #03040a 100%);">
+        <sc-for list="{{ b3Stars }}" as="st" hint-placeholder-count="0">
+          <div style="position:absolute;left:{{ st.x }}px;top:{{ st.y }}px;width:{{ st.s }}px;height:{{ st.s }}px;border-radius:50%;background:#fff;opacity:{{ st.o }};pointer-events:none;"></div>
+        </sc-for>
+        <div style="position:absolute;left:170px;top:70px;width:700px;height:690px;border-radius:50%;border:1px solid rgba(160,190,230,.1);pointer-events:none;"></div>
+
+        <svg width="1040" height="820" style="position:absolute;left:0;top:0;pointer-events:none;overflow:visible;">
+          <sc-for list="{{ b3Routes }}" as="r" hint-placeholder-count="0">
+            <path d="{{ r.d }}" fill="none" stroke="{{ r.c }}" stroke-width="{{ r.w }}" stroke-dasharray="{{ r.dash }}" opacity="{{ r.o }}"></path>
+            <circle cx="{{ r.ex }}" cy="{{ r.ey }}" r="3.5" fill="{{ r.c }}" opacity="{{ r.o }}"></circle>
+          </sc-for>
+        </svg>
+
+        <div style="position:absolute;left:{{ b3SunX }}px;top:{{ b3SunY }}px;width:0;height:0;">
+          <div style="position:absolute;left:-55px;top:-55px;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle, rgba(255,236,200,.5), rgba(255,190,120,.1) 55%, transparent 72%);pointer-events:none;"></div>
+          <div style="position:absolute;left:-16px;top:-16px;width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 40% 38%, #fffaf0, #ffd9a0 60%, #f0a860);box-shadow:0 0 22px rgba(255,210,150,.8);"></div>
+          <div style="position:absolute;left:0;bottom:26px;transform:translateX(-50%);text-align:center;white-space:nowrap;pointer-events:none;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#f3e3c6;">Root</div>
+            <div style="font-size:11px;color:#9aa6b8;margin-top:2px;">~/code</div>
+          </div>
+          <div style="position:absolute;left:0;top:28px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;">
+            <sc-for list="{{ b3Roots }}" as="q" hint-placeholder-count="0">
+              <div onClick="{{ q.onClick }}" style="display:flex;align-items:center;gap:9px;background:{{ q.bg }};border:1px solid rgba(243,227,198,.22);padding:5px 10px 5px 6px;width:max-content;cursor:pointer;" style-hover="border-color:rgba(243,227,198,.6);">
+                <div style="position:relative;width:26px;height:26px;border-radius:50%;background:rgba(8,10,18,.92);box-shadow:0 0 0 2px {{ q.ring }}, 0 0 10px {{ q.glow }};display:flex;align-items:center;justify-content:center;flex:none;">
+                  <div style="position:relative;width:16px;height:16px;">
+                    <sc-for list="{{ q.layers }}" as="ly" hint-placeholder-count="0"><div style="position:absolute;left:{{ ly.x }}px;top:{{ ly.y }}px;width:{{ ly.w }}px;height:{{ ly.h }}px;background:{{ ly.bg }};clip-path:{{ ly.clip }};border-radius:{{ ly.r }};"></div></sc-for>
+                    <sc-if value="{{ q.hasLetter }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:{{ q.ic }};">{{ q.letter }}</div></sc-if>
+                  </div>
+                  <sc-if value="{{ q.pulse }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:-2px;border-radius:50%;animation:sgPulse 1.4s ease-out infinite;"></div></sc-if>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:1px;">
+                  <div style="font-size:12px;font-weight:600;color:#fff;">{{ q.title }}</div>
+                  <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:{{ q.ring }};white-space:nowrap;">{{ q.meta }} · {{ q.reach }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <sc-for list="{{ b3Planets }}" as="p" hint-placeholder-count="0">
+          <div style="position:absolute;left:{{ p.x }}px;top:{{ p.y }}px;width:0;height:0;">
+            <div style="position:absolute;left:{{ p.neg }}px;top:{{ p.neg }}px;width:{{ p.d }}px;height:{{ p.d }}px;border-radius:50%;background-image:{{ p.tex }};background-size:cover;background-color:#1a2030;box-shadow:0 0 28px {{ p.glow }};"></div>
+            <sc-if value="{{ p.left }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ p.nameX }}px;top:0;transform:translateY(-50%);white-space:nowrap;pointer-events:none;">
+                <div style="font-size:13px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#f1f4f8;">{{ p.name }}</div>
+                <div style="font-size:11px;color:#9aa6b8;margin-top:2px;">{{ p.sub }}</div>
+                <div style="font-size:11px;color:#c9d2de;">{{ p.visit }}</div>
+                <sc-if value="{{ p.collapse }}" hint-placeholder-val="{{ false }}"><div onClick="{{ p.onCollapse }}" style="display:inline-block;margin-top:5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7fb4ff;border:1px solid rgba(127,180,255,.4);padding:2px 7px;cursor:pointer;pointer-events:auto;">Stack {{ b3MarchLabel }}</div></sc-if>
+              </div>
+            </sc-if>
+            <sc-if value="{{ p.right }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;right:{{ p.nameX }}px;top:0;transform:translate(0,-50%);white-space:nowrap;text-align:right;pointer-events:none;">
+                <div style="font-size:13px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#f1f4f8;">{{ p.name }}</div>
+                <div style="font-size:11px;color:#9aa6b8;margin-top:2px;">{{ p.sub }}</div>
+                <div style="font-size:11px;color:#c9d2de;">{{ p.visit }}</div>
+                <sc-if value="{{ p.collapse }}" hint-placeholder-val="{{ false }}"><div onClick="{{ p.onCollapse }}" style="display:inline-block;margin-top:5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7fb4ff;border:1px solid rgba(127,180,255,.4);padding:2px 7px;cursor:pointer;pointer-events:auto;">Stack {{ b3MarchLabel }}</div></sc-if>
+              </div>
+            </sc-if>
+
+          </div>
+        </sc-for>
+
+        <sc-for list="{{ b3Tokens }}" as="t" hint-placeholder-count="0">
+          <div style="position:absolute;left:{{ t.x }}px;top:{{ t.y }}px;width:0;height:0;">
+            <div onClick="{{ t.onClick }}" style="position:absolute;left:-15px;top:-15px;width:30px;height:30px;border-radius:50%;background:rgba(8,10,18,.92);box-shadow:0 0 0 2px {{ t.ring }}, 0 0 12px {{ t.glow }};display:flex;align-items:center;justify-content:center;cursor:pointer;">
+              <div style="position:relative;width:16px;height:16px;">
+                    <sc-for list="{{ t.layers }}" as="ly" hint-placeholder-count="0"><div style="position:absolute;left:{{ ly.x }}px;top:{{ ly.y }}px;width:{{ ly.w }}px;height:{{ ly.h }}px;background:{{ ly.bg }};clip-path:{{ ly.clip }};border-radius:{{ ly.r }};"></div></sc-for>
+                    <sc-if value="{{ t.hasLetter }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:{{ t.ic }};">{{ t.letter }}</div></sc-if>
+                  </div>
+              <sc-if value="{{ t.pulse }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:-2px;border-radius:50%;animation:sgPulse 1.4s ease-out infinite;pointer-events:none;"></div></sc-if>
+              <sc-if value="{{ t.sel }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:-7px;border-radius:50%;border:1.5px solid #fff;pointer-events:none;"></div></sc-if>
+            </div>
+            <sc-if value="{{ t.left }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ t.onClick }}" style="position:absolute;right:22px;top:0;transform:translateY(-50%);width:max-content;max-width:240px;text-align:right;background:{{ t.bg }};padding:3px 7px 4px;cursor:pointer;">
+                <div style="font-size:12px;font-weight:600;color:#fff;line-height:1.25;white-space:nowrap;">{{ t.title }}</div>
+                <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:{{ t.ring }};margin-top:1px;white-space:nowrap;">{{ t.meta }}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ t.right }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ t.onClick }}" style="position:absolute;left:22px;top:0;transform:translateY(-50%);width:max-content;max-width:240px;background:{{ t.bg }};padding:3px 7px 4px;cursor:pointer;">
+                <div style="font-size:12px;font-weight:600;color:#fff;line-height:1.25;white-space:nowrap;">{{ t.title }}</div>
+                <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:{{ t.ring }};margin-top:1px;white-space:nowrap;">{{ t.meta }}</div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+
+        <sc-for list="{{ b3Chips }}" as="c" hint-placeholder-count="0">
+          <div style="position:absolute;left:{{ c.x }}px;top:{{ c.y }}px;width:0;height:0;">
+            <div onClick="{{ c.onClick }}" style="position:absolute;left:-15px;top:-15px;width:30px;height:30px;border-radius:50%;background:rgba(8,10,18,.92);box-shadow:0 0 0 2px rgba(127,180,255,.55);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#7fb4ff;">⋯</div>
+            <sc-if value="{{ c.left }}" hint-placeholder-val="{{ false }}"><div onClick="{{ c.onClick }}" style="position:absolute;right:22px;top:0;transform:translateY(-50%);white-space:nowrap;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7fb4ff;cursor:pointer;">{{ c.text }}</div></sc-if>
+            <sc-if value="{{ c.right }}" hint-placeholder-val="{{ false }}"><div onClick="{{ c.onClick }}" style="position:absolute;left:22px;top:0;transform:translateY(-50%);white-space:nowrap;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7fb4ff;cursor:pointer;">{{ c.text }}</div></sc-if>
+          </div>
+        </sc-for>
+
+        <div style="position:absolute;left:20px;top:18px;display:flex;align-items:center;gap:18px;">
+          <div style="font-family:'IM Fell English',serif;font-size:24px;color:#f3e3c6;">Strategos</div>
+          <div style="font-size:12px;color:#9aa6b8;">{{ b3Total }} sessions</div>
+        </div>
+        <div style="position:absolute;left:20px;bottom:18px;display:flex;align-items:center;gap:16px;">
+          <sc-for list="{{ b3Counts }}" as="c" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#c9d2de;">
+              <div style="width:8px;height:8px;transform:rotate(45deg);background:{{ c.c }};"></div>{{ c.label }} <span style="font-family:'JetBrains Mono',monospace;color:#9aa6b8;">{{ c.n }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div onClick="{{ b3ToggleStack }}" style="position:absolute;right:20px;bottom:14px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#c9d2de;border:1px solid rgba(255,255,255,.25);padding:6px 10px;cursor:pointer;background:rgba(5,7,13,.6);" style-hover="background:rgba(255,255,255,.1);">{{ b3StackLabel }}</div>
+      </div>
+
+      <div style="width:400px;height:820px;flex:none;background:#0b0e16;border-left:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;">
+        <sc-if value="{{ b3NoSel }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:20px 20px 10px;">
+            <div style="font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#9aa6b8;">Needs you</div>
+            <div style="font-size:13px;color:#7d889a;margin-top:6px;">Pick a session on the map or here.</div>
+          </div>
+          <sc-for list="{{ b3Queue }}" as="q" hint-placeholder-count="6">
+            <div onClick="{{ q.onClick }}" style="display:flex;gap:12px;align-items:center;padding:10px 20px;cursor:pointer;border-top:1px solid rgba(255,255,255,.05);" style-hover="background:rgba(255,255,255,.05);">
+              <div style="width:9px;height:9px;transform:rotate(45deg);background:{{ q.c }};flex:none;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13.5px;font-weight:600;color:#fff;">{{ q.title }}</div>
+                <div style="font-size:11.5px;color:#9aa6b8;margin-top:2px;font-family:'JetBrains Mono',monospace;">{{ q.where }}</div>
+              </div>
+              <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:{{ q.c }};white-space:nowrap;">{{ q.label }}</div>
+            </div>
+          </sc-for>
+        </sc-if>
+        <sc-if value="{{ b3HasSel }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:16px 18px 12px;border-bottom:1px solid rgba(255,255,255,.08);">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="position:relative;width:28px;height:28px;border-radius:50%;background:rgba(8,10,18,.92);box-shadow:0 0 0 2px {{ b3Chat.ring }};display:flex;align-items:center;justify-content:center;flex:none;"><div style="position:relative;width:16px;height:16px;">
+                    <sc-for list="{{ b3Chat.layers }}" as="ly" hint-placeholder-count="0"><div style="position:absolute;left:{{ ly.x }}px;top:{{ ly.y }}px;width:{{ ly.w }}px;height:{{ ly.h }}px;background:{{ ly.bg }};clip-path:{{ ly.clip }};border-radius:{{ ly.r }};"></div></sc-for>
+                    <sc-if value="{{ b3Chat.hasLetter }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:{{ b3Chat.ic }};">{{ b3Chat.letter }}</div></sc-if>
+                  </div></div>
+              <div style="flex:1;min-width:0;font-size:15px;font-weight:700;color:#fff;">{{ b3Chat.title }}</div>
+              <div onClick="{{ b3Close }}" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9aa6b8;font-size:17px;" style-hover="color:#fff;">×</div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:8px;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">
+              <div style="color:{{ b3Chat.c }};">{{ b3Chat.label }}</div><div style="color:#9aa6b8;">{{ b3Chat.model }}</div>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#9aa6b8;margin-top:6px;">{{ b3Chat.where }}</div>
+            <sc-if value="{{ b3Chat.hasTouches }}" hint-placeholder-val="{{ false }}"><div style="font-size:11.5px;color:#c9d2de;margin-top:4px;">↗ {{ b3Chat.touches }}</div></sc-if>
+          </div>
+          <div style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ b3Chat.msgs }}" as="m" hint-placeholder-count="3">
+              <sc-if value="{{ m.isU }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-end;max-width:85%;background:#1b2130;padding:8px 11px;font-size:13px;line-height:1.45;color:#e8ecf2;">{{ m.text }}</div></sc-if>
+              <sc-if value="{{ m.isA }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;line-height:1.5;color:#d6dce6;">{{ m.text }}</div></sc-if>
+              <sc-if value="{{ m.isT }}" hint-placeholder-val="{{ false }}"><div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#9aa6b8;border:1px solid rgba(255,255,255,.08);padding:6px 9px;">› {{ m.text }}</div></sc-if>
+              <sc-if value="{{ m.isX }}" hint-placeholder-val="{{ false }}"><div style="font-size:11.5px;color:#7d889a;text-align:center;font-style:italic;">{{ m.text }}</div></sc-if>
+              <sc-if value="{{ m.isP }}" hint-placeholder-val="{{ false }}">
+                <div style="border:1px solid rgba(255,90,74,.6);background:rgba(255,90,74,.08);padding:10px 12px;">
+                  <div style="font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#ff5a4a;">Petition · Bash</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#f1e6cc;background:#05070d;padding:8px 9px;margin-top:7px;white-space:pre-wrap;">{{ m.text }}</div>
+                  <div style="display:flex;gap:8px;margin-top:9px;">
+                    <div onClick="{{ m.onGrant }}" style="background:#f3e3c6;color:#0b0e16;font-size:12px;font-weight:700;padding:6px 14px;cursor:pointer;">Grant</div>
+                    <div onClick="{{ m.onDeny }}" style="border:1px solid rgba(255,255,255,.3);font-size:12px;font-weight:700;padding:6px 14px;cursor:pointer;">Deny</div>
+                  </div>
+                </div>
+              </sc-if>
+            </sc-for>
+            <sc-if value="{{ b3Chat.hasAct }}" hint-placeholder-val="{{ false }}"><div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#7fb4ff;">● {{ b3Chat.act }}</div></sc-if>
+          </div>
+          <div style="padding:12px 14px 14px;border-top:1px solid rgba(255,255,255,.08);">
+            <textarea value="{{ b3Draft }}" onChange="{{ b3OnDraft }}" onKeyDown="{{ b3OnKey }}" placeholder="Reply to this session…" style="width:100%;box-sizing:border-box;height:58px;resize:none;background:#151a26;border:1px solid rgba(255,255,255,.12);color:#e8ecf2;font:inherit;font-size:13px;padding:9px 10px;outline:none;"></textarea>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+              <div style="font-size:11px;color:#7d889a;">Enter to send</div>
+              <div onClick="{{ b3Send }}" style="background:#f3e3c6;color:#0b0e16;font-size:12px;font-weight:700;padding:6px 14px;cursor:pointer;">Send</div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding:48px 48px 0;display:flex;flex-direction:column;gap:28px;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,sans-serif;color:#2e251c;">
+  <div>
+    <div style="font-family:'IM Fell English',serif;font-size:34px;">Turn 3 · System director</div>
+    <div style="font-size:14px;color:#5a4c3a;margin-top:6px;max-width:780px;text-wrap:pretty;">Repositories are planets orbiting your machine. Click a planet to land on its surface map, where worktrees and Claude sessions are markers. Sessions started in the root folder sit at Local machine. Sessions that change several repos draw routes to each one (solid for edits, dashed for read-only) and appear as visitors on those surfaces. The sidebar filters by status and model.</div>
+  </div>
+  <div id="3a" style="display:flex;flex-direction:column;gap:10px;">
+    <div style="display:flex;gap:10px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2b2219;color:#f1e6cc;padding:2px 7px;border-radius:4px;">3a</div><div style="font-size:15px;font-weight:600;">Director and destinations</div><div style="font-size:13px;color:#6b5a44;">Two levels: the system for triage, and a planet surface for detail.</div></div>
+    <div style="width:1200px;height:700px;position:relative;overflow:hidden;border-radius:8px;background:radial-gradient(ellipse at 62% 52%, #111a2c 0%, #070a13 55%, #03040a 100%);box-shadow:0 12px 36px rgba(10,10,20,.4);color:#e8ecf2;user-select:none;">
+      <div style="position:absolute;left:520px;top:120px;width:620px;height:420px;border-radius:50%;background:radial-gradient(ellipse, rgba(90,70,160,.16), transparent 70%);filter:blur(10px);pointer-events:none;"></div>
+      <div style="position:absolute;left:780px;top:380px;width:520px;height:360px;border-radius:50%;background:radial-gradient(ellipse, rgba(40,120,150,.14), transparent 70%);filter:blur(10px);pointer-events:none;"></div>
+      <sc-for list="{{ sysStars }}" as="st" hint-placeholder-count="0">
+        <div style="position:absolute;left:{{ st.x }}px;top:{{ st.y }}px;width:{{ st.s }}px;height:{{ st.s }}px;border-radius:50%;background:#fff;opacity:{{ st.o }};pointer-events:none;"></div>
+      </sc-for>
+
+      <sc-if value="{{ sysIsDirector }}" hint-placeholder-val="{{ true }}">
+        <sc-for list="{{ sysOrbits }}" as="o" hint-placeholder-count="4">
+          <div style="position:absolute;left:{{ o.x }}px;top:{{ o.y }}px;width:{{ o.w }}px;height:{{ o.h }}px;border-radius:50%;border:1px solid rgba(160,190,230,.16);pointer-events:none;"></div>
+        </sc-for>
+        <div style="position:absolute;left:{{ sysSunX }}px;top:{{ sysSunY }}px;width:0;height:0;pointer-events:none;">
+          <div style="position:absolute;left:-60px;top:-60px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle, rgba(255,236,200,.55), rgba(255,190,120,.12) 55%, transparent 72%);"></div>
+          <div style="position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 40% 38%, #fffaf0, #ffd9a0 60%, #f0a860);box-shadow:0 0 24px rgba(255,210,150,.8);"></div>
+          <div style="position:absolute;left:0;bottom:26px;transform:translateX(-50%);text-align:center;white-space:nowrap;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#f3e3c6;">Local machine</div>
+            <div style="font-size:11px;color:#9aa6b8;margin-top:2px;">~/code · {{ sysSessionCount }} sessions</div>
+          </div>
+          <div style="position:absolute;left:0;top:70px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;pointer-events:auto;">
+            <sc-for list="{{ sysRootSessions }}" as="q" hint-placeholder-count="0">
+              <div style="display:flex;align-items:center;gap:9px;background:rgba(5,7,13,.82);border:1px solid rgba(243,227,198,.25);padding:5px 10px 5px 6px;width:max-content;">
+                <div style="position:relative;width:26px;height:26px;border-radius:50%;background:rgba(8,10,18,.9);box-shadow:0 0 0 2px {{ q.ring }}, 0 0 10px {{ q.glow }};display:flex;align-items:center;justify-content:center;flex:none;">
+                  <div style="width:{{ q.fw }}px;height:{{ q.fh }}px;background:{{ q.flag }};clip-path:{{ q.clip }};"></div>
+                  <sc-if value="{{ q.pulse }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:-2px;border-radius:50%;animation:sgPulse 1.4s ease-out infinite;"></div></sc-if>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:1px;">
+                  <div style="font-size:12px;font-weight:600;color:#fff;">{{ q.title }}</div>
+                  <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:{{ q.ring }};">{{ q.model }} · {{ q.label }}</div>
+                  <div style="font-size:10.5px;color:#9aa6b8;">{{ q.reach }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <sc-for list="{{ sysRoutes }}" as="r" hint-placeholder-count="0">
+          <div style="position:absolute;left:{{ r.x }}px;top:{{ r.y }}px;width:{{ r.len }}px;height:0;border-top:{{ r.w }}px {{ r.style }} {{ r.c }};transform-origin:0 0;transform:rotate({{ r.a }}deg);opacity:{{ r.o }};filter:drop-shadow(0 0 4px {{ r.c }});pointer-events:none;">
+            <div style="position:absolute;right:-2px;top:-5px;width:8px;height:8px;border-top:2px solid {{ r.c }};border-right:2px solid {{ r.c }};transform:rotate(45deg);"></div>
+          </div>
+        </sc-for>
+        <sc-for list="{{ sysPlanets }}" as="p" hint-placeholder-count="0">
+          <div onClick="{{ p.onClick }}" style="position:absolute;left:{{ p.x }}px;top:{{ p.y }}px;width:0;height:0;cursor:pointer;">
+            <div style="position:absolute;left:{{ p.negR }}px;top:{{ p.negR }}px;width:{{ p.d }}px;height:{{ p.d }}px;border-radius:50%;box-shadow:0 0 0 1px rgba(255,255,255,.06), 0 0 26px {{ p.glow }};transition:transform .25s;" style-hover="transform:scale(1.07);">
+              <sc-if value="{{ p.hasTex }}" hint-placeholder-val="{{ false }}"><div style="width:100%;height:100%;border-radius:50%;background-image:url({{ p.tex }});background-size:cover;"></div></sc-if>
+              <sc-if value="{{ p.noTex }}" hint-placeholder-val="{{ true }}"><div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 35% 32%, {{ p.hi }}, {{ p.lo }} 70%, #05060a);"></div></sc-if>
+            </div>
+            <div style="position:absolute;left:0;top:{{ p.alertTop }}px;transform:translateX(-50%);display:flex;gap:4px;">
+              <sc-for list="{{ p.alerts }}" as="a" hint-placeholder-count="0">
+                <div style="width:11px;height:11px;transform:rotate(45deg);background:{{ a.c }};box-shadow:0 0 8px {{ a.c }};animation:{{ a.anim }};"></div>
+              </sc-for>
+            </div>
+            <div style="position:absolute;left:0;top:{{ p.labelTop }}px;transform:translateX(-50%);text-align:center;white-space:nowrap;">
+              <div style="font-size:14px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:#f1f4f8;">{{ p.name }}</div>
+              <div style="font-size:11.5px;color:#9aa6b8;margin-top:3px;">{{ p.sub }}</div>
+              <div style="font-size:11px;color:#c9d2de;margin-top:1px;">{{ p.visiting }}</div>
+            </div>
+          </div>
+        </sc-for>
+        <div style="position:absolute;right:24px;top:22px;text-align:right;">
+          <div style="font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:#9aa6b8;">Campaign</div>
+          <div style="font-family:'IM Fell English',serif;font-size:28px;color:#f3e3c6;">Strategos</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ sysIsDest }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:260px;top:0;right:0;bottom:0;overflow:hidden;">
+          <sc-if value="{{ sysDest.hasSurf }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:0;top:0;width:940px;height:700px;background-image:url({{ sysDest.surf }});background-size:cover;"></div>
+          </sc-if>
+          <sc-if value="{{ sysDest.noSurf }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#9aa6b8;">Charting surface…</div>
+          </sc-if>
+          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(3,4,10,.65) 100%);pointer-events:none;"></div>
+          <sc-for list="{{ sysDest.links }}" as="l" hint-placeholder-count="0">
+            <div style="position:absolute;left:{{ l.x }}px;top:{{ l.y }}px;width:{{ l.len }}px;height:0;border-top:1.5px dashed rgba(255,255,255,.55);transform-origin:0 0;transform:rotate({{ l.a }}deg);opacity:{{ l.o }};pointer-events:none;"></div>
+          </sc-for>
+          <sc-for list="{{ sysDest.nodes }}" as="n" hint-placeholder-count="0">
+            <div style="position:absolute;left:{{ n.x }}px;top:{{ n.y }}px;width:0;height:0;opacity:{{ n.o }};">
+              <sc-if value="{{ n.cap }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:-15px;top:-15px;width:30px;height:30px;transform:rotate(45deg);border:2px solid #f3e3c6;background:rgba(10,12,20,.75);box-shadow:0 0 12px rgba(243,227,198,.5);"></div>
+                <div style="position:absolute;left:-5px;top:-5px;width:10px;height:10px;transform:rotate(45deg);background:{{ n.color }};"></div>
+              </sc-if>
+              <sc-if value="{{ n.plain }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:-6px;top:-6px;width:12px;height:12px;border-radius:50%;background:rgba(10,12,20,.8);border:2px solid rgba(255,255,255,.75);"></div>
+              </sc-if>
+              <div style="position:absolute;left:{{ n.rowL }}px;top:-17px;display:flex;gap:8px;">
+                <sc-for list="{{ n.squads }}" as="q" hint-placeholder-count="0">
+                  <div style="position:relative;width:34px;height:34px;border-radius:50%;background:rgba(8,10,18,.88);box-shadow:0 0 0 2px {{ q.ring }}, 0 0 14px {{ q.glow }};display:flex;align-items:center;justify-content:center;">
+                    <div style="width:{{ q.fw }}px;height:{{ q.fh }}px;background:{{ q.flag }};clip-path:{{ q.clip }};display:flex;align-items:center;justify-content:center;"><sc-if value="{{ q.charge }}" hint-placeholder-val="{{ false }}"><div style="width:5px;height:5px;background:#0a0c14;transform:rotate(45deg);"></div></sc-if></div>
+                    <sc-if value="{{ q.pulse }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:-2px;border-radius:50%;animation:sgPulse 1.4s ease-out infinite;pointer-events:none;"></div></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="position:absolute;left:{{ n.textL }}px;top:{{ n.textT }}px;width:max-content;max-width:220px;display:flex;flex-direction:column;gap:2px;background:rgba(5,7,13,.78);padding:5px 9px 6px;border-left:2px solid rgba(255,255,255,.5);">
+                <div style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);">{{ n.name }}</div>
+                <sc-for list="{{ n.squads }}" as="q" hint-placeholder-count="0">
+                  <div style="display:flex;gap:6px;align-items:baseline;font-size:12px;text-shadow:0 1px 3px rgba(0,0,0,.95);">
+                    <div style="color:#fff;font-weight:600;">{{ q.title }}</div>
+                  </div>
+                  <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:{{ q.ring }};text-shadow:0 1px 3px rgba(0,0,0,.95);">{{ q.model }} · {{ q.label }}</div>
+                  <sc-if value="{{ q.hasAlso }}" hint-placeholder-val="{{ false }}"><div style="font-size:10.5px;color:#c9d2de;">↗ {{ q.also }}</div></sc-if>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+          <sc-for list="{{ sysDest.visitors }}" as="v" hint-placeholder-count="0">
+            <div style="position:absolute;left:{{ v.x }}px;top:{{ v.y }}px;width:0;height:0;">
+              <div style="position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;background:rgba(8,10,18,.88);outline:2px dashed {{ v.ring }};outline-offset:3px;box-shadow:0 0 14px {{ v.glow }};display:flex;align-items:center;justify-content:center;">
+                <div style="width:{{ v.fw }}px;height:{{ v.fh }}px;background:{{ v.flag }};clip-path:{{ v.clip }};"></div>
+                <sc-if value="{{ v.pulse }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:-2px;border-radius:50%;animation:sgPulse 1.4s ease-out infinite;"></div></sc-if>
+              </div>
+              <div style="position:absolute;right:28px;top:-26px;width:max-content;max-width:230px;display:flex;flex-direction:column;gap:2px;background:rgba(5,7,13,.8);padding:5px 9px 6px;border-right:2px dashed {{ v.ring }};text-align:right;">
+                <div style="font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#c9d2de;">{{ v.from }}</div>
+                <div style="font-size:12px;font-weight:600;color:#fff;">{{ v.title }}</div>
+                <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:{{ v.ring }};">{{ v.model }} · {{ v.label }}</div>
+                <div style="font-size:10.5px;color:#c9d2de;">{{ v.here }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="position:absolute;left:24px;top:20px;display:flex;align-items:center;gap:16px;">
+            <div onClick="{{ sysBack }}" style="display:flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid rgba(255,255,255,.35);background:rgba(5,7,13,.6);font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;" style-hover="background:rgba(255,255,255,.12);">‹ System</div>
+            <div>
+              <div style="font-size:24px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,.8);">{{ sysDest.name }}</div>
+              <div style="font-size:12px;color:#d4dae4;text-shadow:0 1px 4px rgba(0,0,0,.9);">{{ sysDest.sub }}</div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="position:absolute;left:0;top:0;bottom:0;width:260px;background:linear-gradient(90deg, rgba(6,8,14,.96), rgba(6,8,14,.86));border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;padding:22px 0 16px;box-sizing:border-box;">
+        <div style="padding:0 20px 14px;">
+          <div style="font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:#9aa6b8;">{{ sysSideKicker }}</div>
+          <div style="font-size:19px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-top:4px;">{{ sysSideTitle }}</div>
+        </div>
+        <div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#7d889a;padding:8px 20px 6px;border-top:1px solid rgba(255,255,255,.08);">Status</div>
+        <sc-for list="{{ sysStateFilters }}" as="f" hint-placeholder-count="5">
+          <div onClick="{{ f.onClick }}" style="display:flex;align-items:center;gap:10px;padding:6px 20px;cursor:pointer;opacity:{{ f.o }};" style-hover="background:rgba(255,255,255,.06);">
+            <div style="width:14px;height:14px;border:1.5px solid rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;"><sc-if value="{{ f.on }}" hint-placeholder-val="{{ true }}"><div style="width:8px;height:8px;background:#fff;"></div></sc-if></div>
+            <div style="width:9px;height:9px;transform:rotate(45deg);background:{{ f.c }};"></div>
+            <div style="flex:1;font-size:13px;">{{ f.label }}</div>
+            <div style="font-size:12px;color:#9aa6b8;font-family:'JetBrains Mono',monospace;">{{ f.n }}</div>
+          </div>
+        </sc-for>
+        <div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#7d889a;padding:14px 20px 6px;margin-top:6px;border-top:1px solid rgba(255,255,255,.08);">Model</div>
+        <sc-for list="{{ sysModelFilters }}" as="f" hint-placeholder-count="4">
+          <div onClick="{{ f.onClick }}" style="display:flex;align-items:center;gap:10px;padding:6px 20px;cursor:pointer;opacity:{{ f.o }};" style-hover="background:rgba(255,255,255,.06);">
+            <div style="width:14px;height:14px;border:1.5px solid rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;"><sc-if value="{{ f.on }}" hint-placeholder-val="{{ true }}"><div style="width:8px;height:8px;background:#fff;"></div></sc-if></div>
+            <div style="width:14px;display:flex;justify-content:center;"><div style="width:{{ f.fw }}px;height:{{ f.fh }}px;background:#e8ecf2;clip-path:{{ f.clip }};"></div></div>
+            <div style="flex:1;font-size:13px;">{{ f.label }}</div>
+            <div style="font-size:12px;color:#9aa6b8;font-family:'JetBrains Mono',monospace;">{{ f.n }}</div>
+          </div>
+        </sc-for>
+        <div style="flex:1;"></div>
+        <sc-if value="{{ sysIsDirector }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#7d889a;padding:10px 20px 6px;border-top:1px solid rgba(255,255,255,.08);">Needs you</div>
+          <sc-for list="{{ sysQueue }}" as="q" hint-placeholder-count="4">
+            <div onClick="{{ q.onClick }}" style="display:flex;flex-direction:column;gap:1px;padding:6px 20px;cursor:pointer;" style-hover="background:rgba(255,255,255,.06);">
+              <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ q.title }}</div>
+              <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:{{ q.c }};">{{ q.planet }} · {{ q.label }}</div>
+            </div>
+          </sc-for>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding:48px 48px 0;display:flex;flex-direction:column;gap:28px;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,sans-serif;color:#2e251c;">
+  <div>
+    <div style="font-family:'IM Fell English',serif;font-size:34px;">Turn 2 · Biomes</div>
+    <div style="font-size:14px;color:#5a4c3a;margin-top:6px;max-width:760px;text-wrap:pretty;">Each repository is its own land. Rooblocks is forest, Pedregal is badlands, and Atlas API is highlands, all surrounded by sea. The region color stays on the flags.</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:32px;">
+
+    <div id="2a" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2b2219;color:#f1e6cc;padding:2px 7px;border-radius:4px;">2a</div><div style="font-size:15px;font-weight:600;">Painted islands</div><div style="font-size:13px;color:#6b5a44;">Free-form land with scattered trees, mesas and peaks.</div></div>
+      <div style="width:880px;height:540px;position:relative;overflow:hidden;border-radius:8px;background-color:oklch(0.70 0.06 220);background-image:radial-gradient(ellipse at 50% 45%, oklch(0.76 0.06 210), oklch(0.62 0.06 230) 100%);box-shadow:0 10px 30px rgba(40,30,15,.25);">
+        <div style="position:absolute;inset:0;opacity:.35;mix-blend-mode:multiply;background-image:{{ noise }};"></div>
+        <sc-for list="{{ ripples }}" as="f" hint-placeholder-count="30">
+          <div style="position:absolute;left:{{ f.x }}px;top:{{ f.y }}px;width:14px;height:6px;border-top:1.5px solid rgba(255,255,255,.45);border-radius:50%;"></div>
+        </sc-for>
+        <sc-for list="{{ lands }}" as="l" hint-placeholder-count="3">
+          <div style="position:absolute;left:{{ l.x }}px;top:{{ l.y }}px;width:{{ l.w }}px;height:{{ l.h }}px;border-radius:{{ l.br }};box-shadow:0 0 0 5px {{ l.shore }}, 0 0 0 16px rgba(255,255,255,.16), 0 0 0 30px rgba(255,255,255,.07);"></div>
+        </sc-for>
+        <sc-for list="{{ lands }}" as="l" hint-placeholder-count="3">
+          <div style="position:absolute;left:{{ l.x }}px;top:{{ l.y }}px;width:{{ l.w }}px;height:{{ l.h }}px;border-radius:{{ l.br }};background:radial-gradient(ellipse at 40% 35%, {{ l.groundHi }}, {{ l.ground }} 70%);"></div>
+        </sc-for>
+        <div style="position:absolute;inset:0;opacity:.45;mix-blend-mode:multiply;background-image:{{ noise }};pointer-events:none;"></div>
+        <sc-for list="{{ lands }}" as="l" hint-placeholder-count="3">
+          <div style="position:absolute;left:{{ l.x }}px;top:{{ l.y }}px;width:{{ l.w }}px;height:{{ l.h }}px;border-radius:{{ l.br }};border:1.5px dashed rgba(255,255,255,.5);box-sizing:border-box;"></div>
+        </sc-for>
+        <sc-for list="{{ roads }}" as="rd" hint-placeholder-count="8">
+          <div style="position:absolute;left:{{ rd.x }}px;top:{{ rd.y }}px;width:{{ rd.len }}px;height:0;border-top:3px dotted rgba(245,230,195,.85);transform-origin:0 0;transform:rotate({{ rd.angle }}deg);opacity:{{ rd.op }};"></div>
+        </sc-for>
+        <sc-for list="{{ features }}" as="f" hint-placeholder-count="60">
+          <div style="position:absolute;left:{{ f.x }}px;top:{{ f.y }}px;width:0;height:0;">
+            <div style="position:absolute;left:{{ f.shL }}px;top:-3px;width:{{ f.shW }}px;height:5px;border-radius:50%;background:rgba(30,25,10,.22);"></div>
+            <sc-if value="{{ f.isPine }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:-1px;top:-3px;width:2px;height:3px;background:#5a4030;"></div>
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;width:{{ f.w }}px;height:{{ f.h }}px;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(90deg, {{ f.c2 }} 50%, {{ f.c1 }} 50%);"></div>
+            </sc-if>
+            <sc-if value="{{ f.isTree }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;width:{{ f.w }}px;height:{{ f.h }}px;border-radius:50%;background:radial-gradient(circle at 35% 30%, {{ f.c2 }}, {{ f.c1 }} 75%);"></div>
+            </sc-if>
+            <sc-if value="{{ f.isHill }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;width:{{ f.w }}px;height:{{ f.h }}px;border-radius:50% 50% 0 0 / 100% 100% 0 0;background:linear-gradient(100deg, {{ f.c2 }} 40%, {{ f.c1 }});"></div>
+            </sc-if>
+            <sc-if value="{{ f.isMountain }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;width:{{ f.w }}px;height:{{ f.h }}px;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(90deg, {{ f.c2 }} 50%, {{ f.c1 }} 50%);"></div>
+              <div style="position:absolute;left:{{ f.snL }}px;top:{{ f.t }}px;width:{{ f.snW }}px;height:{{ f.snH }}px;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(90deg, #fbfaf6 50%, #d9dce3 50%);"></div>
+            </sc-if>
+            <sc-if value="{{ f.isMesa }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;width:{{ f.w }}px;height:{{ f.h }}px;border-radius:4px 4px 0 0;background:repeating-linear-gradient(180deg, {{ f.c1 }} 0 3px, {{ f.c2 }} 3px 6px);box-shadow:inset 0 3px 0 {{ f.c3 }}, inset -5px 0 0 rgba(60,25,10,.18);"></div>
+            </sc-if>
+            <sc-if value="{{ f.isDune }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;width:{{ f.w }}px;height:{{ f.h }}px;border-top:2px solid {{ f.c1 }};border-radius:50% 50% 0 0 / 100% 100% 0 0;background:linear-gradient(180deg, {{ f.c2 }}, transparent);"></div>
+            </sc-if>
+            <sc-if value="{{ f.isRock }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;width:{{ f.w }}px;height:{{ f.h }}px;border-radius:45% 55% 40% 40%;background:linear-gradient(120deg, {{ f.c2 }}, {{ f.c1 }});"></div>
+            </sc-if>
+          </div>
+        </sc-for>
+        <sc-for list="{{ landLabels }}" as="r" hint-placeholder-count="3">
+          <div style="position:absolute;left:{{ r.x }}px;top:{{ r.y }}px;transform:translateX(-50%);background:#f3e8cf;border:1px solid rgba(58,46,34,.5);border-radius:3px;padding:3px 12px 4px;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,.15);white-space:nowrap;">
+            <div style="font-family:'IM Fell English',serif;font-size:19px;line-height:1.1;color:{{ r.color }};">{{ r.name }}</div>
+            <div style="font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#6b5a44;">{{ r.biome }}</div>
+          </div>
+        </sc-for>
+        <sc-for list="{{ settlements }}" as="s" hint-placeholder-count="11">
+          <div style="position:absolute;left:{{ s.x }}px;top:{{ s.y }}px;width:0;height:0;opacity:{{ s.op }};">
+            <div style="position:absolute;left:-15px;top:-2px;width:30px;height:8px;border-radius:50%;background:rgba(30,25,10,.28);"></div>
+            <sc-if value="{{ s.cap }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:-13px;top:-20px;width:26px;height:22px;clip-path:polygon(0 22%,14% 22%,14% 0,30% 0,30% 22%,42% 22%,42% 0,58% 0,58% 22%,70% 22%,70% 0,86% 0,86% 22%,100% 22%,100% 100%,0 100%);background:linear-gradient(90deg, #e6dfd0 55%, #bdb3a0 55%);"></div>
+              <div style="position:absolute;left:-3px;top:-9px;width:6px;height:9px;border-radius:3px 3px 0 0;background:{{ s.color }};"></div>
+            </sc-if>
+            <sc-if value="{{ s.notCap }}" hint-placeholder-val="{{ true }}">
+              <div style="position:absolute;left:-8px;top:-9px;width:16px;height:10px;background:linear-gradient(90deg, #f1e9d8 55%, #cfc4ae 55%);"></div>
+              <div style="position:absolute;left:-10px;top:-18px;width:20px;height:10px;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(90deg, #9b4a2e 50%, #7a3822 50%);"></div>
+            </sc-if>
+            <div style="position:absolute;left:0;bottom:22px;transform:translateX(-50%);display:flex;gap:6px;align-items:flex-end;">
+              <sc-for list="{{ s.squads }}" as="q" hint-placeholder-count="1">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                  <div style="position:relative;width:{{ q.boxW }}px;height:{{ q.poleH }}px;">
+                    <div style="position:absolute;left:1px;top:0;width:2px;height:{{ q.poleH }}px;background:#3a2e22;"></div>
+                    <div style="position:absolute;left:3px;top:2px;width:{{ q.fw }}px;height:{{ q.fh }}px;background:{{ q.flag }};clip-path:{{ q.clip }};transform-origin:0 50%;animation:{{ q.anim }};display:flex;align-items:center;justify-content:center;"><sc-if value="{{ q.charge }}" hint-placeholder-val="{{ false }}"><div style="width:7px;height:7px;background:#f4ead2;transform:rotate(45deg);"></div></sc-if></div>
+                    <sc-if value="{{ q.petition }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:{{ q.sealX }}px;top:-8px;width:13px;height:13px;border-radius:50%;background:oklch(0.52 0.19 27);animation:sgPulse 1.4s ease-out infinite;"></div></sc-if>
+                  </div>
+                  <sc-if value="{{ q.hasChip }}" hint-placeholder-val="{{ false }}"><div style="font-size:9.5px;font-weight:600;padding:1px 5px;border-radius:3px;background:{{ q.chipBg }};color:{{ q.chipFg }};white-space:nowrap;">{{ q.label }}</div></sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <div style="position:absolute;left:0;top:9px;transform:translateX(-50%);background:rgba(246,238,217,.95);border:1px solid rgba(58,46,34,.45);border-radius:3px;padding:1px 7px 2px;white-space:nowrap;font-family:'IM Fell English',serif;font-size:13.5px;">{{ s.name }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="2b" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2b2219;color:#f1e6cc;padding:2px 7px;border-radius:4px;">2b</div><div style="font-size:15px;font-weight:600;">Biome hexes</div><div style="font-size:13px;color:#6b5a44;">The same biomes on a tile grid, with one terrain feature per hex.</div></div>
+      <div style="width:880px;height:540px;position:relative;overflow:hidden;border-radius:8px;background:oklch(0.66 0.06 225);box-shadow:0 10px 30px rgba(40,30,15,.25);">
+        <sc-for list="{{ bHexes }}" as="h" hint-placeholder-count="40">
+          <div style="position:absolute;left:{{ h.x }}px;top:{{ h.y }}px;width:40px;height:46px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:{{ h.edge }};">
+            <div style="position:absolute;inset:1.5px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:{{ h.fill }};"></div>
+          </div>
+        </sc-for>
+        <sc-for list="{{ hexFeatures }}" as="f" hint-placeholder-count="60">
+          <div style="position:absolute;left:{{ f.x }}px;top:{{ f.y }}px;width:0;height:0;">
+            <div style="position:absolute;left:{{ f.shL }}px;top:-3px;width:{{ f.shW }}px;height:5px;border-radius:50%;background:rgba(30,25,10,.22);"></div>
+            <sc-if value="{{ f.isPine }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;width:{{ f.w }}px;height:{{ f.h }}px;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(90deg, {{ f.c2 }} 50%, {{ f.c1 }} 50%);"></div>
+            </sc-if>
+            <sc-if value="{{ f.isHill }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;width:{{ f.w }}px;height:{{ f.h }}px;border-radius:50% 50% 0 0 / 100% 100% 0 0;background:linear-gradient(100deg, {{ f.c2 }} 40%, {{ f.c1 }});"></div>
+            </sc-if>
+            <sc-if value="{{ f.isMountain }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;width:{{ f.w }}px;height:{{ f.h }}px;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(90deg, {{ f.c2 }} 50%, {{ f.c1 }} 50%);"></div>
+              <div style="position:absolute;left:{{ f.snL }}px;top:{{ f.t }}px;width:{{ f.snW }}px;height:{{ f.snH }}px;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(90deg, #fbfaf6 50%, #d9dce3 50%);"></div>
+            </sc-if>
+            <sc-if value="{{ f.isMesa }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;width:{{ f.w }}px;height:{{ f.h }}px;border-radius:3px 3px 0 0;background:repeating-linear-gradient(180deg, {{ f.c1 }} 0 3px, {{ f.c2 }} 3px 6px);box-shadow:inset 0 3px 0 {{ f.c3 }};"></div>
+            </sc-if>
+            <sc-if value="{{ f.isDune }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ f.l }}px;top:{{ f.t }}px;width:{{ f.w }}px;height:{{ f.h }}px;border-top:2px solid {{ f.c1 }};border-radius:50% 50% 0 0 / 100% 100% 0 0;"></div>
+            </sc-if>
+            <sc-if value="{{ f.isRipple }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:-7px;top:-3px;width:14px;height:6px;border-top:1.5px solid rgba(255,255,255,.4);border-radius:50%;"></div>
+            </sc-if>
+          </div>
+        </sc-for>
+        <sc-for list="{{ hexLabels }}" as="r" hint-placeholder-count="3">
+          <div style="position:absolute;left:{{ r.x }}px;top:{{ r.y }}px;transform:translateX(-50%);font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#fbf6ea;background:{{ r.color }};padding:3px 8px;border-radius:3px;white-space:nowrap;">{{ r.name }} · {{ r.biome }}</div>
+        </sc-for>
+        <sc-for list="{{ bHexSettlements }}" as="s" hint-placeholder-count="11">
+          <div style="position:absolute;left:{{ s.x }}px;top:{{ s.y }}px;width:0;height:0;opacity:{{ s.op }};">
+            <sc-if value="{{ s.cap }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:-11px;top:-12px;width:22px;height:18px;clip-path:polygon(0 22%,14% 22%,14% 0,30% 0,30% 22%,42% 22%,42% 0,58% 0,58% 22%,70% 22%,70% 0,86% 0,86% 22%,100% 22%,100% 100%,0 100%);background:linear-gradient(90deg, #e6dfd0 55%, #bdb3a0 55%);"></div>
+            </sc-if>
+            <sc-if value="{{ s.notCap }}" hint-placeholder-val="{{ true }}">
+              <div style="position:absolute;left:-7px;top:-2px;width:14px;height:8px;background:linear-gradient(90deg, #f1e9d8 55%, #cfc4ae 55%);"></div>
+              <div style="position:absolute;left:-9px;top:-10px;width:18px;height:8px;clip-path:polygon(50% 0,100% 100%,0 100%);background:linear-gradient(90deg, #9b4a2e 50%, #7a3822 50%);"></div>
+            </sc-if>
+            <div style="position:absolute;left:0;bottom:14px;transform:translateX(-50%);display:flex;gap:6px;align-items:flex-end;">
+              <sc-for list="{{ s.squads }}" as="q" hint-placeholder-count="1">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                  <div style="position:relative;width:{{ q.boxW }}px;height:{{ q.poleH }}px;">
+                    <div style="position:absolute;left:1px;top:0;width:2px;height:{{ q.poleH }}px;background:#2b2219;"></div>
+                    <div style="position:absolute;left:3px;top:2px;width:{{ q.fw }}px;height:{{ q.fh }}px;background:{{ q.flag }};clip-path:{{ q.clip }};transform-origin:0 50%;animation:{{ q.anim }};display:flex;align-items:center;justify-content:center;"><sc-if value="{{ q.charge }}" hint-placeholder-val="{{ false }}"><div style="width:7px;height:7px;background:#f4ead2;transform:rotate(45deg);"></div></sc-if></div>
+                    <sc-if value="{{ q.petition }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:{{ q.sealX }}px;top:-8px;width:13px;height:13px;border-radius:50%;background:oklch(0.52 0.19 27);animation:sgPulse 1.4s ease-out infinite;"></div></sc-if>
+                  </div>
+                  <sc-if value="{{ q.hasChip }}" hint-placeholder-val="{{ false }}"><div style="font-size:9.5px;font-weight:600;padding:1px 5px;border-radius:3px;background:{{ q.chipBg }};color:{{ q.chipFg }};white-space:nowrap;">{{ q.label }}</div></sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <div style="position:absolute;left:0;top:10px;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:600;color:#2b2219;background:rgba(247,242,230,.94);padding:1px 6px;border-radius:3px;">{{ s.name }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding:48px;display:flex;flex-direction:column;gap:28px;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,sans-serif;color:#2e251c;">
+  <div>
+    <div style="font-family:'IM Fell English',serif;font-size:34px;">Turn 1 · World view and model flags</div>
+    <div style="font-size:14px;color:#5a4c3a;margin-top:6px;max-width:760px;text-wrap:pretty;">Four map treatments of the same campaign, all using flag set <a href="#1e">1e</a>. Below them are three ways to tell Haiku, Sonnet, Opus and Fable squads apart.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:32px;">
+
+    <div id="1a" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2b2219;color:#f1e6cc;padding:2px 7px;border-radius:4px;">1a</div><div style="font-size:15px;font-weight:600;">Inked parchment</div><div style="font-size:13px;color:#6b5a44;">Hand-drawn borders and roads, like a campaign atlas.</div></div>
+      <div style="width:880px;height:540px;position:relative;overflow:hidden;border-radius:8px;background-color:#e8d9b6;background-image:radial-gradient(ellipse at 28% 18%, rgba(255,249,232,.75), transparent 55%),radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(92,62,26,.32) 100%);box-shadow:0 10px 30px rgba(40,30,15,.25);">
+        <div style="position:absolute;inset:0;opacity:.5;mix-blend-mode:multiply;background-image:{{ noise }};"></div>
+        <sc-for list="{{ regions }}" as="r" hint-placeholder-count="3">
+          <div style="position:absolute;left:{{ r.bx }}px;top:{{ r.by }}px;width:{{ r.bw }}px;height:{{ r.bh }}px;border-radius:{{ r.br }};border:2px solid {{ r.border }};background:{{ r.tint }};box-shadow:inset 0 0 0 6px {{ r.tint }};"></div>
+          <div style="position:absolute;left:{{ r.lx }}px;top:{{ r.ly }}px;font-family:'IM Fell English',serif;font-size:26px;color:{{ r.color }};">{{ r.name }}</div>
+        </sc-for>
+        <sc-for list="{{ roads }}" as="rd" hint-placeholder-count="8">
+          <div style="position:absolute;left:{{ rd.x }}px;top:{{ rd.y }}px;width:{{ rd.len }}px;border-top:2px dashed rgba(58,46,34,.42);transform-origin:0 0;transform:rotate({{ rd.angle }}deg);opacity:{{ rd.op }};"></div>
+        </sc-for>
+        <sc-for list="{{ settlements }}" as="s" hint-placeholder-count="11">
+          <div style="position:absolute;left:{{ s.x }}px;top:{{ s.y }}px;width:0;height:0;opacity:{{ s.op }};">
+            <sc-if value="{{ s.cap }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:-11px;top:-11px;width:18px;height:18px;background:#f4ead2;border:2px solid #3a2e22;display:flex;align-items:center;justify-content:center;"><div style="width:8px;height:8px;background:{{ s.color }};"></div></div></sc-if>
+            <sc-if value="{{ s.notCap }}" hint-placeholder-val="{{ true }}"><div style="position:absolute;left:-7px;top:-7px;width:11px;height:11px;background:#f4ead2;border:2px solid #3a2e22;transform:rotate(45deg);"></div></sc-if>
+            <div style="position:absolute;left:0;bottom:12px;transform:translateX(-50%);display:flex;gap:6px;align-items:flex-end;">
+              <sc-for list="{{ s.squads }}" as="q" hint-placeholder-count="1">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                  <div style="position:relative;width:{{ q.boxW }}px;height:{{ q.poleH }}px;">
+                    <div style="position:absolute;left:1px;top:0;width:2px;height:{{ q.poleH }}px;background:#3a2e22;"></div>
+                    <div style="position:absolute;left:3px;top:2px;width:{{ q.fw }}px;height:{{ q.fh }}px;background:{{ q.flag }};clip-path:{{ q.clip }};transform-origin:0 50%;animation:{{ q.anim }};display:flex;align-items:center;justify-content:center;"><sc-if value="{{ q.charge }}" hint-placeholder-val="{{ false }}"><div style="width:7px;height:7px;background:#f4ead2;transform:rotate(45deg);"></div></sc-if></div>
+                    <sc-if value="{{ q.petition }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:{{ q.sealX }}px;top:-8px;width:13px;height:13px;border-radius:50%;background:oklch(0.52 0.19 27);animation:sgPulse 1.4s ease-out infinite;"></div></sc-if>
+                  </div>
+                  <sc-if value="{{ q.hasChip }}" hint-placeholder-val="{{ false }}"><div style="font-size:9.5px;font-weight:600;padding:1px 5px;border-radius:3px;background:{{ q.chipBg }};color:{{ q.chipFg }};white-space:nowrap;">{{ q.label }}</div></sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <div style="position:absolute;left:0;top:13px;transform:translateX(-50%);background:#f6eed9;border:1px solid rgba(58,46,34,.45);border-radius:3px;padding:2px 7px 3px;white-space:nowrap;font-family:'IM Fell English',serif;font-size:14px;">{{ s.name }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="1b" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2b2219;color:#f1e6cc;padding:2px 7px;border-radius:4px;">1b</div><div style="font-size:15px;font-weight:600;">Hex board</div><div style="font-size:13px;color:#6b5a44;">Territory as tiles. Settlements snap to hexes, so layout stays tidy.</div></div>
+      <div style="width:880px;height:540px;position:relative;overflow:hidden;border-radius:8px;background:#e9e1cf;box-shadow:0 10px 30px rgba(40,30,15,.25);">
+        <sc-for list="{{ hexes }}" as="h" hint-placeholder-count="40">
+          <div style="position:absolute;left:{{ h.x }}px;top:{{ h.y }}px;width:40px;height:46px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:{{ h.edge }};">
+            <div style="position:absolute;inset:1.5px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:{{ h.fill }};"></div>
+          </div>
+        </sc-for>
+        <sc-for list="{{ regions }}" as="r" hint-placeholder-count="3">
+          <div style="position:absolute;left:{{ r.lx }}px;top:{{ r.ly }}px;font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:{{ r.dark }};background:rgba(233,225,207,.85);padding:2px 6px;border-radius:3px;">{{ r.name }}</div>
+        </sc-for>
+        <sc-for list="{{ hexSettlements }}" as="s" hint-placeholder-count="11">
+          <div style="position:absolute;left:{{ s.x }}px;top:{{ s.y }}px;width:0;height:0;opacity:{{ s.op }};">
+            <div style="position:absolute;left:-17px;top:-19px;width:34px;height:38px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:{{ s.tile }};"></div>
+            <sc-if value="{{ s.cap }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:-7px;top:-7px;width:14px;height:14px;background:#f7f2e6;border:2px solid #fff;box-sizing:border-box;"></div></sc-if>
+            <div style="position:absolute;left:0;bottom:16px;transform:translateX(-50%);display:flex;gap:6px;align-items:flex-end;">
+              <sc-for list="{{ s.squads }}" as="q" hint-placeholder-count="1">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                  <div style="position:relative;width:{{ q.boxW }}px;height:{{ q.poleH }}px;">
+                    <div style="position:absolute;left:1px;top:0;width:2px;height:{{ q.poleH }}px;background:#2b2219;"></div>
+                    <div style="position:absolute;left:3px;top:2px;width:{{ q.fw }}px;height:{{ q.fh }}px;background:{{ q.flag }};clip-path:{{ q.clip }};transform-origin:0 50%;animation:{{ q.anim }};display:flex;align-items:center;justify-content:center;"><sc-if value="{{ q.charge }}" hint-placeholder-val="{{ false }}"><div style="width:7px;height:7px;background:#f4ead2;transform:rotate(45deg);"></div></sc-if></div>
+                    <sc-if value="{{ q.petition }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:{{ q.sealX }}px;top:-8px;width:13px;height:13px;border-radius:50%;background:oklch(0.52 0.19 27);animation:sgPulse 1.4s ease-out infinite;"></div></sc-if>
+                  </div>
+                  <sc-if value="{{ q.hasChip }}" hint-placeholder-val="{{ false }}"><div style="font-size:9.5px;font-weight:600;padding:1px 5px;border-radius:3px;background:{{ q.chipBg }};color:{{ q.chipFg }};white-space:nowrap;">{{ q.label }}</div></sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <div style="position:absolute;left:0;top:21px;transform:translateX(-50%);white-space:nowrap;font-size:11.5px;font-weight:600;color:#2b2219;background:rgba(247,242,230,.92);padding:1px 6px;border-radius:3px;">{{ s.name }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="1c" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2b2219;color:#f1e6cc;padding:2px 7px;border-radius:4px;">1c</div><div style="font-size:15px;font-weight:600;">Surveyor's chart</div><div style="font-size:13px;color:#6b5a44;">Quiet ink on cream with contour rings and a grid. Color only on flags and alerts.</div></div>
+      <div style="width:880px;height:540px;position:relative;overflow:hidden;border-radius:8px;background-color:#f4efe3;background-image:repeating-linear-gradient(0deg, transparent 0 59px, rgba(58,46,34,.08) 59px 60px),repeating-linear-gradient(90deg, transparent 0 59px, rgba(58,46,34,.08) 59px 60px);box-shadow:0 10px 30px rgba(40,30,15,.25);">
+        <sc-for list="{{ rings }}" as="g" hint-placeholder-count="12">
+          <div style="position:absolute;left:{{ g.x }}px;top:{{ g.y }}px;width:{{ g.w }}px;height:{{ g.h }}px;border-radius:{{ g.br }};border:1px solid {{ g.c }};"></div>
+        </sc-for>
+        <sc-for list="{{ regions }}" as="r" hint-placeholder-count="3">
+          <div style="position:absolute;left:{{ r.lx }}px;top:{{ r.ly }}px;font-family:'IM Fell English',serif;font-style:italic;font-size:20px;letter-spacing:.2em;color:#4a3b2b;">{{ r.name }}</div>
+        </sc-for>
+        <sc-for list="{{ roads }}" as="rd" hint-placeholder-count="8">
+          <div style="position:absolute;left:{{ rd.x }}px;top:{{ rd.y }}px;width:{{ rd.len }}px;border-top:1px solid rgba(58,46,34,.55);transform-origin:0 0;transform:rotate({{ rd.angle }}deg);opacity:{{ rd.op }};"></div>
+        </sc-for>
+        <sc-for list="{{ gridCols }}" as="c" hint-placeholder-count="14"><div style="position:absolute;top:6px;left:{{ c.x }}px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#9c8f7a;">{{ c.t }}</div></sc-for>
+        <sc-for list="{{ gridRows }}" as="c" hint-placeholder-count="9"><div style="position:absolute;left:8px;top:{{ c.y }}px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#9c8f7a;">{{ c.t }}</div></sc-for>
+        <sc-for list="{{ settlements }}" as="s" hint-placeholder-count="11">
+          <div style="position:absolute;left:{{ s.x }}px;top:{{ s.y }}px;width:0;height:0;opacity:{{ s.op }};">
+            <sc-if value="{{ s.cap }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:-8px;top:-8px;width:16px;height:16px;border-radius:50%;border:1.5px solid #2b2219;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:#f4efe3;"><div style="width:6px;height:6px;border-radius:50%;background:#2b2219;"></div></div></sc-if>
+            <sc-if value="{{ s.notCap }}" hint-placeholder-val="{{ true }}"><div style="position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:#2b2219;"></div></sc-if>
+            <div style="position:absolute;left:0;bottom:10px;transform:translateX(-50%);display:flex;gap:6px;align-items:flex-end;">
+              <sc-for list="{{ s.squads }}" as="q" hint-placeholder-count="1">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                  <div style="position:relative;width:{{ q.boxW }}px;height:{{ q.poleH }}px;">
+                    <div style="position:absolute;left:1px;top:0;width:1.5px;height:{{ q.poleH }}px;background:#2b2219;"></div>
+                    <div style="position:absolute;left:3px;top:2px;width:{{ q.fw }}px;height:{{ q.fh }}px;background:{{ q.flag }};clip-path:{{ q.clip }};transform-origin:0 50%;animation:{{ q.anim }};display:flex;align-items:center;justify-content:center;"><sc-if value="{{ q.charge }}" hint-placeholder-val="{{ false }}"><div style="width:7px;height:7px;background:#f4efe3;transform:rotate(45deg);"></div></sc-if></div>
+                    <sc-if value="{{ q.petition }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:{{ q.sealX }}px;top:-8px;width:13px;height:13px;border-radius:50%;background:oklch(0.52 0.19 27);animation:sgPulse 1.4s ease-out infinite;"></div></sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="position:absolute;left:12px;top:4px;white-space:nowrap;display:flex;flex-direction:column;">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#2b2219;">{{ s.name }}</div>
+              <sc-if value="{{ s.hasAlert }}" hint-placeholder-val="{{ false }}"><div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:{{ s.alertColor }};">{{ s.alert }}</div></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="1d" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2b2219;color:#f1e6cc;padding:2px 7px;border-radius:4px;">1d</div><div style="font-size:15px;font-weight:600;">War table at night</div><div style="font-size:13px;color:#6b5a44;">Dark table with lamplight. Squads that need you are the brightest things in the room.</div></div>
+      <div style="width:880px;height:540px;position:relative;overflow:hidden;border-radius:8px;background-color:#1e1813;background-image:radial-gradient(ellipse at 50% 45%, #3a2d21 0%, #231b14 60%, #140f0b 100%);box-shadow:0 10px 30px rgba(40,30,15,.35);">
+        <sc-for list="{{ regions }}" as="r" hint-placeholder-count="3">
+          <div style="position:absolute;left:{{ r.bx }}px;top:{{ r.by }}px;width:{{ r.bw }}px;height:{{ r.bh }}px;border-radius:{{ r.br }};background:{{ r.glow }};border:1px dashed rgba(233,220,191,.22);"></div>
+          <div style="position:absolute;left:{{ r.lx }}px;top:{{ r.ly }}px;font-family:'IM Fell English',serif;font-size:22px;color:{{ r.light }};">{{ r.name }}</div>
+        </sc-for>
+        <sc-for list="{{ roads }}" as="rd" hint-placeholder-count="8">
+          <div style="position:absolute;left:{{ rd.x }}px;top:{{ rd.y }}px;width:{{ rd.len }}px;border-top:1.5px dotted rgba(233,220,191,.35);transform-origin:0 0;transform:rotate({{ rd.angle }}deg);opacity:{{ rd.op }};"></div>
+        </sc-for>
+        <sc-for list="{{ settlements }}" as="s" hint-placeholder-count="11">
+          <div style="position:absolute;left:{{ s.x }}px;top:{{ s.y }}px;width:0;height:0;opacity:{{ s.opNight }};">
+            <sc-if value="{{ s.hasAlert }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:-70px;top:-80px;width:140px;height:140px;border-radius:50%;background:{{ s.lamp }};"></div></sc-if>
+            <div style="position:absolute;left:{{ s.tokOff }}px;top:{{ s.tokOff }}px;width:{{ s.tok }}px;height:{{ s.tok }}px;border-radius:50%;background:radial-gradient(circle at 35% 30%, #e9c98a, #9a7338 70%, #5e4420);box-shadow:0 2px 4px rgba(0,0,0,.6);"></div>
+            <div style="position:absolute;left:0;bottom:12px;transform:translateX(-50%);display:flex;gap:6px;align-items:flex-end;">
+              <sc-for list="{{ s.squads }}" as="q" hint-placeholder-count="1">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                  <div style="position:relative;width:{{ q.boxW }}px;height:{{ q.poleH }}px;">
+                    <div style="position:absolute;left:1px;top:0;width:2px;height:{{ q.poleH }}px;background:#c9ab74;"></div>
+                    <div style="position:absolute;left:3px;top:2px;width:{{ q.fw }}px;height:{{ q.fh }}px;background:{{ q.flagNight }};clip-path:{{ q.clip }};transform-origin:0 50%;animation:{{ q.anim }};display:flex;align-items:center;justify-content:center;"><sc-if value="{{ q.charge }}" hint-placeholder-val="{{ false }}"><div style="width:7px;height:7px;background:#1e1813;transform:rotate(45deg);"></div></sc-if></div>
+                    <sc-if value="{{ q.petition }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:{{ q.sealX }}px;top:-8px;width:13px;height:13px;border-radius:50%;background:oklch(0.62 0.21 27);animation:sgPulse 1.4s ease-out infinite;"></div></sc-if>
+                  </div>
+                  <sc-if value="{{ q.hasChip }}" hint-placeholder-val="{{ false }}"><div style="font-size:9.5px;font-weight:600;padding:1px 5px;border-radius:3px;background:{{ q.chipBg }};color:{{ q.chipFg }};white-space:nowrap;">{{ q.label }}</div></sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <div style="position:absolute;left:0;top:12px;transform:translateX(-50%);white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:11px;color:#e9dcbf;">{{ s.name }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-family:'IM Fell English',serif;font-size:26px;margin-top:12px;">Model flags</div>
+  <div style="display:flex;flex-wrap:wrap;gap:32px;">
+    <div id="1e" style="width:560px;display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2b2219;color:#f1e6cc;padding:2px 7px;border-radius:4px;">1e</div><div style="font-size:15px;font-weight:600;">Shape by model</div></div>
+      <div style="font-size:13px;color:#6b5a44;">Each model gets its own flag shape and size, and the region keeps its color. You can tell them apart from the silhouette alone.</div>
+      <div style="background:#e8d9b6;border-radius:8px;padding:28px 24px 20px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+        <sc-for list="{{ modelFlags }}" as="q" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div style="height:64px;display:flex;align-items:flex-end;">
+              <div style="position:relative;width:{{ q.boxW2 }}px;height:{{ q.poleH2 }}px;">
+                <div style="position:absolute;left:1px;top:0;width:3px;height:{{ q.poleH2 }}px;background:#3a2e22;"></div>
+                <div style="position:absolute;left:4px;top:3px;width:{{ q.fw2 }}px;height:{{ q.fh2 }}px;background:{{ q.flag }};clip-path:{{ q.clip }};display:flex;align-items:center;justify-content:center;"><sc-if value="{{ q.charge }}" hint-placeholder-val="{{ false }}"><div style="width:11px;height:11px;background:#f4ead2;transform:rotate(45deg);"></div></sc-if></div>
+              </div>
+            </div>
+            <div style="font-family:'IM Fell English',serif;font-size:19px;">{{ q.model }}</div>
+            <div style="font-size:11.5px;color:#5a4c3a;text-align:center;">{{ q.shapeName }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="1f" style="width:560px;display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2b2219;color:#f1e6cc;padding:2px 7px;border-radius:4px;">1f</div><div style="font-size:15px;font-weight:600;">Rank marks</div></div>
+      <div style="font-size:13px;color:#6b5a44;">Every squad flies the same swallowtail, marked with bars for rank. Fable carries a crest.</div>
+      <div style="background:#e8d9b6;border-radius:8px;padding:28px 24px 20px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+        <sc-for list="{{ modelFlags }}" as="q" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div style="height:64px;display:flex;align-items:flex-end;">
+              <div style="position:relative;width:48px;height:60px;">
+                <div style="position:absolute;left:1px;top:0;width:3px;height:60px;background:#3a2e22;"></div>
+                <div style="position:absolute;left:4px;top:3px;width:42px;height:30px;background:{{ q.flag }};clip-path:polygon(0 0,100% 0,78% 50%,100% 100%,0 100%);display:flex;flex-direction:column;justify-content:center;gap:3px;padding-left:7px;box-sizing:border-box;">
+                  <sc-for list="{{ q.bars }}" as="b" hint-placeholder-count="2"><div style="width:18px;height:3px;background:#f4ead2;"></div></sc-for>
+                  <sc-if value="{{ q.charge }}" hint-placeholder-val="{{ false }}"><div style="width:11px;height:11px;background:#f4ead2;transform:rotate(45deg);margin-left:3px;"></div></sc-if>
+                </div>
+              </div>
+            </div>
+            <div style="font-family:'IM Fell English',serif;font-size:19px;">{{ q.model }}</div>
+            <div style="font-size:11.5px;color:#5a4c3a;text-align:center;">{{ q.rankName }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="1g" style="width:560px;display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:10px;align-items:baseline;"><div style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2b2219;color:#f1e6cc;padding:2px 7px;border-radius:4px;">1g</div><div style="font-size:15px;font-weight:600;">Unit tokens</div></div>
+      <div style="font-size:13px;color:#6b5a44;">Squads are game pieces instead of flags. Size and rim show the model, and token color shows the region.</div>
+      <div style="background:#e8d9b6;border-radius:8px;padding:28px 24px 20px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+        <sc-for list="{{ modelFlags }}" as="q" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div style="height:64px;display:flex;align-items:center;justify-content:center;position:relative;">
+              <div style="width:{{ q.tok }}px;height:{{ q.tok }}px;border-radius:{{ q.tokRadius }};clip-path:{{ q.tokClip }};background:{{ q.flag }};box-shadow:inset 0 0 0 {{ q.rim }}px #f4ead2, inset 0 0 0 {{ q.rim2 }}px {{ q.flag }}, 0 3px 0 #3a2e22;display:flex;align-items:center;justify-content:center;font-family:'IM Fell English',serif;color:#f4ead2;font-size:{{ q.tokFont }}px;">{{ q.initial }}</div>
+            </div>
+            <div style="font-family:'IM Fell English',serif;font-size:19px;">{{ q.model }}</div>
+            <div style="font-size:11.5px;color:#5a4c3a;text-align:center;">{{ q.unitName }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const REG = [
+  { id: 'rooblocks', name: 'Rooblocks', hue: 28, c: 0.13, cx: 230, cy: 210, rx: 190, ry: 150, br: '46% 54% 42% 58% / 52% 44% 56% 48%', lx: 40, ly: 40 },
+  { id: 'pedregal', name: 'Pedregal', hue: 245, c: 0.09, cx: 690, cy: 190, rx: 170, ry: 150, br: '55% 45% 50% 50% / 44% 56% 44% 56%', lx: 700, ly: 40 },
+  { id: 'atlas', name: 'Atlas API', hue: 150, c: 0.09, cx: 470, cy: 430, rx: 230, ry: 100, br: '50% 50% 46% 54% / 60% 52% 48% 40%', lx: 250, ly: 350 }
+];
+const SET = [
+  { id: 'rb', r: 'rooblocks', name: 'rooblocks', cap: true, x: 170, y: 200 },
+  { id: 'ff', r: 'rooblocks', name: 'filter-fix', x: 320, y: 125, sq: [['opus', 'petition']] },
+  { id: 'sh', r: 'rooblocks', name: 'store-header', x: 340, y: 275, sq: [['sonnet', 'marching']] },
+  { id: 'oc', r: 'rooblocks', name: 'onboarding-copy', x: 150, y: 305, sq: [['haiku', 'awaiting']] },
+  { id: 'pd', r: 'pedregal', name: 'pedregal', cap: true, x: 640, y: 180 },
+  { id: 'sv', r: 'pedregal', name: 'search-v2', x: 780, y: 140, sq: [['opus', 'spoils']] },
+  { id: 'pr', r: 'pedregal', name: 'payments-retry', x: 620, y: 300, sq: [['sonnet', 'fallen']] },
+  { id: 'lc', r: 'pedregal', name: 'legacy-cleanup', x: 790, y: 290, stale: true },
+  { id: 'at', r: 'atlas', name: 'atlas-api', cap: true, x: 360, y: 440, sq: [['haiku', 'marching']] },
+  { id: 'rl', r: 'atlas', name: 'rate-limit', x: 530, y: 405, sq: [['fable', 'marching']] },
+  { id: 'sm', r: 'atlas', name: 'schema-migrate', x: 650, y: 470, sq: [['sonnet', 'awaiting']] }
+];
+const MODELS = {
+  haiku: { model: 'Haiku', fw: 15, fh: 11, pole: 24, clip: 'polygon(0 0,100% 50%,0 100%)', shapeName: 'Pennant, small', bars: 1, rankName: 'One bar', unitName: 'Scout · small disc', tok: 30, initial: 'H' },
+  sonnet: { model: 'Sonnet', fw: 21, fh: 15, pole: 30, clip: 'polygon(0 0,100% 0,76% 50%,100% 100%,0 100%)', shapeName: 'Swallowtail', bars: 2, rankName: 'Two bars', unitName: 'Line · disc', tok: 40, initial: 'S' },
+  opus: { model: 'Opus', fw: 19, fh: 27, pole: 38, clip: 'polygon(0 0,100% 0,100% 78%,75% 100%,50% 78%,25% 100%,0 78%)', shapeName: 'Gonfalon, tall', bars: 3, rankName: 'Three bars', unitName: 'Guard · double rim', tok: 50, initial: 'O' },
+  fable: { model: 'Fable', fw: 21, fh: 18, pole: 34, clip: 'polygon(0 0,100% 0,100% 100%,0 100%)', charge: true, shapeName: 'Square standard, lozenge', bars: 0, rankName: 'Crest', unitName: 'Champion · hex', tok: 50, initial: 'F', hex: true }
+};
+const STATE = {
+  petition: { label: 'Petitioning', bg: 'oklch(0.52 0.19 27)', fg: '#fff6ee' },
+  awaiting: { label: 'Awaiting orders', bg: 'oklch(0.80 0.11 80)', fg: '#3a2a10' },
+  spoils: { label: 'Spoils ready', bg: 'oklch(0.72 0.09 150)', fg: '#10301a' },
+  fallen: { label: 'Fallen', bg: '#2b2219', fg: '#e9dcbf' },
+  marching: { label: 'Marching' }
+};
+const col = (r, l, a) => `oklch(${l} ${r.c} ${r.hue}${a != null ? ' / ' + a : ''})`;
+const reg = id => REG.find(r => r.id === id);
+const NOISE = `url("data:image/svg+xml,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .12 0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(#n)'/></svg>")}")`;
+const HW = 40, HH = 46, VS = 34.5;
+function hexCenter(x, y) {
+  let best = null;
+  for (let row = 0; row < 17; row++) for (let colI = 0; colI < 23; colI++) {
+    const hx = colI * HW + (row % 2 ? HW / 2 : 0) + HW / 2 - 10, hy = row * VS + HH / 2 - 10;
+    const d = (hx - x) ** 2 + (hy - y) ** 2;
+    if (!best || d < best.d) best = { d, x: hx, y: hy };
+  }
+  return best;
+}
+function regionAt(x, y) {
+  let best = null;
+  REG.forEach(r => { const d = ((x - r.cx) / r.rx) ** 2 + ((y - r.cy) / r.ry) ** 2; if (d < 1.15 && (!best || d < best.d)) best = { d, r }; });
+  return best && best.r;
+}
+
+const BIOME = {
+  rooblocks: { biome: 'Forest', ground: 'oklch(0.64 0.09 135)', hi: 'oklch(0.72 0.09 128)', shore: 'oklch(0.86 0.06 95)', edge: 'oklch(0.56 0.09 138)' },
+  pedregal: { biome: 'Badlands', ground: 'oklch(0.78 0.09 72)', hi: 'oklch(0.85 0.08 82)', shore: 'oklch(0.88 0.06 90)', edge: 'oklch(0.70 0.09 65)' },
+  atlas: { biome: 'Highlands', ground: 'oklch(0.68 0.05 130)', hi: 'oklch(0.76 0.04 120)', shore: 'oklch(0.84 0.04 100)', edge: 'oklch(0.60 0.05 135)' }
+};
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function mkFeature(kind, x, y, s) {
+  const f = { x, y, isPine: kind === 'pine', isTree: kind === 'tree', isHill: kind === 'hill', isMountain: kind === 'mountain', isMesa: kind === 'mesa', isDune: kind === 'dune', isRock: kind === 'rock', isRipple: kind === 'ripple' };
+  const dims = { pine: [s, s * 1.4], tree: [s, s], hill: [s * 2, s], mountain: [s * 1.5, s * 1.15], mesa: [s * 1.7, s * 0.75], dune: [s * 2, s * 0.45], rock: [s * 1.4, s], ripple: [14, 6] }[kind];
+  const [w, h] = dims;
+  const pal = {
+    pine: ['oklch(0.38 0.07 155)', 'oklch(0.48 0.09 148)'], tree: ['oklch(0.45 0.09 140)', 'oklch(0.60 0.11 132)'],
+    hill: ['oklch(0.54 0.06 130)', 'oklch(0.66 0.06 125)'], mountain: ['oklch(0.50 0.02 250)', 'oklch(0.66 0.02 250)'],
+    mesa: ['oklch(0.58 0.12 42)', 'oklch(0.64 0.11 52)', 'oklch(0.74 0.09 62)'], dune: ['oklch(0.66 0.10 62)', 'oklch(0.80 0.08 78 / .7)'],
+    rock: ['oklch(0.55 0.04 50)', 'oklch(0.70 0.04 60)'], ripple: []
+  }[kind];
+  return { ...f, w, h, l: -w / 2, t: -h, c1: pal[0], c2: pal[1], c3: pal[2], snW: w * 0.36, snH: h * 0.34, snL: -w * 0.18, shW: w * 0.9, shL: -w * 0.45 };
+}
+function blocked(x, y, roads, labels) {
+  for (const s of SET) { const dx = x - s.x, dy = y - s.y; if (Math.abs(dx) < 58 && dy > -52 && dy < 36) return true; }
+  for (const r of roads) {
+    const ex = Math.cos(r.angle * Math.PI / 180), ey = Math.sin(r.angle * Math.PI / 180);
+    const t = Math.max(0, Math.min(r.len, (x - r.x) * ex + (y - r.y) * ey));
+    if (Math.hypot(x - (r.x + ex * t), y - (r.y + ey * t)) < 11) return true;
+  }
+  for (const l of labels) if (Math.abs(x - l.x) < 70 && y > l.y - 6 && y < l.y + 46) return true;
+  return false;
+}
+
+const SY_ST = { petition: { label: 'Petitioning', c: '#ff5a4a' }, fallen: { label: 'Fallen', c: '#9aa3b3' }, awaiting: { label: 'Awaiting orders', c: '#f2c14e' }, spoils: { label: 'Spoils ready', c: '#5fd39a' }, marching: { label: 'Marching', c: '#7fb4ff' } };
+const SY_PRIO = { petition: 0, fallen: 1, awaiting: 2, spoils: 3, marching: 9 };
+const SY_SUN = [760, 360], SY_RX = [150, 230, 310, 385];
+const SY_P = [
+  { id: 'rooblocks', name: 'Rooblocks', biome: 'tundra', bn: 'Tundra', orbit: 0, ang: 222, r: 40, color: 'oklch(0.62 0.16 28)', glow: 'rgba(170,200,235,.35)', hi: '#e8eef5', lo: '#6d7f94', wt: [
+    { name: 'main', cap: true }, { name: 'filter-fix', sq: [['Fix filter reset on back nav', 'opus', 'petition']] },
+    { name: 'store-header', sq: [['Rebuild store page header', 'sonnet', 'marching', [{ p: 'storefront', files: 2 }]]] }, { name: 'onboarding-copy', sq: [['Update onboarding copy', 'haiku', 'awaiting']] }] },
+  { id: 'storefront', name: 'Storefront', biome: 'forest', bn: 'Ancient forest', orbit: 1, ang: 322, r: 52, color: 'oklch(0.70 0.14 80)', glow: 'rgba(120,200,120,.3)', hi: '#8fbf6a', lo: '#1f3d2a', wt: [
+    { name: 'main', cap: true }, { name: 'search-v2', sq: [['Migrate search to v2 endpoint', 'opus', 'spoils']] },
+    { name: 'menu-sync', sq: [['Sync menus from partner feed', 'fable', 'marching']] }, { name: 'legacy-cleanup', stale: true }] },
+  { id: 'pedregal', name: 'Pedregal', biome: 'desert', bn: 'Badlands', orbit: 2, ang: 146, r: 36, color: 'oklch(0.62 0.13 245)', glow: 'rgba(240,170,110,.3)', hi: '#f0c890', lo: '#7a3e22', wt: [
+    { name: 'main', cap: true, sq: [['Summarize OpenAPI v4 changes', 'haiku', 'marching']] }, { name: 'payments-retry', sq: [['Idempotent payment retries', 'sonnet', 'fallen']] }] },
+  { id: 'gateway', name: 'Gateway', biome: 'volcanic', bn: 'Volcanic', orbit: 3, ang: 28, r: 46, color: 'oklch(0.62 0.15 310)', glow: 'rgba(255,110,50,.32)', hi: '#6a5a54', lo: '#140f0e', wt: [
+    { name: 'main', cap: true }, { name: 'rate-limit', sq: [['Token-bucket rate limiter', 'fable', 'marching']] },
+    { name: 'schema-migrate', sq: [['Add schema migration + backfill', 'sonnet', 'awaiting']] }] }
+];
+function syNoise(seed) {
+  const h = (x, y) => { let n = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 1442695041); n = Math.imul(n ^ (n >>> 13), 1274126177); n ^= n >>> 16; return (n >>> 0) / 4294967296; };
+  const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf); const a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; };
+  return (x, y, o) => { let s = 0, a = 0.5, f = 1, n = 0; for (let i = 0; i < o; i++) { s += a * vn(x * f + i * 17.3, y * f + i * 9.1); n += a; a *= 0.5; f *= 2.03; } return s / n; };
+}
+const syS = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const syMix = (o, c, k) => { o[0] += (c[0] - o[0]) * k; o[1] += (c[1] - o[1]) * k; o[2] += (c[2] - o[2]) * k; };
+function syColor(b, e, rg, dt, stripe) {
+  const o = [0, 0, 0]; let emit = 0;
+  if (b === 'tundra') {
+    if (e < 0.4) { o[0] = 60; o[1] = 96; o[2] = 128; syMix(o, [150, 186, 210], syS(0.28, 0.4, e) * 0.8 + dt * 0.15); }
+    else { o[0] = 176; o[1] = 190; o[2] = 202; syMix(o, [242, 246, 250], syS(0.42, 0.62, e)); if (rg > 0.82) syMix(o, [104, 112, 126], syS(0.82, 0.95, rg) * 0.8); }
+  } else if (b === 'forest') {
+    if (e < 0.36) { o[0] = 26; o[1] = 62; o[2] = 92; syMix(o, [58, 112, 128], syS(0.26, 0.36, e)); }
+    else if (e < 0.39) { o[0] = 196; o[1] = 184; o[2] = 132; }
+    else { o[0] = 88; o[1] = 132; o[2] = 60; syMix(o, [30, 70, 38], syS(0.35, 0.62, dt)); if (e > 0.66) syMix(o, [118, 118, 96], syS(0.66, 0.78, e)); }
+  } else if (b === 'desert') {
+    o[0] = 222; o[1] = 172; o[2] = 112; syMix(o, [196, 136, 84], stripe * 0.45);
+    if (e < 0.34) syMix(o, [236, 214, 170], syS(0.34, 0.2, e));
+    if (e > 0.52) syMix(o, [164, 86, 50], syS(0.52, 0.7, e));
+    if (rg > 0.86) syMix(o, [120, 62, 38], syS(0.86, 0.96, rg) * 0.7);
+  } else {
+    o[0] = 70; o[1] = 60; o[2] = 56; syMix(o, [34, 28, 27], syS(0.3, 0.6, e) * 0.7 + dt * 0.2);
+    if (e < 0.3) { emit = syS(0.3, 0.2, e); syMix(o, [255, 110, 30], emit); }
+    if (rg > 0.93) { const k = syS(0.93, 0.99, rg); emit = Math.max(emit, k); syMix(o, [255, 150, 60], k); }
+  }
+  return [o, emit];
+}
+function syHeight(n, b, x, y) {
+  const q = n(x * 0.5 + 3.1, y * 0.5 + 7.7, 3);
+  let e = n(x + q * 1.4, y + q * 1.4, 6);
+  const rg = 1 - Math.abs(2 * n(x * 1.7 + 11, y * 1.7 + q, 5) - 1);
+  if (b === 'tundra') e = e * 0.8 + rg * rg * 0.28;
+  if (b === 'desert') e = Math.floor(e * 9) / 9 * 0.6 + e * 0.4;
+  return [e, rg];
+}
+function syBlobURL(dataUrl) { const [head, b64] = dataUrl.split(','), mime = head.slice(5).split(';')[0], bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return URL.createObjectURL(new Blob([u], { type: mime })); }
+function syPlanetTex(p, seed) {
+  const S = p.r * 4, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(S, S), d = img.data, n = syNoise(seed);
+  const L = [-0.55, -0.45, 0.7], ll = Math.hypot(...L); L[0] /= ll; L[1] /= ll; L[2] /= ll;
+  const atm = { tundra: [170, 210, 255], forest: [130, 210, 160], desert: [255, 190, 130], volcanic: [255, 110, 60] }[p.biome];
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const dx = (x + 0.5) / S * 2 - 1, dy = (y + 0.5) / S * 2 - 1, d2 = dx * dx + dy * dy; if (d2 >= 1) continue;
+    const z = Math.sqrt(1 - d2), lon = Math.atan2(dx, z), lat = Math.asin(dy);
+    const u = lon * 1.4 + 2, v = lat * 2.1 + 2;
+    const [e, rg] = syHeight(n, p.biome, u, v), dt = n(u * 9, v * 9, 2);
+    const stripe = 0.5 + 0.5 * Math.sin(v * 26 + e * 8);
+    const [c, emit] = syColor(p.biome, e, rg, dt, stripe);
+    let lit = Math.max(0, dx * L[0] + dy * L[1] + z * L[2]);
+    let sh = 0.05 + Math.pow(lit, 0.85) * 1.08;
+    if (p.biome === 'tundra' && Math.abs(lat) > 1.05) syMix(c, [245, 248, 252], syS(1.05, 1.25, Math.abs(lat)));
+    const rim = Math.pow(1 - z, 2.6) * (0.25 + lit * 0.9);
+    const i = (y * S + x) * 4;
+    for (let k = 0; k < 3; k++) d[i + k] = Math.min(255, c[k] * (sh * (1 - emit) + emit * 0.95) + atm[k] * rim);
+    d[i + 3] = Math.min(1, (1 - Math.sqrt(d2)) * S / 2) * 255;
+  }
+  ctx.putImageData(img, 0, 0); return syBlobURL(cv.toDataURL());
+}
+function sySurface(p, seed) {
+  const GW = 470, GH = 350, n = syNoise(seed + 5), E = new Float32Array(GW * GH), RG = new Float32Array(GW * GH);
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { const [e, rg] = syHeight(n, p.biome, x / 95, y / 95); const cx = (x / GW - 0.5), cy = (y / GH - 0.5); E[y * GW + x] = e + 0.1 - (cx * cx + cy * cy) * 0.35; RG[y * GW + x] = rg; }
+  const cv = document.createElement('canvas'); cv.width = GW; cv.height = GH;
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(GW, GH), d = img.data;
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+    const i = y * GW + x, e = E[i];
+    const l = E[i - (x > 0 ? 1 : 0)], r = E[i + (x < GW - 1 ? 1 : 0)], u = E[i - (y > 0 ? GW : 0)], dn = E[i + (y < GH - 1 ? GW : 0)];
+    let sh = 1 + (-(r - l) * 0.8 - (dn - u)) * 16; sh = Math.max(0.45, Math.min(1.55, sh));
+    const water = (p.biome === 'tundra' && e < 0.4) || (p.biome === 'forest' && e < 0.36);
+    if (water) sh = 1 + (sh - 1) * 0.15;
+    const stripe = 0.5 + 0.5 * Math.sin(y / 5 + e * 14);
+    const [c, emit] = syColor(p.biome, e, RG[i], n(x / 7, y / 7, 2), stripe);
+    const g = 1 + (n(x / 2.3, y / 2.3, 1) - 0.5) * 0.08;
+    const k = (sh * (1 - emit) + emit) * g;
+    d[i * 4] = Math.min(255, c[0] * k); d[i * 4 + 1] = Math.min(255, c[1] * k); d[i * 4 + 2] = Math.min(255, c[2] * k); d[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const out = document.createElement('canvas'); out.width = 940; out.height = 700;
+  const o = out.getContext('2d'); o.imageSmoothingQuality = 'high'; o.drawImage(cv, 0, 0, 940, 700);
+  return syBlobURL(out.toDataURL('image/jpeg', 0.9));
+}
+const SY_STARS = (() => { const n = syNoise(77), s = []; for (let i = 0; i < 220; i++) { const x = n(i * 1.37, 0.5, 1) * 0 + ((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1 * 1200, y = ((Math.sin(i * 78.233) * 12543.113) % 1 + 1) % 1 * 700, r = ((Math.sin(i * 3.7) * 9123.1) % 1 + 1) % 1; s.push({ x: Math.round(x), y: Math.round(y), s: r > 0.93 ? 2.2 : r > 0.7 ? 1.5 : 1, o: (0.25 + r * 0.6).toFixed(2) }); } return s; })();
+const SY_ROOT = { id: 'root', name: 'Root', path: '~/code', sq: [
+  ['Bump shared lint config everywhere', 'opus', 'petition', [{ p: 'rooblocks', files: 3 }, { p: 'storefront', files: 3 }, { p: 'pedregal', files: 2 }, { p: 'gateway', files: 3 }]],
+  ['Trace order-id across services', 'sonnet', 'marching', [{ p: 'storefront', files: 0 }, { p: 'gateway', files: 1 }]]
+] };
+const SY_VISIT_POS = [[880, 460], [880, 620], [520, 650]];
+const SY_NODE_POS = [[470, 370], [690, 210], [300, 190], [250, 520], [700, 520]];
+
+const B3_PL = {
+  rooblocks: { x: 330, y: 215, r: 46, side: -1 }, storefront: { x: 710, y: 215, r: 50, side: 1 },
+  pedregal: { x: 330, y: 610, r: 42, side: -1 }, gateway: { x: 710, y: 610, r: 46, side: 1 }
+};
+const B3_SUN = [520, 412];
+const B3_SESS = [
+  { id: 's1', home: 'rooblocks', wt: 'filter-fix', title: 'Fix filter reset on back nav', m: 'opus', st: 'petition', msgs: [['u', 'Filter chips on the store page reset when you navigate back from a venue. Fix it and add a test.'], ['t', 'Read · StoreFilterViewModel.swift'], ['a', 'The view model is recreated in onAppear. I hoisted it to the coordinator and wrote FilterStateTests.'], ['p', 'xcodebuild test -scheme Store -only-testing:StoreTests/FilterStateTests']] },
+  { id: 's2', home: 'rooblocks', wt: 'store-header', title: 'Rebuild store page header', m: 'sonnet', st: 'marching', touches: [{ p: 'storefront', files: 2 }], act: 'Editing VenueMeta.swift…', msgs: [['u', 'Rebuild the store page header to the new spec. Update the shared header model in storefront too.'], ['t', 'Edit · Store/Header/VenueMeta.swift'], ['t', 'Edit · storefront/models/Header.ts']] },
+  { id: 's3', home: 'rooblocks', wt: 'onboarding-copy', title: 'Update onboarding copy', m: 'haiku', st: 'awaiting', msgs: [['u', 'Update onboarding copy from the strings doc. Keep keys stable.'], ['t', 'Edit · Onboarding/Localizable.strings'], ['a', 'Screens 1–3 are done. Screen 4 has two headline variants in the doc. Which one should ship?']] },
+  { id: 's4', home: 'rooblocks', wt: 'dark-tokens', title: 'Dark mode token audit', m: 'haiku', st: 'marching', act: 'Grepping Color(…) literals…', msgs: [['u', 'Find hardcoded colors that should use design tokens.']] },
+  { id: 's5', home: 'storefront', wt: 'search-v2', title: 'Migrate search to v2 endpoint', m: 'opus', st: 'spoils', msgs: [['u', 'Move search to v2 behind the search_v2 flag with fallback to v1.'], ['a', 'Done. 7 commits, tests pass. Ready for review.']] },
+  { id: 's6', home: 'storefront', wt: 'menu-sync', title: 'Sync menus from partner feed', m: 'fable', st: 'marching', act: 'Running menu import tests…', msgs: [['u', 'Import partner menu feed nightly and diff against current menus.']] },
+  { id: 's7', home: 'storefront', wt: 'venue-hours', title: 'Add venue hours to cards', m: 'sonnet', st: 'marching', act: 'Editing VenueCard.tsx…', msgs: [['u', 'Show opening hours on venue cards.']] },
+  { id: 's8', home: 'storefront', wt: 'cart-flake', title: 'Flaky cart snapshot tests', m: 'haiku', st: 'marching', act: 'Re-running cart suite ×20…', msgs: [['u', 'Find why cart snapshot tests flake on CI.']] },
+  { id: 's9', home: 'storefront', wt: 'jpy-format', title: 'Price formatting for JPY', m: 'sonnet', st: 'marching', act: 'Writing currency tests…', msgs: [['u', 'JPY prices show decimals. Fix formatting for zero-decimal currencies.']] },
+  { id: 's10', home: 'storefront', wt: 'cdn-fallback', title: 'Image CDN fallback', m: 'haiku', st: 'marching', act: 'Reading ImageLoader.ts…', msgs: [['u', 'Fall back to origin when the image CDN times out.']] },
+  { id: 's11', home: 'pedregal', wt: 'main', title: 'Summarize OpenAPI v4 changes', m: 'haiku', st: 'marching', act: 'Reading docs/openapi.yaml…', msgs: [['u', 'Summarize breaking changes between openapi v3 and v4.']] },
+  { id: 's12', home: 'pedregal', wt: 'payments-retry', title: 'Idempotent payment retries', m: 'sonnet', st: 'fallen', msgs: [['u', 'Add idempotency keys to payment retries.'], ['t', 'Bash · npm run test:integration'], ['x', 'Process exited unexpectedly (signal 9).']] },
+  { id: 's13', home: 'gateway', wt: 'rate-limit', title: 'Token-bucket rate limiter', m: 'fable', st: 'marching', act: 'go test ./limiter/…', msgs: [['u', 'Add a token-bucket limiter per API key on public routes.']] },
+  { id: 's14', home: 'gateway', wt: 'schema-migrate', title: 'Add schema migration + backfill', m: 'sonnet', st: 'awaiting', msgs: [['a', 'Draft PR #412 is open with the migration and backfill. Checks are green. Should I add the rollback migration too?']] },
+  { id: 'r1', home: 'root', wt: '~/code', title: 'Bump shared lint config everywhere', m: 'opus', st: 'petition', touches: [{ p: 'rooblocks', files: 3 }, { p: 'storefront', files: 3 }, { p: 'pedregal', files: 2 }, { p: 'gateway', files: 3 }], msgs: [['u', 'Bump @wolt/eslint-config to 9.2 in every repo and fix new lint errors.'], ['t', 'Edit · 11 files across 4 repos'], ['p', 'npm run lint --workspaces --if-present']] },
+  { id: 'r2', home: 'root', wt: '~/code', title: 'Trace order-id across services', m: 'sonnet', st: 'marching', touches: [{ p: 'storefront', files: 0 }, { p: 'gateway', files: 1 }], act: 'Reading gateway/middleware/trace.go…', msgs: [['u', 'Trace how order_id flows from storefront through gateway. Add it to gateway logs.']] }
+];
+
+const ICONS = {
+  flags: { id: '5a', name: 'Flags (current)', desc: 'Silhouette by model. Reads as heraldry more than tech.' },
+  ships: { id: '5b', name: 'Ships', desc: 'Scout, frigate, cruiser, station. Bigger model means bigger ship, and it fits the space map.', L: {
+    haiku: [[9, 11, 3.5, 2.5, 'polygon(50% 0,100% 100%,50% 72%,0 100%)']],
+    sonnet: [[14, 14, 1, 1, 'polygon(50% 0,64% 38%,100% 68%,100% 86%,62% 78%,50% 100%,38% 78%,0 86%,0 68%,36% 38%)']],
+    opus: [[16, 16, 0, 0, 'polygon(50% 0,68% 22%,68% 50%,100% 70%,100% 100%,62% 88%,50% 100%,38% 88%,0 100%,0 70%,32% 50%,32% 22%)']],
+    fable: [[16, 16, 0, 0, null, 1], [10, 10, 3, 3, null, 1, 1], [4, 4, 6, 6, null, 1]] } },
+  geo: { id: '5c', name: 'Shapes', desc: 'Circle, triangle, diamond, star. The simplest option, and it stays legible at 12px.', L: {
+    haiku: [[8, 8, 4, 4, null, 1]], sonnet: [[13, 12, 1.5, 2, 'polygon(50% 0,100% 100%,0 100%)']],
+    opus: [[14, 14, 1, 1, 'polygon(50% 0,100% 50%,50% 100%,0 50%)']],
+    fable: [[16, 16, 0, 0, 'polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)']] } },
+  pips: { id: '5d', name: 'Rank pips', desc: 'One to four dots. You can count the tier at a glance, with no shapes to learn.', L: {
+    haiku: [[5, 5, 5.5, 5.5, null, 1]], sonnet: [[5, 5, 2, 5.5, null, 1], [5, 5, 9, 5.5, null, 1]],
+    opus: [[5, 5, 5.5, 1.5, null, 1], [5, 5, 1.5, 9.5, null, 1], [5, 5, 9.5, 9.5, null, 1]],
+    fable: [[5, 5, 2, 2, null, 1], [5, 5, 9, 2, null, 1], [5, 5, 2, 9, null, 1], [5, 5, 9, 9, null, 1]] } },
+  mono: { id: '5e', name: 'Monograms', desc: 'H, S, O, F. The most explicit option, with nothing to learn, but the least iconic.' }
+};
+const NAMES = {
+  current: { id: '5f', name: 'Current', desc: 'Themed. Fun, but you have to learn it.', L: { marching: 'Marching', petition: 'Petitioning', awaiting: 'Awaiting orders', spoils: 'Spoils ready', fallen: 'Fallen' } },
+  plain: { id: '5g', name: 'Plain', desc: 'Each name says what you need to do.', L: { marching: 'Working', petition: 'Needs approval', awaiting: 'Needs reply', spoils: 'Ready to review', fallen: 'Crashed' } },
+  short: { id: '5h', name: 'Short', desc: 'One word each, and fits tight labels.', L: { marching: 'Running', petition: 'Approve', awaiting: 'Reply', spoils: 'Review', fallen: 'Failed' } },
+  flight: { id: '5i', name: 'Flight control', desc: 'Matches the space map and is still readable.', L: { marching: 'In flight', petition: 'Requesting clearance', awaiting: 'Holding', spoils: 'Landed', fallen: 'Signal lost' } }
+};
+const iconOf = (set, m, color) => {
+  if (set === 'mono') return { layers: [], letter: m[0].toUpperCase(), hasLetter: true, ic: color };
+  if (set === 'flags' || !ICONS[set]) { const M = MODELS[m], sc = Math.min(0.62, 14 / M.fh), w = M.fw * sc, hh = M.fh * sc; return { layers: [{ w, h: hh, x: (16 - w) / 2, y: (16 - hh) / 2, clip: M.clip, r: '0', bg: color }], letter: '', hasLetter: false, ic: color }; }
+  return { layers: ICONS[set].L[m].map(([w, hh, x, y, clip, round, dark]) => ({ w, h: hh, x, y, clip: clip || 'none', r: round ? '50%' : '0', bg: dark ? '#0a0c14' : color })), letter: '', hasLetter: false, ic: color };
+};
+
+class Component extends DCLogic {
+  b3 = () => {
+    const st = this.state, S = st.b3S || B3_SESS, sel = S.find(s => s.id === st.b3Sel);
+    const ISET = st.b3Icon || 'mono', NS = NAMES[st.b3Names || 'plain'].L, lab = k => NS[k];
+    const plName = id => id === 'root' ? 'Root' : SY_P.find(p => p.id === id).name;
+    const upd = (id, fn) => this.setState(s => ({ b3S: (s.b3S || B3_SESS).map(x => x.id === id ? fn(x) : x) }));
+    const tokenOf = (s, color) => ({ ...iconOf(ISET, s.m, color), ring: SY_ST[s.st].c, glow: SY_ST[s.st].c + '77', pulse: s.st === 'petition' });
+    const tokens = [], chips = [];
+    SY_P.forEach(p => {
+      const L = B3_PL[p.id], mine = S.filter(s => s.home === p.id);
+      const att = mine.filter(s => s.st !== 'marching'), mar = mine.filter(s => s.st === 'marching');
+      let shown = mine, hidden = 0;
+      if ((st.b3Stack ?? true) && !st.b3Exp?.[p.id] && mine.length > 5) { const keep = Math.max(0, 4 - att.length); shown = mine.filter(s => s.st !== 'marching' || mar.indexOf(s) < keep); hidden = mine.length - shown.length; }
+      const n = shown.length + (hidden ? 1 : 0), GAP = 38, half = (n - 1) * GAP / 2, R = Math.max(L.r + 38, half + 22);
+      const slot = i => { const dy = -half + i * GAP; return [L.x + L.side * Math.sqrt(Math.max(0, R * R - dy * dy)), L.y + dy]; };
+      shown.forEach((s, i) => {
+        const [x, y] = slot(i);
+        tokens.push({ ...tokenOf(s, p.color), x, y, title: s.title, meta: `${MODELS[s.m].model} · ${lab(s.st)}`, left: L.side < 0, right: L.side > 0,
+          sel: st.b3Sel === s.id, bg: st.b3Sel === s.id ? 'rgba(255,255,255,.14)' : 'rgba(5,7,13,.55)', onClick: e => { e && e.stopPropagation(); this.setState({ b3Sel: s.id, b3Draft: '' }); } });
+      });
+      if (hidden) { const [cx0, cy0] = slot(n - 1); chips.push({ x: cx0, y: cy0, text: `+${hidden} ${lab('marching').toLowerCase()}`, left: L.side < 0, right: L.side > 0, onClick: e => { e && e.stopPropagation(); this.setState(s => ({ b3Exp: { ...(s.b3Exp || {}), [p.id]: true } })); } }); }
+    });
+    const planets = SY_P.map(p => { const L = B3_PL[p.id], n = S.filter(s => s.home === p.id).length, v = S.filter(s => s.home !== p.id && s.touches && s.touches.some(t => t.p === p.id)).length;
+      return { x: L.x, y: L.y, d: L.r * 2, neg: -L.r, tex: st.sysTex?.[p.id] ? `url(${st.sysTex[p.id]})` : 'none', glow: p.glow, name: p.name, sub: `${p.bn} · ${n} session${n === 1 ? '' : 's'}`, visit: v ? `+ ${v} visiting` : '', left: L.side < 0, right: L.side > 0, nameX: L.r + 14,
+        collapse: st.b3Exp?.[p.id], onCollapse: e => { e && e.stopPropagation(); this.setState(s => ({ b3Exp: { ...(s.b3Exp || {}), [p.id]: false } })); } }; });
+    const routes = [];
+    S.filter(s => s.touches).forEach(s => {
+      const from = s.home === 'root' ? { x: B3_SUN[0], y: B3_SUN[1], r: 20 } : B3_PL[s.home];
+      s.touches.filter(t => t.p !== s.home).forEach(t => {
+        const to = B3_PL[t.p], dx = to.x - from.x, dy = to.y - from.y, Ln = Math.hypot(dx, dy), ux = dx / Ln, uy = dy / Ln;
+        const sx = from.x + ux * (from.r + 6), sy = from.y + uy * (from.r + 6), ex = to.x - ux * (to.r + 8), ey = to.y - uy * (to.r + 8);
+        const bend = s.home === 'root' ? 0.12 : 0.35, cx = (sx + ex) / 2 + uy * Ln * bend * (s.home === 'root' ? 1 : -1), cy = (sy + ey) / 2 - ux * Ln * bend * (s.home === 'root' ? 1 : -1);
+        routes.push({ d: `M${sx.toFixed(1)} ${sy.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`, c: SY_ST[s.st].c, dash: t.files ? '' : '5 5', w: st.b3Sel === s.id ? 3 : 1.6, o: st.b3Sel && st.b3Sel !== s.id ? 0.25 : 0.85, ex, ey });
+      });
+    });
+    const roots = S.filter(s => s.home === 'root').map(s => ({ ...tokenOf(s, '#f3e3c6'), title: s.title, meta: `${MODELS[s.m].model} · ${lab(s.st)}`, reach: `${s.touches.length} repos`, sel: st.b3Sel === s.id,
+      bg: st.b3Sel === s.id ? 'rgba(255,255,255,.14)' : 'rgba(5,7,13,.8)', onClick: e => { e && e.stopPropagation(); this.setState({ b3Sel: s.id, b3Draft: '' }); } }));
+    const counts = Object.keys(SY_ST).map(k => ({ c: SY_ST[k].c, label: lab(k), n: S.filter(s => s.st === k).length }));
+    const queue = S.filter(s => s.st !== 'marching').sort((a, b) => SY_PRIO[a.st] - SY_PRIO[b.st]).map(s => ({ title: s.title, where: s.home === 'root' ? `Root · ${s.touches.length} repos` : `${plName(s.home)} · ${s.wt}`, label: lab(s.st), c: SY_ST[s.st].c, onClick: e => { e && e.stopPropagation(); this.setState({ b3Sel: s.id, b3Draft: '' }); } }));
+    let chat = {};
+    if (sel) {
+      const M = MODELS[sel.m];
+      chat = { ...tokenOf(sel, sel.home === 'root' ? '#f3e3c6' : SY_P.find(p => p.id === sel.home).color), title: sel.title, model: M.model, label: lab(sel.st), c: SY_ST[sel.st].c,
+        where: sel.home === 'root' ? '~/code (root)' : `${plName(sel.home)} / ${sel.wt}`,
+        touches: sel.touches ? 'Also in: ' + sel.touches.filter(t => t.p !== sel.home).map(t => plName(t.p) + (t.files ? ` (${t.files} files)` : ' (reading)')).join(', ') : '', hasTouches: !!(sel.touches && sel.touches.some(t => t.p !== sel.home)),
+        act: sel.act, hasAct: sel.st === 'marching' && !!sel.act,
+        msgs: sel.msgs.map(([k, t]) => ({ isU: k === 'u', isA: k === 'a', isT: k === 't', isX: k === 'x', isP: k === 'p' && sel.st === 'petition', text: t,
+          onGrant: () => upd(sel.id, x => ({ ...x, st: 'marching', act: 'Running approved command…', msgs: x.msgs.filter(m => m[0] !== 'p').concat([['x', 'Petition granted'], ['t', 'Bash · ' + t]]) })),
+          onDeny: () => upd(sel.id, x => ({ ...x, st: 'awaiting', msgs: x.msgs.filter(m => m[0] !== 'p').concat([['x', 'Petition denied']]) })) })) };
+    }
+    const send = () => { const t = (st.b3Draft || '').trim(); if (!t || !sel) return; upd(sel.id, x => ({ ...x, st: 'marching', act: 'Thinking…', msgs: x.msgs.filter(m => m[0] !== 'p').concat([['u', t]]) })); this.setState({ b3Draft: '' }); };
+    const pickIcons = Object.keys(ICONS).map(k => ({ id: ICONS[k].id, name: ICONS[k].name, desc: ICONS[k].desc, border: ISET === k ? '2px solid #f3e3c6' : '2px solid transparent', onClick: () => this.setState({ b3Icon: k }),
+      models: ['haiku', 'sonnet', 'opus', 'fable'].map(m => ({ ...iconOf(k, m, 'oklch(0.72 0.14 80)'), name: MODELS[m].model })) }));
+    const pickNames = Object.keys(NAMES).map(k => ({ id: NAMES[k].id, name: NAMES[k].name, desc: NAMES[k].desc, border: (st.b3Names || 'plain') === k ? '2px solid #f3e3c6' : '2px solid transparent', onClick: () => this.setState({ b3Names: k }),
+      rows: ['marching', 'petition', 'awaiting', 'spoils', 'fallen'].map(s => ({ label: NAMES[k].L[s], c: SY_ST[s].c })) }));
+    return {
+      b3MarchLabel: lab('marching').toLowerCase(), b3PickIcons: pickIcons, b3PickNames: pickNames,
+      b3Stars: SY_STARS.map(s => ({ ...s, x: s.x * 0.87, y: s.y * 1.17 })), b3SunX: B3_SUN[0], b3SunY: B3_SUN[1], b3Planets: planets, b3Tokens: tokens, b3Chips: chips, b3Routes: routes, b3Roots: roots,
+      b3Counts: counts, b3Total: S.length, b3Queue: queue, b3HasSel: !!sel, b3NoSel: !sel, b3Chat: chat, b3Draft: st.b3Draft || '',
+      b3OnDraft: e => this.setState({ b3Draft: e.target.value }), b3OnKey: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }, b3Send: send,
+      b3Close: () => this.setState({ b3Sel: null }), b3Bg: () => this.setState({ b3Sel: null }),
+      b3StackLabel: (st.b3Stack ?? true) ? 'Stacking ' + lab('marching').toLowerCase() : 'Showing all', b3ToggleStack: e => { e && e.stopPropagation(); this.setState(s => ({ b3Stack: !(s.b3Stack ?? true), b3Exp: {} })); }
+    };
+  };
+  state = { sysView: null, sysTex: {}, sysSurf: {}, sysF: { petition: true, fallen: true, awaiting: true, spoils: true, marching: true }, sysM: { haiku: true, sonnet: true, opus: true, fable: true } };
+  componentDidMount() {
+    setTimeout(() => { const t = {}; SY_P.forEach((p, k) => { t[p.id] = syPlanetTex(p, 11 + k * 7); }); this.setState({ sysTex: t }); }, 30);
+  }
+  sysOpen(id) {
+    this.setState({ sysView: id });
+    if (!this.state.sysSurf[id]) setTimeout(() => { const p = SY_P.find(x => x.id === id), k = SY_P.indexOf(p); const url = sySurface(p, 11 + k * 7); this.setState(s => ({ sysSurf: { ...s.sysSurf, [id]: url } })); }, 30);
+  }
+  sys() {
+    const st = this.state, vis = q => st.sysF[q[2]] && st.sysM[q[1]];
+    const pos = p => { const rx = SY_RX[p.orbit], ry = rx * 0.36, a = p.ang * Math.PI / 180; return [SY_SUN[0] + Math.cos(a) * rx, SY_SUN[1] + Math.sin(a) * ry]; };
+    const all = []; SY_P.forEach(p => p.wt.forEach(w => (w.sq || []).forEach(q => all.push({ p, w, q })))); SY_ROOT.sq.forEach(q => all.push({ p: SY_ROOT, w: null, q }));
+    const pName = id => (SY_P.find(x => x.id === id) || SY_ROOT).name;
+    const multi = all.filter(a => a.q[3]);
+    const dest = st.sysView && SY_P.find(p => p.id === st.sysView);
+    const scope = dest ? all.filter(a => a.p === dest || (a.q[3] && a.q[3].some(t => t.p === dest.id))) : all;
+    const planets = SY_P.map(p => {
+      const [x, y] = pos(p), mine = all.filter(a => a.p === p);
+      const alerts = mine.filter(a => a.q[2] !== 'marching' && vis(a.q)).sort((a, b) => SY_PRIO[a.q[2]] - SY_PRIO[b.q[2]]).map(a => ({ c: SY_ST[a.q[2]].c, anim: a.q[2] === 'petition' ? 'sgPulse 1.4s ease-out infinite' : 'none' }));
+      return { ...p, x, y, d: p.r * 2, negR: -p.r, tex: st.sysTex[p.id], hasTex: !!st.sysTex[p.id], noTex: !st.sysTex[p.id], alerts, alertTop: -p.r - 22, labelTop: p.r + 12,
+        sub: `${p.wt.length} worktrees · ${mine.length} session${mine.length === 1 ? '' : 's'}`, visiting: (() => { const v = multi.filter(a => a.p !== p && a.q[3].some(t => t.p === p.id) && vis(a.q)).length; return v ? `+ ${v} visiting` : ''; })(), onClick: () => this.sysOpen(p.id) };
+    });
+    const routes = [];
+    multi.filter(a => vis(a.q)).forEach(a => {
+      const from = a.p === SY_ROOT ? SY_SUN : pos(a.p), fr = a.p === SY_ROOT ? 20 : a.p.r + 4, c = SY_ST[a.q[2]].c;
+      a.q[3].filter(t => t.p !== a.p.id).forEach(t => {
+        const tp = SY_P.find(x => x.id === t.p), to = pos(tp), dx = to[0] - from[0], dy = to[1] - from[1], L = Math.hypot(dx, dy);
+        const ux = dx / L, uy = dy / L, sx = from[0] + ux * fr, sy = from[1] + uy * fr, len = L - fr - tp.r - 6;
+        routes.push({ x: sx, y: sy, len, a: Math.atan2(dy, dx) * 180 / Math.PI, c, w: a.p === SY_ROOT ? 2 : 1.5, style: t.files ? 'solid' : 'dashed', o: a.p === SY_ROOT ? 0.8 : 0.6, hx: sx + dx * 0 + ux * len, hy: sy + uy * len });
+      });
+    });
+    const tok = (m, s, color) => { const M = MODELS[m], sc = Math.min(0.62, 15 / M.fh); return { ring: SY_ST[s].c, glow: SY_ST[s].c + '88', flag: color, clip: M.clip, fw: M.fw * sc, fh: M.fh * sc, charge: !!M.charge, pulse: s === 'petition' }; };
+    const rootSessions = SY_ROOT.sq.filter(vis).map(([title, m, s, t]) => ({ ...tok(m, s, '#f3e3c6'), title, model: MODELS[m].model, label: SY_ST[s].label, reach: `${t.length} repos · ${t.filter(x => x.files).map(x => pName(x.p)).join(', ') || 'read-only'}` }));
+    const orbits = SY_RX.map(rx => ({ x: SY_SUN[0] - rx, y: SY_SUN[1] - rx * 0.36, w: rx * 2, h: rx * 0.72 }));
+    const stateFilters = Object.keys(SY_ST).map(k => ({ label: SY_ST[k].label, c: SY_ST[k].c, on: st.sysF[k], o: st.sysF[k] ? 1 : 0.45, n: scope.filter(a => a.q[2] === k).length, onClick: () => this.setState(s => ({ sysF: { ...s.sysF, [k]: !s.sysF[k] } })) }));
+    const modelFilters = ['haiku', 'sonnet', 'opus', 'fable'].map(k => { const M = MODELS[k], sc = Math.min(0.6, 13 / M.fh); return { label: M.model, clip: M.clip, fw: M.fw * sc, fh: M.fh * sc, on: st.sysM[k], o: st.sysM[k] ? 1 : 0.45, n: scope.filter(a => a.q[1] === k).length, onClick: () => this.setState(s => ({ sysM: { ...s.sysM, [k]: !s.sysM[k] } })) }; });
+    const queue = all.filter(a => a.q[2] !== 'marching' && vis(a.q)).sort((a, b) => SY_PRIO[a.q[2]] - SY_PRIO[b.q[2]]).map(a => ({ title: a.q[0], planet: a.p === SY_ROOT ? 'Root · ' + a.q[3].length + ' repos' : a.p.name, label: SY_ST[a.q[2]].label, c: SY_ST[a.q[2]].c, onClick: () => a.p === SY_ROOT ? this.sysOpen(a.q[3][0].p) : this.sysOpen(a.p.id) }));
+    let destVals = { nodes: [], links: [] };
+    if (dest) {
+      const nodes = dest.wt.map((w, k) => {
+        const [x, y] = SY_NODE_POS[k];
+        const squads = (w.sq || []).filter(vis).map(([title, m, s, tch]) => { const also = (tch || []).filter(t => t.p !== dest.id).map(t => pName(t.p)); const M = MODELS[m], sc = Math.min(0.75, 18 / M.fh); return { title, model: M.model, label: SY_ST[s].label, ring: SY_ST[s].c, glow: SY_ST[s].c + '88', flag: dest.color, clip: M.clip, fw: M.fw * sc, fh: M.fh * sc, charge: !!M.charge, pulse: s === 'petition', hasAlso: also.length > 0, also: 'Also working in ' + also.join(', ') }; });
+        const hasSq = squads.length > 0;
+        return { x, y, name: w.cap ? `${dest.name} · main` : w.name, cap: !!w.cap, plain: !w.cap && !hasSq, squads, color: dest.color,
+          rowL: w.cap ? 24 : -17, textL: w.cap ? (hasSq ? 24 + squads.length * 42 : 24) : (hasSq ? 26 : 14), textT: w.cap ? -14 : (hasSq ? -16 : -8),
+          o: w.stale ? 0.5 : ((w.sq || []).length && !hasSq ? 0.4 : 1) };
+      });
+      const [cx, cy] = SY_NODE_POS[0];
+      const links = dest.wt.slice(1).map((w, k) => { const [x, y] = SY_NODE_POS[k + 1], dx = x - cx, dy = y - cy; return { x: cx, y: cy, len: Math.hypot(dx, dy) - 20, a: Math.atan2(dy, dx) * 180 / Math.PI, o: w.stale ? 0.3 : 0.8 }; });
+      const need = all.filter(a => a.p === dest && a.q[2] !== 'marching').length;
+      const visitors = multi.filter(a => a.p !== dest && vis(a.q) && a.q[3].some(t => t.p === dest.id)).map((a, k) => {
+        const t = a.q[3].find(x => x.p === dest.id), [x, y] = SY_VISIT_POS[k % SY_VISIT_POS.length];
+        const others = a.q[3].filter(o => o.p !== dest.id && o.p !== a.p.id).length;
+        return { ...tok(a.q[1], a.q[2], a.p === SY_ROOT ? '#f3e3c6' : a.p.color), x, y, title: a.q[0], model: MODELS[a.q[1]].model, label: SY_ST[a.q[2]].label,
+          from: a.p === SY_ROOT ? 'Visiting from Root (~/code)' : 'Visiting from ' + a.p.name, here: t.files ? `${t.files} file${t.files === 1 ? '' : 's'} changed here` + (others ? ` · +${others} other repo${others === 1 ? '' : 's'}` : '') : 'Reading only' + (others ? ` · +${others} other repo${others === 1 ? '' : 's'}` : '') };
+      });
+      destVals = { visitors, hasVisitors: visitors.length > 0, name: dest.name, sub: `${dest.bn} · ${dest.wt.length} worktrees · ${need} need${need === 1 ? 's' : ''} you`, surf: st.sysSurf[dest.id], hasSurf: !!st.sysSurf[dest.id], noSurf: !st.sysSurf[dest.id], nodes, links };
+    }
+    return {
+      sysStars: SY_STARS, sysIsDirector: !dest, sysIsDest: !!dest, sysOrbits: orbits, sysSunX: SY_SUN[0], sysSunY: SY_SUN[1], sysSessionCount: all.length,
+      sysPlanets: planets, sysRoutes: routes, sysRootSessions: rootSessions, sysHasRoot: rootSessions.length > 0, sysStateFilters: stateFilters, sysModelFilters: modelFilters, sysQueue: queue, sysDest: destVals,
+      sysSideKicker: dest ? 'Destination' : 'Director', sysSideTitle: dest ? dest.name : 'System', sysBack: () => this.setState({ sysView: null })
+    };
+  }
+  terrain(roads, settlements) {
+    const lands = REG.map(r => { const B = BIOME[r.id], k = 1.08; return { x: r.cx - r.rx * k, y: r.cy - r.ry * k, w: r.rx * 2 * k, h: r.ry * 2 * k, br: r.br, ground: B.ground, groundHi: B.hi, shore: B.shore }; });
+    const LBL = { rooblocks: [230, 70], pedregal: [700, 50], atlas: [470, 488] };
+    const landLabels = REG.map(r => ({ name: r.name, biome: BIOME[r.id].biome, color: col(r, 0.42), x: LBL[r.id][0], y: LBL[r.id][1] }));
+    const rand = rng(7), features = [];
+    const spec = { rooblocks: { n: 170, sep: 9 }, pedregal: { n: 46, sep: 28 }, atlas: { n: 44, sep: 24 } };
+    REG.forEach(r => {
+      const S = spec[r.id], mine = [];
+      for (let i = 0; i < 2500 && mine.length < S.n; i++) {
+        const a = rand() * Math.PI * 2, d = Math.sqrt(rand()) * 0.95;
+        const x = r.cx + Math.cos(a) * r.rx * d, y = r.cy + Math.sin(a) * r.ry * d;
+        if (regionAt(x, y) !== r || blocked(x, y, roads, landLabels) || x < 12 || x > 868 || y < 22 || y > 532) continue;
+        if (mine.some(p => Math.hypot(p.x - x, p.y - y) < S.sep)) continue;
+        let f;
+        if (r.id === 'rooblocks') f = rand() < 0.82 ? mkFeature('pine', x, y, 9 + rand() * 6) : mkFeature('tree', x, y, 10 + rand() * 4);
+        else if (r.id === 'pedregal') { const k = rand(); f = k < 0.35 ? mkFeature('mesa', x, y, 13 + rand() * 9) : k < 0.75 ? mkFeature('dune', x, y, 12 + rand() * 10) : mkFeature('rock', x, y, 4 + rand() * 4); }
+        else f = rand() < 0.55 ? mkFeature('mountain', x, y, 16 + rand() * 12) : mkFeature('hill', x, y, 11 + rand() * 7);
+        mine.push(f);
+      }
+      features.push(...mine);
+    });
+    features.sort((a, b) => a.y - b.y);
+    const ripples = [];
+    for (let i = 0; i < 800 && ripples.length < 45; i++) {
+      const x = rand() * 860 + 10, y = rand() * 520 + 10;
+      if (REG.some(r => ((x - r.cx) / (r.rx * 1.08)) ** 2 + ((y - r.cy) / (r.ry * 1.08)) ** 2 < 1.45)) continue;
+      if (ripples.some(p => Math.hypot(p.x - x, p.y - y) < 40)) continue;
+      ripples.push({ x, y });
+    }
+    const bHexes = [], hexFeatures = [], hr = rng(11);
+    const hexSets = settlements.map(s => { const h = hexCenter(s.x, s.y); return { ...s, x: h.x, y: h.y }; });
+    for (let row = 0; row < 17; row++) for (let c = 0; c < 23; c++) {
+      const x = c * HW + (row % 2 ? HW / 2 : 0) - 10, y = row * VS - 10, cx = x + HW / 2, cy = y + HH / 2;
+      const r = regionAt(cx, cy), B = r && BIOME[r.id];
+      bHexes.push({ x, y, fill: B ? B.ground : 'oklch(0.68 0.06 222)', edge: B ? B.edge : 'oklch(0.62 0.06 226)' });
+      const occupied = hexSets.some(s => Math.hypot(s.x - cx, s.y - cy) < 20 || (Math.abs(s.x - cx) < 45 && cy - s.y > 0 && cy - s.y < 40) || (Math.abs(s.x - cx) < 20 && s.y - cy > 0 && s.y - cy < 60));
+      const lab = r && ((r.id === 'rooblocks' && Math.abs(cx - 150) < 90 && Math.abs(cy - 82) < 18) || (r.id === 'pedregal' && Math.abs(cx - 700) < 90 && Math.abs(cy - 62) < 18) || (r.id === 'atlas' && Math.abs(cx - 470) < 90 && Math.abs(cy - 500) < 18));
+      if (!r) { if (hr() < 0.18) hexFeatures.push(mkFeature('ripple', cx, cy + 2, 0)); continue; }
+      if (occupied || lab || hr() < 0.3) continue;
+      if (r.id === 'rooblocks') [[-8, 8, 10], [7, 6, 11], [0, -2, 12]].forEach(([dx, dy, s]) => hexFeatures.push(mkFeature('pine', cx + dx, cy + dy, s)));
+      else if (r.id === 'pedregal') { if (hr() < 0.5) hexFeatures.push(mkFeature('mesa', cx, cy + 7, 14)); else { hexFeatures.push(mkFeature('dune', cx - 3, cy + 2, 10)); hexFeatures.push(mkFeature('dune', cx + 4, cy + 10, 9)); } }
+      else if (hr() < 0.6) hexFeatures.push(mkFeature('mountain', cx, cy + 10, 18)); else hexFeatures.push(mkFeature('hill', cx, cy + 8, 12));
+    }
+    hexFeatures.sort((a, b) => a.y - b.y);
+    const hexLabels = REG.map(r => ({ name: r.name, biome: BIOME[r.id].biome, color: col(r, 0.40), x: { rooblocks: 150, pedregal: 700, atlas: 470 }[r.id], y: { rooblocks: 72, pedregal: 52, atlas: 490 }[r.id] }));
+    return { lands, landLabels, features, ripples, bHexes, hexFeatures, hexLabels, bHexSettlements: hexSets };
+  }
+  squadVals(s) {
+    const r = reg(s.r);
+    return (s.sq || []).map(([m, st]) => {
+      const M = MODELS[m], S = STATE[st], fallen = st === 'fallen';
+      return { fw: M.fw, fh: M.fh, poleH: M.pole, boxW: M.fw + 4, clip: fallen ? 'polygon(0 0,70% 0,55% 22%,100% 30%,62% 55%,85% 78%,40% 70%,30% 100%,0 100%)' : M.clip,
+        flag: fallen ? '#6d5f4f' : col(r, 0.50), flagNight: fallen ? '#6d5f4f' : col(r, 0.66), charge: !!M.charge && !fallen,
+        anim: st === 'marching' ? 'sgWave 1.8s ease-in-out infinite' : 'none', petition: st === 'petition', sealX: M.fw - 2,
+        hasChip: !!S.bg, label: S.label, chipBg: S.bg, chipFg: S.fg };
+    });
+  }
+  renderVals() {
+    const regions = REG.map(r => ({ ...r, bx: r.cx - r.rx, by: r.cy - r.ry, bw: r.rx * 2, bh: r.ry * 2,
+      color: col(r, 0.50), dark: col(r, 0.38), light: col(r, 0.78), border: col(r, 0.50, 0.55), tint: col(r, 0.50, 0.08),
+      glow: `radial-gradient(ellipse at center, ${col(r, 0.55, 0.28)}, ${col(r, 0.55, 0.06)} 70%, transparent 100%)` }));
+    const roads = SET.filter(s => !s.cap).map(s => {
+      const cap = SET.find(c => c.cap && c.r === s.r), dx = s.x - cap.x, dy = s.y - cap.y;
+      return { x: cap.x, y: cap.y, len: Math.hypot(dx, dy), angle: Math.atan2(dy, dx) * 180 / Math.PI, op: s.stale ? 0.35 : 1 };
+    });
+    const settlements = SET.map(s => {
+      const r = reg(s.r), att = (s.sq || []).map(q => q[1]).find(st => STATE[st].bg);
+      const lampCol = att === 'petition' ? 'rgba(220,70,50,.38)' : att === 'fallen' ? 'rgba(180,170,150,.18)' : 'rgba(240,190,90,.30)';
+      return { ...s, cap: !!s.cap, notCap: !s.cap, color: col(r, 0.50), op: s.stale ? 0.4 : 1, opNight: s.stale ? 0.3 : 1,
+        squads: this.squadVals(s), hasAlert: !!att, alert: att ? STATE[att].label : '', alertColor: att === 'petition' ? 'oklch(0.50 0.19 27)' : att === 'fallen' ? '#2b2219' : att === 'spoils' ? 'oklch(0.45 0.09 150)' : 'oklch(0.52 0.12 70)',
+        lamp: `radial-gradient(circle, ${lampCol}, transparent 70%)`, tok: s.cap ? 18 : 12, tokOff: s.cap ? -9 : -6 };
+    });
+    const hexes = [];
+    for (let row = 0; row < 17; row++) for (let c = 0; c < 23; c++) {
+      const x = c * HW + (row % 2 ? HW / 2 : 0) - 10, y = row * VS - 10;
+      const r = regionAt(x + HW / 2, y + HH / 2);
+      hexes.push({ x, y, fill: r ? col(r, 0.84, 1) : '#e4dccb', edge: r ? col(r, 0.72, 1) : '#d6ccb8' });
+    }
+    const hexSettlements = settlements.map(s => { const h = hexCenter(s.x, s.y), r = reg(s.r); return { ...s, x: h.x, y: h.y, tile: s.cap ? col(r, 0.42) : col(r, 0.62) }; });
+    const rings = [];
+    REG.forEach(r => [1, 0.78, 0.56, 0.34].forEach((k, i) => rings.push({ x: r.cx - r.rx * k, y: r.cy - r.ry * k, w: r.rx * 2 * k, h: r.ry * 2 * k, br: r.br, c: `rgba(58,46,34,${0.14 + i * 0.05})` })));
+    const gridCols = Array.from({ length: 14 }, (_, i) => ({ x: i * 60 + 28, t: String.fromCharCode(65 + i) }));
+    const gridRows = Array.from({ length: 9 }, (_, i) => ({ y: i * 60 + 26, t: String(i + 1) }));
+    const demo = REG[0];
+    const modelFlags = ['haiku', 'sonnet', 'opus', 'fable'].map(k => {
+      const M = MODELS[k];
+      return { ...M, charge: !!M.charge, flag: col(demo, 0.50), fw2: M.fw * 1.7, fh2: M.fh * 1.7, poleH2: M.pole * 1.6, boxW2: M.fw * 1.7 + 6,
+        bars: Array.from({ length: M.bars }, (_, i) => i), tokRadius: M.hex ? '0' : '50%', tokClip: M.hex ? 'polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)' : 'none',
+        rim: k === 'opus' ? 3 : 2, rim2: k === 'opus' ? 6 : 2, tokFont: Math.round(M.tok * 0.42) };
+    });
+    return { ...this.terrain(roads, settlements), ...this.sys(), ...this.b3(), noise: NOISE, regions, roads, settlements, hexes, hexSettlements, rings, gridCols, gridRows, modelFlags };
+  }
+}
+</script>
+</body>
+</html>

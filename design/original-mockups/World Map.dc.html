@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1d2f3d;overflow:hidden;}
+a{color:#7a3b22;}a:hover{color:#3a2e22;}
+@keyframes sgPulse{0%{box-shadow:0 0 0 0 rgba(176,38,28,.65)}70%{box-shadow:0 0 0 14px rgba(176,38,28,0)}100%{box-shadow:0 0 0 0 rgba(176,38,28,0)}}
+@keyframes sgWave{0%,100%{transform:skewY(0deg) scaleX(1)}50%{transform:skewY(-7deg) scaleX(.9)}}
+@keyframes sgDrift{0%,100%{transform:translate(-50%,-50%) translate(-14px,4px) scale(1)}50%{transform:translate(-50%,-50%) translate(14px,-6px) scale(1.05)}}
+</style>
+</helmet>
+<div ref="{{ viewRef }}" onPointerDown="{{ onDown }}" onPointerMove="{{ onMove }}" onPointerUp="{{ onUp }}" onPointerCancel="{{ onUp }}" style="--z:0.5;--tilt:0deg;position:relative;width:100%;height:100vh;overflow:hidden;background:radial-gradient(ellipse at 50% 45%, #2c536d, #16293a 85%);cursor:grab;touch-action:none;user-select:none;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,sans-serif;color:#2e251c;">
+  <div style="position:absolute;inset:0;perspective:1500px;perspective-origin:50% 40%;">
+    <div ref="{{ planeRef }}" style="position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;">
+      <div ref="{{ worldRef }}" style="position:absolute;left:0;top:0;width:2000px;height:1250px;transform-origin:0 0;transform-style:preserve-3d;">
+        <canvas ref="{{ terrainRef }}" style="position:absolute;left:0;top:0;width:2000px;height:1250px;box-shadow:0 0 0 1px rgba(0,0,0,.2);"></canvas>
+        <div ref="{{ tilesRef }}" style="position:absolute;left:0;top:0;width:2000px;height:1250px;transition:opacity .4s;pointer-events:none;"></div>
+
+        <div ref="{{ fogRef }}" style="position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;"></div>
+
+        <sc-for list="{{ regionLabels }}" as="r" hint-placeholder-count="4">
+          <div style="position:absolute;left:{{ r.x }}px;top:{{ r.y }}px;transform:translate(-50%,-50%);text-align:center;pointer-events:none;white-space:nowrap;opacity:{{ labelOpacity }};transition:opacity .3s;">
+            <div style="font-family:'IM Fell English',serif;font-size:34px;letter-spacing:.14em;text-transform:uppercase;color:rgba(34,26,18,.82);text-shadow:0 0 8px rgba(255,248,230,.7), 0 0 2px rgba(255,248,230,.9);">{{ r.name }}</div>
+            <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:17px;color:rgba(34,26,18,.8);text-shadow:0 0 6px rgba(255,248,230,.8);margin-top:-2px;">{{ r.biome }}</div>
+          </div>
+        </sc-for>
+
+        <sc-for list="{{ markers }}" as="s" hint-placeholder-count="13">
+          <div style="position:absolute;left:{{ s.x }}px;top:{{ s.y }}px;width:0;height:0;">
+            <div onClick="{{ s.onClick }}" style="position:absolute;left:0;top:0;transform-origin:50% 0;transform:translateX(-50%) scale(calc(1 / var(--z))) translateY(-52px);opacity:{{ s.op }};display:flex;gap:10px;align-items:flex-start;cursor:pointer;width:max-content;">
+              <sc-if value="{{ s.empty }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:50px;width:7px;height:7px;border-radius:50%;background:rgba(43,34,25,.75);box-shadow:0 0 0 2px rgba(246,238,217,.7);"></div>
+              </sc-if>
+              <sc-for list="{{ s.squads }}" as="q" hint-placeholder-count="1">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:{{ q.colW }}px;">
+                  <div style="position:relative;width:{{ q.boxW }}px;height:50px;display:flex;align-items:flex-end;">
+                    <sc-if value="{{ q.showAbove }}" hint-placeholder-val="{{ false }}">
+                      <div style="position:absolute;left:50%;bottom:{{ q.aboveBottom }}px;transform:translateX(-50%);padding:1px 7px 2px;border-radius:3px;background:{{ q.nameBg }};color:{{ q.nameFg }};box-shadow:0 1px 3px rgba(0,0,0,.25);"><div style="font-size:11.5px;font-weight:600;line-height:1.25;width:max-content;max-width:130px;white-space:normal;text-align:center;text-wrap:balance;">{{ q.name }}</div></div>
+                    </sc-if>
+                    <div style="position:absolute;left:0;bottom:-2px;width:{{ q.boxW }}px;height:5px;border-radius:50%;background:rgba(20,15,5,.35);"></div>
+                    <div style="position:absolute;left:1px;bottom:0;width:2px;height:{{ q.poleH }}px;background:#2b2219;"></div>
+                    <div style="position:absolute;left:3px;bottom:{{ q.flagBottom }}px;width:{{ q.fw }}px;height:{{ q.fh }}px;background:{{ q.flag }};clip-path:{{ q.clip }};transform-origin:0 50%;animation:{{ q.anim }};display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2);"><sc-if value="{{ q.charge }}" hint-placeholder-val="{{ false }}"><div style="width:7px;height:7px;background:#f4ead2;transform:rotate(45deg);"></div></sc-if></div>
+                    <sc-if value="{{ q.petition }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:{{ q.sealX }}px;bottom:{{ q.sealBottom }}px;width:13px;height:13px;border-radius:50%;background:oklch(0.54 0.2 27);border:1.5px solid oklch(0.4 0.15 27);animation:sgPulse 1.4s ease-out infinite;"></div></sc-if>
+                  </div>
+                  <sc-if value="{{ q.showBelow }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:1px 7px 2px;border-radius:3px;background:{{ q.nameBg }};color:{{ q.nameFg }};box-shadow:0 1px 3px rgba(0,0,0,.25);"><div style="font-size:11.5px;font-weight:600;line-height:1.25;width:max-content;max-width:130px;white-space:normal;text-align:center;text-wrap:balance;">{{ q.name }}</div></div>
+                  </sc-if>
+                  <sc-if value="{{ showSquads }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:10px;color:#2b2219;background:rgba(246,238,217,.9);padding:1px 6px;border-radius:3px;white-space:nowrap;text-align:center;">
+                      <div style="font-weight:600;">{{ q.model }} · {{ q.label }}</div>
+                      <sc-if value="{{ q.hasActivity }}" hint-placeholder-val="{{ false }}"><div style="font-family:'JetBrains Mono',monospace;color:#5a4c3a;">{{ q.activity }}</div></sc-if>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ s.selected }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:-40px;top:-22px;width:80px;height:44px;border-radius:50%;border:2.5px solid {{ s.color }};box-shadow:0 0 0 3px rgba(255,248,230,.55);pointer-events:none;"></div>
+            </sc-if>
+          </div>
+        </sc-for>
+
+        <div ref="{{ cloudsRef }}" style="position:absolute;left:0;top:0;width:0;height:0;transform-style:preserve-3d;pointer-events:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:20px;top:20px;background:rgba(246,238,217,.95);border:1px solid rgba(58,46,34,.5);border-radius:6px;padding:10px 16px 11px;box-shadow:0 6px 18px rgba(0,0,0,.25);pointer-events:none;">
+    <div style="font-family:'IM Fell English',serif;font-size:24px;line-height:1;">Strategos</div>
+    <div style="font-size:12px;color:#6b5a44;margin-top:4px;">4 regions · 13 settlements · 10 squads</div>
+  </div>
+
+  <div style="position:absolute;right:20px;top:20px;font-size:12px;color:rgba(240,232,214,.85);background:rgba(20,30,40,.45);padding:6px 10px;border-radius:5px;pointer-events:none;">Drag to pan · scroll to zoom · {{ zoomPct }}%</div>
+
+  <div style="position:absolute;left:20px;bottom:20px;background:rgba(246,238,217,.95);border:1px solid rgba(58,46,34,.5);border-radius:6px;padding:10px 0 8px;box-shadow:0 6px 18px rgba(0,0,0,.25);min-width:240px;">
+    <div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#8a7a60;padding:0 14px 6px;">Regions · biome from repo name</div>
+    <sc-for list="{{ legend }}" as="r" hint-placeholder-count="4">
+      <div onClick="{{ r.onClick }}" style="display:flex;align-items:center;gap:10px;padding:5px 14px;cursor:pointer;" style-hover="background:rgba(58,46,34,.07);">
+        <div style="width:12px;height:15px;background:{{ r.color }};clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%);"></div>
+        <div style="font-family:'IM Fell English',serif;font-size:16px;flex:1;">{{ r.name }}</div>
+        <div style="font-size:12px;color:#5a4c3a;">{{ r.biome }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="position:absolute;right:20px;bottom:20px;display:flex;gap:10px;align-items:center;">
+    <div style="display:flex;background:rgba(246,238,217,.95);border:1px solid rgba(58,46,34,.5);border-radius:6px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.25);">
+      <div onClick="{{ zoomOut }}" style="width:36px;padding:8px 0;text-align:center;font-size:16px;cursor:pointer;" style-hover="background:rgba(58,46,34,.08);">−</div>
+      <div onClick="{{ zoomIn }}" style="width:36px;padding:8px 0;text-align:center;font-size:16px;cursor:pointer;border-left:1px solid rgba(58,46,34,.2);" style-hover="background:rgba(58,46,34,.08);">+</div>
+      <div onClick="{{ fit }}" style="padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;border-left:1px solid rgba(58,46,34,.2);" style-hover="background:rgba(58,46,34,.08);">Fit</div>
+    </div>
+  </div>
+
+  <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:50%;bottom:20px;transform:translateX(-50%);background:rgba(251,248,241,.98);border:1px solid rgba(58,46,34,.5);border-radius:8px;padding:12px 16px;box-shadow:0 10px 30px rgba(0,0,0,.3);min-width:320px;">
+      <div style="display:flex;align-items:baseline;gap:10px;">
+        <div style="font-family:'IM Fell English',serif;font-size:22px;">{{ sel.name }}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6b5a44;">⎇ {{ sel.branch }}</div>
+        <div style="flex:1;"></div>
+        <div onClick="{{ clearSel }}" style="cursor:pointer;color:#8a7a60;font-size:16px;">×</div>
+      </div>
+      <div style="font-size:12px;color:#6b5a44;margin-top:2px;">{{ sel.where }}</div>
+      <sc-for list="{{ sel.squads }}" as="q" hint-placeholder-count="1">
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+          <div style="width:10px;height:13px;background:{{ q.flag }};clip-path:{{ q.clip }};"></div>
+          <div style="font-size:13px;font-weight:600;">{{ q.name }}</div>
+          <div style="font-size:12px;color:#6b5a44;">{{ q.model }}</div>
+          <div style="flex:1;"></div>
+          <div style="font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:3px;background:{{ q.chipBg2 }};color:{{ q.chipFg2 }};border:1px solid rgba(58,46,34,.25);">{{ q.label }}</div>
+        </div>
+      </sc-for>
+      <sc-if value="{{ sel.noSquads }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;color:#8a7a60;margin-top:8px;font-style:italic;">No squads stationed.</div></sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ loading }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 45%, #2c536d, #16293a 85%);">
+      <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:26px;color:#e9dcbf;">Surveying the land…</div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;biomeSalt&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:0,&quot;min&quot;:0,&quot;max&quot;:50,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;World&quot;},&quot;showClouds&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;World&quot;}}">
+const W = 2000, H = 1250, GW = 1000, GH = 625, C = 2, TILE = 250, TS = 3;
+const BIOMES = ['tundra', 'forest', 'desert', 'volcanic', 'swamp', 'coastal', 'highland'];
+const BNAME = { tundra: 'Tundra', forest: 'Ancient forest', desert: 'Badlands', volcanic: 'Volcanic', swamp: 'Marsh', coastal: 'Coast', highland: 'Highland plateau' };
+const REGIONS = [
+  { id: 'rooblocks', name: 'Rooblocks', hue: 28, rgb: [150, 52, 40], sx: 640, sy: 390, lx: 560, ly: 230 },
+  { id: 'storefront', name: 'Storefront', hue: 80, rgb: [176, 138, 40], sx: 1390, sy: 380, lx: 1330, ly: 215 },
+  { id: 'pedregal', name: 'Pedregal', hue: 245, rgb: [48, 86, 150], sx: 630, sy: 880, lx: 560, ly: 745 },
+  { id: 'gateway', name: 'Gateway', hue: 310, rgb: [116, 60, 130], sx: 1370, sy: 870, lx: 1420, ly: 735 }
+];
+const SETTLE = [
+  { id: 'rb', r: 0, name: 'rooblocks', branch: 'main', cap: true, x: 640, y: 390 },
+  { id: 'ff', r: 0, name: 'filter-fix', branch: 'amel/filter-fix', x: 830, y: 310, files: 14, ahead: 3, sq: [['Fix filter reset on back nav', 'opus', 'petition', 'Waiting on xcodebuild test']] },
+  { id: 'sh', r: 0, name: 'store-header', branch: 'amel/store-header', x: 770, y: 530, files: 26, ahead: 5, behind: 2, sq: [['Rebuild store page header', 'sonnet', 'marching', 'Editing StorePageHeader.swift…']] },
+  { id: 'oc', r: 0, name: 'onboarding-copy', branch: 'amel/onboarding-copy', x: 450, y: 480, files: 3, ahead: 1, sq: [['Update onboarding copy', 'haiku', 'awaiting']] },
+  { id: 'sf', r: 1, name: 'storefront', branch: 'main', cap: true, x: 1390, y: 380 },
+  { id: 'sv', r: 1, name: 'search-v2', branch: 'amel/search-v2', x: 1600, y: 440, files: 9, ahead: 7, behind: 1, sq: [['Migrate search to v2 endpoint', 'opus', 'spoils']] },
+  { id: 'ms', r: 1, name: 'menu-sync', branch: 'amel/menu-sync', x: 1240, y: 540, files: 40, ahead: 11, sq: [['Sync menus from partner feed', 'fable', 'marching', 'Running menu import tests…']] },
+  { id: 'lc', r: 1, name: 'legacy-cleanup', branch: 'amel/legacy-cleanup', x: 1560, y: 250, files: 5, behind: 14, stale: true },
+  { id: 'pd', r: 2, name: 'pedregal', branch: 'main', cap: true, x: 630, y: 880, sq: [['Summarize OpenAPI v4 changes', 'haiku', 'marching', 'Reading docs/openapi.yaml…', true]] },
+  { id: 'pr', r: 2, name: 'payments-retry', branch: 'amel/payments-retry', x: 850, y: 940, files: 6, ahead: 2, sq: [['Idempotent payment retries', 'sonnet', 'fallen']] },
+  { id: 'gw', r: 3, name: 'gateway', branch: 'main', cap: true, x: 1370, y: 870 },
+  { id: 'rl', r: 3, name: 'rate-limit', branch: 'amel/rate-limit', x: 1180, y: 930, files: 12, ahead: 4, sq: [['Token-bucket rate limiter', 'fable', 'marching', 'go test ./limiter/…']] },
+  { id: 'sm', r: 3, name: 'schema-migrate', branch: 'amel/schema-migrate', x: 1560, y: 970, files: 18, ahead: 6, pr: true, sq: [['Add schema migration + backfill', 'sonnet', 'awaiting']] }
+];
+const MODELS = {
+  haiku: { model: 'Haiku', fw: 15, fh: 11, pole: 26, clip: 'polygon(0 0,100% 50%,0 100%)' },
+  sonnet: { model: 'Sonnet', fw: 22, fh: 16, pole: 32, clip: 'polygon(0 0,100% 0,76% 50%,100% 100%,0 100%)' },
+  opus: { model: 'Opus', fw: 20, fh: 28, pole: 42, clip: 'polygon(0 0,100% 0,100% 78%,75% 100%,50% 78%,25% 100%,0 78%)' },
+  fable: { model: 'Fable', fw: 22, fh: 19, pole: 36, clip: 'polygon(0 0,100% 0,100% 100%,0 100%)', charge: true }
+};
+const STATE = {
+  petition: { label: 'Petitioning', bg: 'oklch(0.52 0.19 27)', fg: '#fff6ee' },
+  awaiting: { label: 'Awaiting orders', bg: 'oklch(0.80 0.11 80)', fg: '#3a2a10' },
+  spoils: { label: 'Spoils ready', bg: 'oklch(0.74 0.09 150)', fg: '#10301a' },
+  fallen: { label: 'Fallen', bg: '#2b2219', fg: '#e9dcbf' },
+  marching: { label: 'Marching', bg: '#efe6d2', fg: '#3a2e22' }
+};
+
+function fnv(s) { let h = 0x811c9dc5; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function assignBiomes(salt) {
+  const used = new Set();
+  return REGIONS.map(r => { let k = fnv(salt ? r.id + ':' + salt : r.id) % 7; while (used.has(k)) k = (k + 1) % 7; used.add(k); return BIOMES[k]; });
+}
+function mkNoise(seed) {
+  const h = (x, y) => { let n = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 1442695041); n = Math.imul(n ^ (n >>> 13), 1274126177); n ^= n >>> 16; return (n >>> 0) / 4294967296; };
+  const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf); const a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; };
+  const fbm = (x, y, o) => { let s = 0, a = 0.5, f = 1, n = 0; for (let i = 0; i < o; i++) { s += a * vn(x * f + i * 17.3, y * f + i * 9.1); n += a; a *= 0.5; f *= 2.03; } return s / n; };
+  return { h, vn, fbm };
+}
+const ss = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const mix = (o, c, k) => { o[0] += (c[0] - o[0]) * k; o[1] += (c[1] - o[1]) * k; o[2] += (c[2] - o[2]) * k; };
+
+function biomeElev(b, e, rg, nx, ny, qx) {
+  switch (b) {
+    case 'tundra': return e * 0.85 + rg * rg * 0.55 * ss(0.05, 0.3, e);
+    case 'forest': return e * 0.6 + rg * 0.12;
+    case 'desert': return 0.08 + e * 0.45 + 0.025 * Math.sin((nx * 2000 * 0.9 + ny * 1250 * 0.4) / 8 + qx * 22);
+    case 'volcanic': return e * 0.55 + rg * 0.08;
+    case 'swamp': return 0.02 + e * 0.1;
+    case 'coastal': return e * 0.32;
+    case 'highland': { const t = e * 0.75 + 0.18, k = t * 7, f = k - Math.floor(k); return ((Math.floor(k) + f * f * f * (f * (f * 6 - 15) + 10)) / 7) * 0.75 + t * 0.25; }
+  }
+  return e;
+}
+const T = [0, 0, 0];
+function biomeColor(b, e, slope, dt, rg, nx, ny) {
+  switch (b) {
+    case 'tundra': T[0] = 170; T[1] = 182; T[2] = 178; mix(T, [238, 243, 248], Math.min(1, ss(0.02, 0.2, e) * 0.85 + dt * 0.3)); if (slope > 0.22) mix(T, [118, 124, 136], ss(0.22, 0.5, slope)); break;
+    case 'forest': T[0] = 116; T[1] = 150; T[2] = 72; mix(T, [38, 74, 42], ss(0.36, 0.58, dt)); if (dt > 0.7) mix(T, [74, 116, 56], 0.5); if (e > 0.5) mix(T, [100, 106, 86], ss(0.5, 0.65, e)); break;
+    case 'desert': { const st = 0.5 + 0.5 * Math.sin((nx * 1800 + ny * 500) / 7 + rg * 6); T[0] = 226; T[1] = 192; T[2] = 132; mix(T, [200, 158, 102], st * 0.4); if (e > 0.4) mix(T, [184, 112, 70], ss(0.4, 0.56, e) * 0.8); if (slope > 0.25) mix(T, [138, 74, 46], ss(0.25, 0.5, slope)); break; }
+    case 'volcanic': T[0] = 102; T[1] = 92; T[2] = 86; mix(T, [50, 44, 42], Math.min(1, ss(0.1, 0.35, e) + dt * 0.25)); break;
+    case 'swamp': T[0] = 90; T[1] = 106; T[2] = 62; mix(T, [62, 76, 48], dt); if (dt > 0.66) mix(T, [130, 138, 82], 0.5); break;
+    case 'coastal': T[0] = 150; T[1] = 186; T[2] = 102; mix(T, [236, 218, 166], 1 - ss(0.015, 0.06, e)); if (dt > 0.7) mix(T, [118, 160, 80], 0.5); break;
+    case 'highland': T[0] = 166; T[1] = 158; T[2] = 98; mix(T, [132, 142, 86], dt); if (slope > 0.16) mix(T, [120, 98, 70], ss(0.16, 0.3, slope)); if (e > 0.62) mix(T, [150, 140, 124], ss(0.62, 0.75, e)); break;
+  }
+  if (e > 0.7 && b !== 'desert' && b !== 'volcanic') mix(T, [244, 246, 250], ss(0.7, 0.84, e));
+  return T;
+}
+
+function makeBlob(N, w, h, seed, dens, dark) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(w, h), d = img.data;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const nx = x / w, ny = y / h, r = ((nx - 0.5) / 0.5) ** 2 + ((ny - 0.5) / 0.5) ** 2;
+    const f = N.fbm(nx * 4 + seed, ny * 3 + seed * 2, 5);
+    const a = ss(0.42, 0.72, f * (1.3 - r)) * dens, i = (y * w + x) * 4;
+    const g = dark ? 20 : 255 - ny * 30;
+    d[i] = g; d[i + 1] = g; d[i + 2] = dark ? 30 : g + 4; d[i + 3] = a * 255;
+  }
+  ctx.putImageData(img, 0, 0); return cv.toDataURL();
+}
+
+function generate(salt) {
+  const N = mkNoise(1337), biomes = assignBiomes(salt), n = GW * GH;
+  const elev = new Float32Array(n), typ = new Uint8Array(n), reg = new Uint8Array(n), edge = new Float32Array(n), wts = new Float32Array(n * 4), dtA = new Float32Array(n), rgA = new Float32Array(n), lava = new Float32Array(n);
+  const vi = biomes.indexOf('volcanic');
+  const cones = vi >= 0 ? [[REGIONS[vi].sx + 40, REGIONS[vi].sy + 150, 95], [REGIONS[vi].sx - 150, REGIONS[vi].sy - 120, 75]] : [];
+  const d = [0, 0, 0, 0], w = [0, 0, 0, 0];
+  for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) {
+    const i = gy * GW + gx, wx = gx * C + 1, wy = gy * C + 1, nx = wx / W, ny = wy / H;
+    const qx = N.fbm(nx * 3 + 5.2, ny * 3 + 1.3, 3), qy = N.fbm(nx * 3 + 1.7, ny * 3 + 9.2, 3);
+    const ex = (nx - 0.5) / 0.46, ey = (ny - 0.51) / 0.43;
+    let L = 0.9 - (ex * ex + ey * ey) + (N.fbm(nx * 5 + qx * 2, ny * 5 + qy * 2, 5) - 0.5) * 1.1;
+    let near = 1e9;
+    for (const s of SETTLE) { const dd = (wx - s.x) ** 2 + (wy - s.y) ** 2; if (dd < near) near = dd; if (dd < 40000) L += 0.3 * (1 - dd / 40000); }
+    near = Math.sqrt(near);
+    const px = wx + (qx - 0.5) * 560 + (N.fbm(nx * 14, ny * 14, 2) - 0.5) * 90, py = wy + (qy - 0.5) * 560 + (N.fbm(nx * 14 + 5, ny * 14, 2) - 0.5) * 90;
+    const pull = [0, 0, 0, 0];
+    for (const s of SETTLE) { const dd = Math.hypot(wx - s.x, wy - s.y); if (dd < 150) pull[s.r] = Math.max(pull[s.r], (150 - dd) * 2.2); }
+    let i1 = 0, d1 = 1e9, d2 = 1e9;
+    for (let k = 0; k < 4; k++) { d[k] = Math.hypot(px - REGIONS[k].sx, py - REGIONS[k].sy) - pull[k]; if (d[k] < d1) { d2 = d1; d1 = d[k]; i1 = k; } else if (d[k] < d2) d2 = d[k]; }
+    let ws = 0; for (let k = 0; k < 4; k++) { w[k] = Math.exp(-(d[k] - d1) / 35); ws += w[k]; }
+    for (let k = 0; k < 4; k++) { w[k] /= ws; wts[i * 4 + k] = w[k]; }
+    reg[i] = i1; edge[i] = d2 - d1;
+    const rg = 1 - Math.abs(2 * N.fbm(nx * 10 + qx, ny * 10 + qy, 4) - 1), dt = N.fbm(nx * 38, ny * 38, 2);
+    rgA[i] = rg; dtA[i] = dt;
+    if (L < 0) { elev[i] = L; typ[i] = 1; continue; }
+    let e = 0; for (let k = 0; k < 4; k++) if (w[k] > 0.01) e += w[k] * biomeElev(biomes[k], L, rg, nx, ny, qx);
+    if (vi >= 0 && w[vi] > 0.01) for (const [cx, cy, cr] of cones) {
+      const dd = Math.hypot(wx - cx, wy - cy); if (dd > cr * 2.2) continue;
+      let hh = 0.62 * Math.exp(-((dd / cr) ** 2) * 2); if (dd < cr * 0.22) hh -= 0.14 * (1 - dd / (cr * 0.22));
+      e += hh * w[vi];
+      if (rg > 0.93 && dd < cr * 1.7) lava[i] = Math.max(lava[i], ss(0.93, 0.99, rg) * (1 - dd / (cr * 1.7)) * w[vi] * 1.3);
+      if (dd < cr * 0.2) lava[i] = Math.max(lava[i], 0.9 * w[vi]);
+    }
+    elev[i] = e;
+    let wSw = 0, wCo = 0, wDry = 0;
+    for (let k = 0; k < 4; k++) { if (biomes[k] === 'swamp') wSw += w[k]; if (biomes[k] === 'coastal') wCo += w[k]; if (biomes[k] === 'desert' || biomes[k] === 'volcanic') wDry += w[k]; }
+    if (near < 55) continue;
+    if (wSw > 0.5 && N.fbm(nx * 22, ny * 22, 2) < 0.4) { typ[i] = 3; continue; }
+    if (wCo > 0.5 && L < 0.2 && N.fbm(nx * 14, ny * 14, 2) < 0.42) { typ[i] = 4; continue; }
+    const rv = N.fbm(nx * 3.2 + qx * 0.8, ny * 3.2 + qy * 0.8 + 7, 4);
+    if (Math.abs(rv - 0.5) < 0.0065 && L > 0.05 && wDry < 0.5 && e < 0.6) typ[i] = 2;
+  }
+  const acc = REGIONS.map(() => [0, 0, 0]);
+  for (let gy = 0; gy < GH; gy += 2) for (let gx = 0; gx < GW; gx += 2) { const i = gy * GW + gx; if (typ[i] === 1 || edge[i] < 20) continue; const a = acc[reg[i]]; a[0] += gx * C; a[1] += gy * C; a[2]++; }
+  const IZ = 1 / 0.34;
+  const blocks = [];
+  SETTLE.forEach(s => { const n = Math.max(1, (s.sq || []).length); blocks.push([s.x - 72 * n * IZ, s.y - 62 * IZ, s.x + 72 * n * IZ, s.y + 50 * IZ]); });
+  blocks.push([0, 0, 230 * IZ, 90 * IZ], [0, H - 200 * IZ, 290 * IZ, H], [W - 150 * IZ, H - 70 * IZ, W, H]);
+  const ov = (A, B) => Math.max(0, Math.min(A[2], B[2]) - Math.max(A[0], B[0])) * Math.max(0, Math.min(A[3], B[3]) - Math.max(A[1], B[1]));
+  const labels = REGIONS.map((r, k) => {
+    const a = acc[k], cx = a[2] ? a[0] / a[2] : r.sx, cy = a[2] ? a[1] / a[2] : r.sy;
+    const hw = r.name.length * 19 + 16;
+    let best = { x: cx, y: cy, s: -1e18 };
+    for (let gy = 0; gy < GH; gy += 5) for (let gx = 0; gx < GW; gx += 5) {
+      const i = gy * GW + gx; if (reg[i] !== k || typ[i] === 1 || edge[i] < 40) continue;
+      const x = gx * C, y = gy * C, R = [x - hw, y - 26, x + hw, y + 26];
+      let o = 0; for (const B of blocks) o += ov(R, B);
+      let off = 0; for (const [px, py] of [[R[0], y], [R[2], y], [x, R[1]], [x, R[3]]]) { const j = Math.min(GH - 1, Math.max(0, py / C | 0)) * GW + Math.min(GW - 1, Math.max(0, px / C | 0)); if (reg[j] !== k || typ[j] === 1) off++; }
+      const sc = -o * 0.05 - off * 800 - Math.hypot(x - cx, y - cy);
+      if (sc > best.s) best = { x, y, s: sc };
+    }
+    return { x: Math.round(best.x), y: Math.round(best.y) };
+  });
+  const img = new ImageData(GW, GH), px = img.data, o = [0, 0, 0];
+  const stale = SETTLE.filter(s => s.stale);
+  for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) {
+    const i = gy * GW + gx, e = elev[i], t = typ[i], wx = gx * C, wy = gy * C, nx = wx / W, ny = wy / H;
+    if (t === 1) {
+      const dep = -e; o[0] = 104; o[1] = 168; o[2] = 178;
+      mix(o, [52, 108, 138], ss(0.0, 0.12, dep)); mix(o, [30, 66, 96], ss(0.12, 0.5, dep));
+      if (dep < 0.03) mix(o, [196, 226, 222], (1 - dep / 0.03) * 0.75);
+      const wv = 1 + (dtA[i] - 0.5) * 0.08; o[0] *= wv; o[1] *= wv; o[2] *= wv;
+    } else {
+      const l = gx > 0 ? elev[i - 1] : e, r = gx < GW - 1 ? elev[i + 1] : e, u = gy > 0 ? elev[i - GW] : e, dn = gy < GH - 1 ? elev[i + GW] : e;
+      const l2 = gx > 1 ? elev[i - 2] : l, r2 = gx < GW - 2 ? elev[i + 2] : r, u2 = gy > 1 ? elev[i - GW * 2] : u, d2 = gy < GH - 2 ? elev[i + GW * 2] : dn;
+      const sx = (r - l) * 0.6 + (r2 - l2) * 0.2, sy = (dn - u) * 0.6 + (d2 - u2) * 0.2, slope = Math.hypot(r - l, dn - u) * 9;
+      let sh = 1 + (-sx * 0.8 - sy * 1.0) * 13; sh = Math.max(0.5, Math.min(1.5, sh));
+      sh *= 0.9 + Math.min(0.2, e * 0.25);
+      o[0] = o[1] = o[2] = 0;
+      for (let k = 0; k < 4; k++) { const wk = wts[i * 4 + k]; if (wk < 0.01) continue; const c = biomeColor(biomes[reg[i] === k ? k : k], e, slope, dtA[i], rgA[i], nx, ny); o[0] += c[0] * wk; o[1] += c[1] * wk; o[2] += c[2] * wk; }
+      if (t === 2) { const icy = biomes[reg[i]] === 'tundra'; mix(o, icy ? [184, 212, 226] : [72, 128, 150], 0.9); sh = 1 + (sh - 1) * 0.2; }
+      if (t === 3) { mix(o, [70, 94, 80], 0.85); sh = 1 + (sh - 1) * 0.2; }
+      if (t === 4) { mix(o, [106, 192, 192], 0.85); sh = 1 + (sh - 1) * 0.2; }
+      o[0] *= sh; o[1] *= sh; o[2] *= sh;
+      if (lava[i] > 0) mix(o, [255, 118, 36], Math.min(1, lava[i]));
+      const coast = (gx > 0 && typ[i - 1] === 1) || (gx < GW - 1 && typ[i + 1] === 1) || (gy > 0 && typ[i - GW] === 1) || (gy < GH - 1 && typ[i + GW] === 1);
+      if (coast) { o[0] *= 0.72; o[1] *= 0.72; o[2] *= 0.72; }
+      const ed = edge[i];
+      if (ed < 4.5) mix(o, [48, 36, 26], 0.55 * (1 - ed / 6));
+      else if (ed < 26) mix(o, REGIONS[reg[i]].rgb, 0.16 * (1 - ed / 26));
+    }
+    const m = 1 + (N.fbm(nx * 7, ny * 7, 2) - 0.5) * 0.14 + (N.h(gx, gy) - 0.5) * 0.04;
+    o[0] *= m; o[1] *= m; o[2] *= m;
+    for (const s of stale) {
+      const dd = Math.hypot(wx - s.x, wy - s.y); if (dd > 240) continue;
+      const k = 0.75 * Math.pow(1 - dd / 240, 0.7), g = (o[0] * 0.3 + o[1] * 0.59 + o[2] * 0.11) * 1.05 + 20;
+      mix(o, [g, g, g + 4], k);
+    }
+    const p = i * 4; px[p] = o[0]; px[p + 1] = o[1]; px[p + 2] = o[2]; px[p + 3] = 255;
+  }
+  const buckets = new Map(), R = mkNoise(99);
+  for (let y = 4; y < H - 4; y += 6) for (let x = 4; x < W - 4; x += 6) {
+    const jx = x + (R.h(x, y) - 0.5) * 6, jy = y + (R.h(y, x) - 0.5) * 6;
+    const gx = Math.min(GW - 1, jx / C | 0), gy = Math.min(GH - 1, jy / C | 0), i = gy * GW + gx;
+    if (typ[i] !== 0 || edge[i] < 8 || lava[i] > 0.2) continue;
+    let bi = 0, bw = 0; for (let k = 0; k < 4; k++) if (wts[i * 4 + k] > bw) { bw = wts[i * 4 + k]; bi = k; }
+    const b = biomes[bi], rr = R.h(x * 3, y * 7), rk = R.h(x * 5, y * 2);
+    let kind = null;
+    if (b === 'forest') { if (rr < (dtA[i] > 0.36 ? 0.9 : 0.22)) kind = rk < 0.45 ? 'pine' : 'broad'; }
+    else if (b === 'tundra') { if (rr < 0.1 && elev[i] < 0.6) kind = rk < 0.6 ? 'snowpine' : 'rock'; }
+    else if (b === 'swamp') { if (rr < 0.4) kind = rk < 0.55 ? 'reed' : rk < 0.8 ? 'dead' : 'mbroad'; }
+    else if (b === 'desert') { if (rr < 0.05) kind = rk < 0.7 ? 'rock' : 'dead'; }
+    else if (b === 'volcanic') { if (rr < 0.07) kind = rk < 0.7 ? 'brock' : 'dead'; }
+    else if (b === 'coastal') { if (rr < 0.12 && elev[i] > 0.03) kind = rk < 0.6 ? 'palm' : 'bush'; }
+    else if (b === 'highland') { if (rr < 0.09) kind = rk < 0.6 ? 'rock' : 'pine'; }
+    if (!kind) continue;
+    if (SETTLE.some(s => Math.hypot(s.x - jx, s.y - jy) < (s.cap ? 80 : 62))) continue;
+    const f = { k: kind, x: jx, y: jy, s: 4.5 + R.h(x, y * 3) * 2.8, v: R.h(y * 11, x) };
+    const key = (jx / TILE | 0) + ',' + (jy / TILE | 0);
+    if (!buckets.has(key)) buckets.set(key, []); buckets.get(key).push(f);
+  }
+  for (let y = 10; y < H - 10; y += 24) for (let x = 10; x < W - 10; x += 24) {
+    const jx = x + (R.h(x + 1, y) - 0.5) * 18, jy = y + (R.h(y + 1, x) - 0.5) * 18;
+    const gx = Math.min(GW - 1, jx / C | 0), gy = Math.min(GH - 1, jy / C | 0), i = gy * GW + gx;
+    if (typ[i] !== 0 || edge[i] < 14) continue;
+    let bi = 0, bw = 0; for (let k = 0; k < 4; k++) if (wts[i * 4 + k] > bw) { bw = wts[i * 4 + k]; bi = k; }
+    const b = biomes[bi], e = elev[i];
+    const thr = b === 'tundra' ? 0.5 : b === 'highland' ? 0.68 : b === 'volcanic' ? 0.46 : b === 'desert' ? 0.5 : 9;
+    if (e < thr || rgA[i] < 0.8 || R.h(x * 7, y * 13) < 0.25) continue;
+    if (lava[i] > 0.4 && b !== 'volcanic') continue;
+    if (SETTLE.some(s => Math.hypot(s.x - jx, s.y - jy) < (s.cap ? 95 : 78))) continue;
+    if (labels.some(l => Math.abs(jx - l.x) < 190 && jy - l.y > -40 && jy - l.y < 70)) continue;
+    const f = { k: 'peak', b, x: jx, y: jy, s: 9 + (e - thr) * 26 + R.h(x, y) * 5, v: R.h(y * 3, x * 5) };
+    const key = (jx / TILE | 0) + ',' + (jy / TILE | 0);
+    if (!buckets.has(key)) buckets.set(key, []); buckets.get(key).push(f);
+  }
+  const clouds = [0, 1, 2, 3, 4].map(k => ({ src: makeBlob(N, 220, 140, k * 7.3 + 1, 0.9, false), shadow: null, k }));
+  const shadowSrc = makeBlob(N, 220, 140, 1, 0.5, true);
+  const fogSrc = makeBlob(N, 230, 200, 42.1, 0.95, false);
+  return { img, buckets, biomes, clouds, shadowSrc, fogSrc, labels };
+}
+
+function drawFeature(ctx, f) {
+  const { x, y, s, v } = f;
+  ctx.fillStyle = 'rgba(20,28,12,.28)'; ctx.beginPath(); ctx.ellipse(x + s * 0.25, y, s * 0.6, s * 0.2, 0, 0, 6.3); ctx.fill();
+  const tri = (ax, ay, hw, by, c1, c2) => { ctx.fillStyle = c1; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + hw, by); ctx.lineTo(ax - hw, by); ctx.fill(); ctx.fillStyle = c2; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + hw, by); ctx.lineTo(ax, by); ctx.fill(); };
+  const circ = (cx, cy, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.3); ctx.fill(); };
+  switch (f.k) {
+    case 'peak': {
+      const pal = { tundra: ['#9aa3b0', '#5f6878', '#f7f9fb', '#d5dce6'], highland: ['#a8987a', '#6f6048', '#e9e4d8', '#c9c2b2'], volcanic: ['#5b4f4a', '#2f2826', '#8a3a22', '#5e2416'], desert: ['#c88a58', '#8e5634', '#e4b886', '#c08a5a'] }[f.b];
+      const hw = s * (0.85 + v * 0.3), ht = s * 1.1, cx = x + (v - 0.5) * s * 0.3;
+      ctx.fillStyle = 'rgba(20,20,30,.18)'; ctx.beginPath(); ctx.ellipse(x + hw * 0.35, y, hw * 1.1, s * 0.22, 0, 0, 6.3); ctx.fill();
+      ctx.fillStyle = pal[0]; ctx.beginPath(); ctx.moveTo(cx, y - ht); ctx.lineTo(x + hw, y); ctx.lineTo(x - hw, y); ctx.fill();
+      ctx.fillStyle = pal[1]; ctx.beginPath(); ctx.moveTo(cx, y - ht); ctx.lineTo(x + hw, y); ctx.lineTo(cx + hw * 0.12, y); ctx.fill();
+      const k = f.b === 'desert' ? 0.28 : 0.4;
+      ctx.fillStyle = pal[2]; ctx.beginPath(); ctx.moveTo(cx, y - ht); ctx.lineTo(cx + hw * k, y - ht * (1 - k)); ctx.lineTo(cx + hw * 0.1 * k, y - ht * (1 - k * 0.75)); ctx.lineTo(cx - hw * k * 0.6, y - ht * (1 - k * 1.1)); ctx.lineTo(cx - hw * k, y - ht * (1 - k)); ctx.fill();
+      ctx.fillStyle = pal[3]; ctx.beginPath(); ctx.moveTo(cx, y - ht); ctx.lineTo(cx + hw * k, y - ht * (1 - k)); ctx.lineTo(cx + hw * 0.1 * k, y - ht * (1 - k * 0.75)); ctx.fill();
+      ctx.strokeStyle = 'rgba(30,26,22,.35)'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(x - hw, y); ctx.lineTo(cx, y - ht); ctx.lineTo(x + hw, y); ctx.stroke();
+      break;
+    }
+    case 'pine': case 'snowpine': {
+      ctx.fillStyle = '#4a3624'; ctx.fillRect(x - 0.35, y - s * 0.45, 0.7, s * 0.45);
+      const g = f.k === 'snowpine' ? ['#3f5a4a', '#2c4236'] : v < 0.5 ? ['#3e6a3a', '#28492a'] : ['#4a7640', '#2f5530'];
+      tri(x, y - s * 1.35, s * 0.62, y - s * 0.3, g[0], g[1]);
+      tri(x, y - s * 1.95, s * 0.46, y - s * 0.9, g[0], g[1]);
+      if (f.k === 'snowpine') { tri(x, y - s * 1.95, s * 0.22, y - s * 1.45, '#f6f8fa', '#d7dde4'); tri(x, y - s * 1.3, s * 0.3, y - s * 0.95, '#eef2f5', '#cfd6de'); }
+      break;
+    }
+    case 'broad': case 'mbroad': case 'bush': {
+      const pal = f.k === 'mbroad' ? ['#46553a', '#5d6d48'] : f.k === 'bush' ? ['#5f9a48', '#86bb62'] : v < 0.5 ? ['#35602f', '#4f8240'] : ['#426b31', '#62924a'];
+      const k = f.k === 'bush' ? 0.6 : 1;
+      if (f.k !== 'bush') { ctx.fillStyle = '#4a3624'; ctx.fillRect(x - 0.4, y - s * 0.7, 0.8, s * 0.7); }
+      circ(x - s * 0.32 * k, y - s * 0.9 * k, s * 0.48 * k, pal[0]); circ(x + s * 0.32 * k, y - s * 0.95 * k, s * 0.48 * k, pal[0]); circ(x, y - s * 1.32 * k, s * 0.55 * k, pal[0]);
+      ctx.globalAlpha = 0.85; circ(x - s * 0.14 * k, y - s * 1.42 * k, s * 0.28 * k, pal[1]); circ(x - s * 0.42 * k, y - s * 1.0 * k, s * 0.22 * k, pal[1]); ctx.globalAlpha = 1;
+      break;
+    }
+    case 'rock': case 'brock': {
+      const c = f.k === 'brock' ? ['#3a3432', '#5a514c'] : ['#8a8274', '#b3ab9a'];
+      ctx.fillStyle = c[0]; ctx.beginPath(); ctx.moveTo(x - s * 0.6, y); ctx.lineTo(x - s * 0.45, y - s * 0.55); ctx.lineTo(x - s * 0.05, y - s * (0.8 + v * 0.3)); ctx.lineTo(x + s * 0.5, y - s * 0.45); ctx.lineTo(x + s * 0.62, y); ctx.fill();
+      ctx.fillStyle = c[1]; ctx.beginPath(); ctx.moveTo(x - s * 0.45, y - s * 0.55); ctx.lineTo(x - s * 0.05, y - s * (0.8 + v * 0.3)); ctx.lineTo(x - s * 0.1, y - s * 0.2); ctx.lineTo(x - s * 0.5, y - s * 0.1); ctx.fill();
+      break;
+    }
+    case 'reed': {
+      ctx.strokeStyle = v < 0.5 ? '#77843f' : '#8f9450'; ctx.lineWidth = 0.45;
+      for (let j = -2; j <= 2; j++) { ctx.beginPath(); ctx.moveTo(x + j * s * 0.12, y); ctx.lineTo(x + j * s * 0.22, y - s * (0.9 + ((j + 2) % 3) * 0.2)); ctx.stroke(); }
+      ctx.fillStyle = '#5a4630'; ctx.fillRect(x + s * 0.18, y - s * 1.15, 0.7, s * 0.25);
+      break;
+    }
+    case 'dead': {
+      ctx.strokeStyle = '#5b4a3c'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + s * 0.05, y - s * 1.5);
+      ctx.moveTo(x + s * 0.03, y - s * 0.9); ctx.lineTo(x + s * 0.45, y - s * 1.3); ctx.moveTo(x + s * 0.04, y - s * 1.15); ctx.lineTo(x - s * 0.35, y - s * 1.5); ctx.stroke();
+      break;
+    }
+    case 'palm': {
+      ctx.strokeStyle = '#8a6a42'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + s * 0.5, y - s * 0.7, x + s * 0.35, y - s * 1.6); ctx.stroke();
+      ctx.fillStyle = '#4f8a3a';
+      for (let a = 0; a < 5; a++) { ctx.beginPath(); ctx.ellipse(x + s * 0.35 + Math.cos(a * 1.26) * s * 0.45, y - s * 1.6 + Math.sin(a * 1.26) * s * 0.22, s * 0.5, s * 0.14, a * 1.26, 0, 6.3); ctx.fill(); }
+      break;
+    }
+  }
+}
+
+class Component extends DCLogic {
+  fogRef = React.createRef();
+  buildFog() {
+    const layer = this.fogRef.current; if (!layer || !this.gen) return; layer.innerHTML = '';
+    SETTLE.filter(s => s.stale).forEach(s => {
+      [[s.x, s.y - 20, 460, 400, '14s', 'normal', 0.92], [s.x + 70, s.y + 40, 320, 280, '19s', 'reverse', 0.8]].forEach(([x, y, w, h, dur, dir, op]) => {
+        const im = document.createElement('img'); im.src = this.gen.fogSrc;
+        Object.assign(im.style, { position: 'absolute', left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', animation: `sgDrift ${dur} ease-in-out infinite ${dir}`, pointerEvents: 'none', opacity: op });
+        layer.appendChild(im);
+      });
+    });
+    this.fogBuilt = true;
+  }
+  viewRef = React.createRef(); planeRef = React.createRef(); worldRef = React.createRef(); terrainRef = React.createRef(); tilesRef = React.createRef(); cloudsRef = React.createRef();
+  cam = { x: 0, y: 0, z: 0.6, tilt: 0 };
+  state = { loading: true, zb: 0, zoomPct: 60, oblique: this.props.startTilted ?? false, sel: null, gen: null };
+  componentDidMount() { this.start(); }
+  start() {
+    if (this.started) return; this.started = true;
+    this.fit(false);
+    this.onWheel = e => {
+      e.preventDefault();
+      const r = this.viewRef.current.getBoundingClientRect();
+      const cx = e.clientX - r.left - r.width / 2, cy = e.clientY - r.top - r.height / 2;
+      this.zoomAt(this.cam.z * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0016)), cx, cy);
+    };
+    if (this.viewRef.current) { this.viewRef.current.addEventListener('wheel', this.onWheel, { passive: false }); this.wheelBound = true; }
+    this.tiles = new Map();
+    this.salt = this.props.biomeSalt ?? 0;
+    Promise.resolve().then(() => this.build());
+    let last = performance.now();
+    const loop = now => { this.raf = requestAnimationFrame(loop); this.tick((now - last) / 1000, now); last = now; };
+    this.raf = requestAnimationFrame(loop);
+    let lastI = performance.now();
+    this.iv = setInterval(() => { const now = performance.now(); if (document.hidden || now - last > 250) { this.tick((now - lastI) / 1000, now); } lastI = now; }, 120);
+  }
+  componentDidUpdate() {
+    this.start();
+    const s = this.props.biomeSalt ?? 0;
+    if (s !== this.salt && !this.state.loading) { this.salt = s; this.setState({ loading: true }); setTimeout(() => this.build(), 40); setTimeout(() => { if (this.state.loading) this.build(); }, 400); }
+  }
+  componentWillUnmount() { cancelAnimationFrame(this.raf); clearInterval(this.iv); this.ro && this.ro.disconnect(); this.viewRef.current && this.viewRef.current.removeEventListener('wheel', this.onWheel); }
+  build() {
+    if (!this.terrainRef.current || !this.cloudsRef.current || !this.viewRef.current) { setTimeout(() => this.build(), 60); return; }
+    if (this.building) return; this.building = true;
+    if (!this.wheelBound) { this.viewRef.current.addEventListener('wheel', this.onWheel, { passive: false }); this.wheelBound = true; this.fit(); }
+    let g;
+    try { g = generate(this.salt); } catch (err) { console.error('terrain generation failed', err); return; }
+    const cv = this.terrainRef.current; cv.width = W; cv.height = H;
+    const tmp = document.createElement('canvas'); tmp.width = GW; tmp.height = GH; tmp.getContext('2d').putImageData(g.img, 0, 0);
+    const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(tmp, 0, 0, W, H);
+    const grain = document.createElement('canvas'); grain.width = grain.height = 256;
+    const gctx = grain.getContext('2d'), gd = gctx.createImageData(256, 256), GN = mkNoise(3);
+    for (let p = 0; p < 256 * 256; p++) { const v = 128 + (GN.h(p % 256, p / 256 | 0) - 0.5) * 90; gd.data[p * 4] = gd.data[p * 4 + 1] = gd.data[p * 4 + 2] = v; gd.data[p * 4 + 3] = 255; }
+    gctx.putImageData(gd, 0, 0);
+    ctx.save(); ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = 0.12; ctx.fillStyle = ctx.createPattern(grain, 'repeat'); ctx.fillRect(0, 0, W, H); ctx.restore();
+    const all = []; g.buckets.forEach(list => all.push(...list)); all.sort((a, b) => a.y - b.y);
+    all.forEach(f => drawFeature(ctx, f));
+    this.gen = g;
+    this.tiles.forEach(t => t.remove()); this.tiles.clear();
+    const layer = this.cloudsRef.current; layer.innerHTML = '';
+    const R = mkNoise(5);
+    this.clouds = g.clouds.map((c, k) => {
+      const w = 620 + R.h(k, 1) * 300, h = w * 0.62;
+      const sh = document.createElement('img'); sh.src = g.shadowSrc; Object.assign(sh.style, { position: 'absolute', left: 0, top: 0, width: w + 'px', height: h + 'px', opacity: 0.35, filter: 'blur(6px)' });
+      const el = document.createElement('img'); el.src = c.src; Object.assign(el.style, { position: 'absolute', left: 0, top: 0, width: w + 'px', height: h + 'px' });
+      layer.appendChild(sh); layer.appendChild(el);
+      return { el, sh, w, h, x: R.h(k, 2) * (W + 600) - 300, y: 60 + R.h(k, 3) * (H - 420), v: 7 + R.h(k, 4) * 8 };
+    });
+    this.tilesDirty = true;
+    this.building = false; this.fogBuilt = false;
+    if (!this.userMoved) { this.fit(); this.fitted = true; }
+    this.buildFog();
+    this.updateTiles();
+    this.setState({ loading: false, gen: { biomes: g.biomes, fogSrc: g.fogSrc, labels: g.labels } });
+  }
+  tick(dt, now) {
+    const wEl = this.worldRef.current, vEl = this.viewRef.current;
+    if (wEl && vEl && this.planeRef.current) {
+      if (!this.userMoved && !this.fitted) { const r = vEl.getBoundingClientRect(); if (r.width > 10 && r.height > 10) { this.fit(); this.fitted = true; } }
+      else if (!wEl.style.transform) this.apply();
+    }
+    if (this.gen && !this.fogBuilt && this.fogRef.current) this.buildFog();
+    const target = 0;
+    if (Math.abs(this.cam.tilt - target) > 0.05) { this.cam.tilt += (target - this.cam.tilt) * Math.min(1, dt * 6); this.apply(); }
+    if (this.clouds) {
+      const show = this.props.showClouds ?? true, op = show ? Math.max(0.1, Math.min(0.5, 0.9 - this.cam.z * 0.5)) : 0;
+      for (const c of this.clouds) {
+        c.x += c.v * dt; if (c.x > W + 200) c.x = -c.w - 200;
+        c.el.style.transform = `translate3d(${c.x}px,${c.y}px,150px)`; c.el.style.opacity = op;
+        c.sh.style.transform = `translate3d(${c.x + 50}px,${c.y + 70}px,1px)`; c.sh.style.opacity = op * 0.45;
+      }
+    }
+    if (this.tilesDirty && this.gen) this.updateTiles();
+  }
+  apply() {
+    const { x, y, z, tilt } = this.cam;
+    if (this.worldRef.current) this.worldRef.current.style.transform = `translate(${x}px,${y}px) scale(${z})`;
+    if (this.planeRef.current) this.planeRef.current.style.transform = `rotateX(${tilt}deg)`;
+    if (this.viewRef.current) { this.viewRef.current.style.setProperty('--z', z); this.viewRef.current.style.setProperty('--tilt', tilt + 'deg'); }
+    const zb = z < 0.85 ? 0 : z < 1.6 ? 1 : 2, pct = Math.round(z * 100);
+    if (zb !== this.state.zb || pct !== this.state.zoomPct) this.setState({ zb, zoomPct: pct });
+    this.tilesDirty = true;
+  }
+  updateTiles() {
+    const layer = this.tilesRef.current, z = this.cam.z;
+    if (z < 1.2) { layer.style.opacity = 0; this.tilesDirty = false; return; }
+    layer.style.opacity = 1;
+    const r = this.viewRef.current.getBoundingClientRect();
+    let x0 = (-r.width / 2 - this.cam.x) / z, x1 = (r.width / 2 - this.cam.x) / z, y0 = (-r.height / 2 - this.cam.y) / z, y1 = (r.height / 2 - this.cam.y) / z;
+    if (this.cam.tilt > 5) { const hgt = y1 - y0; y0 -= hgt * 1.3; x0 -= (x1 - x0) * 0.5; x1 += (x1 - x0) * 0.35; }
+    const want = [];
+    for (let ty = Math.max(0, Math.floor(y0 / TILE)); ty <= Math.min(Math.floor(H / TILE), Math.floor(y1 / TILE)); ty++)
+      for (let tx = Math.max(0, Math.floor(x0 / TILE)); tx <= Math.min(Math.floor(W / TILE), Math.floor(x1 / TILE)); tx++) want.push(tx + ',' + ty);
+    let made = 0;
+    for (const key of want) {
+      if (this.tiles.has(key)) continue;
+      if (made++ >= 3) return;
+      const [tx, ty] = key.split(',').map(Number);
+      const cv = document.createElement('canvas'), M = 14; cv.width = (TILE + M * 2) * TS; cv.height = (TILE + M * 2) * TS;
+      Object.assign(cv.style, { position: 'absolute', left: tx * TILE - M + 'px', top: ty * TILE - M + 'px', width: TILE + M * 2 + 'px', height: TILE + M * 2 + 'px' });
+      const ctx = cv.getContext('2d'); ctx.scale(TS, TS); ctx.translate(-(tx * TILE - M), -(ty * TILE - M));
+      (this.gen.buckets.get(key) || []).slice().sort((a, b) => a.y - b.y).forEach(f => drawFeature(ctx, f));
+      layer.appendChild(cv); this.tiles.set(key, cv);
+    }
+    if (this.tiles.size > 60) { for (const [k, cv] of this.tiles) { if (!want.includes(k)) { cv.remove(); this.tiles.delete(k); } if (this.tiles.size <= 45) break; } }
+    this.tilesDirty = false;
+  }
+  zoomAt(nz, cx, cy) {
+    nz = Math.max(0.4, Math.min(3.2, nz)); this.userMoved = true;
+    const c = this.cam, wx = (cx - c.x) / c.z, wy = (cy - c.y) / c.z;
+    c.z = nz; c.x = cx - nz * wx; c.y = cy - nz * wy; this.apply();
+  }
+  fit(apply = true) {
+    const el = this.viewRef.current; if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.width < 10 || r.height < 10) { setTimeout(() => this.fit(), 50); return; }
+    if (!this.ro && window.ResizeObserver) { this.ro = new ResizeObserver(() => { if (!this.userMoved) this.fit(); }); this.ro.observe(el); }
+    const padL = 280, padB = 24, padT = 70, aw = r.width - padL - 20, ah = r.height - padT - padB;
+    const z = Math.max(0.2, Math.min(aw / W, ah / H) * 1.02);
+    this.cam.z = z; this.cam.x = -z * W / 2 + (padL - 20) / 2; this.cam.y = -z * H / 2 + (padT - padB) / 2; this.apply();
+  }
+  renderVals() {
+    if (!this.started && !this.startQueued) { this.startQueued = true; setTimeout(() => this.start(), 0); }
+    const st = this.state, biomes = st.gen ? st.gen.biomes : assignBiomes(this.props.biomeSalt ?? 0);
+    const col = r => `oklch(0.52 0.14 ${r.hue})`;
+    const markers = SETTLE.map(s => {
+      const r = REGIONS[s.r];
+      const n = s.cap ? 2 : Math.min(7, 1 + Math.floor(Math.log2(1 + (s.files || 1))));
+      const houses = Array.from({ length: n }, (_, k) => { const big = (k * 7 + s.x) % 3 === 0; return { w: big ? 9 : 7, h: big ? 7 : 5, rw: big ? 12 : 10, rh: big ? 7 : 6, lift: (k % 2) * 2, roof: s.cap ? '#6d5f55' : '#9b4a2e', roofD: s.cap ? '#554940' : '#733522' }; });
+      const squads = (s.sq || []).map(([name, m, state, activity, ext]) => {
+        const M = MODELS[m], S = STATE[state], fallen = state === 'fallen';
+        return { name, model: M.model + (ext ? ' · external' : ''), fw: M.fw, fh: M.fh, poleH: M.pole, boxW: M.fw + 5, charge: !!M.charge && !fallen,
+          clip: fallen ? 'polygon(0 0,70% 0,55% 22%,100% 30%,62% 55%,85% 78%,40% 70%,30% 100%,0 100%)' : M.clip,
+          flag: fallen ? '#6d5f4f' : col(r), anim: state === 'marching' ? 'sgWave 1.8s ease-in-out infinite' : 'none',
+          state, petition: state === 'petition', sealX: M.fw - 3, flagBottom: M.pole - M.fh - 2, sealBottom: M.pole - 8, nameBg: S.bg, nameFg: S.fg, hasChip: state !== 'marching', label: S.label, chipBg: S.bg, chipFg: S.fg, chipBg2: S.bg, chipFg2: S.fg,
+          activity, hasActivity: !!activity };
+      });
+      const stats = [s.ahead ? `↑${s.ahead}` : '', s.behind ? `↓${s.behind}` : '', s.files ? `${s.files} files` : '', s.pr ? 'PR open' : '', s.stale ? 'stale 21d' : ''].filter(Boolean).join(' · ');
+      const cw = s.cap ? 40 : Math.min(4, n) * 11;
+      return { ...s, cap: !!s.cap, empty: !squads.length, color: col(r), houses, squads, clusterW: cw, shW: cw + 16, shL: -(cw + 16) / 2, flagLift: s.cap ? 26 : 20 + Math.ceil(n / 4) * 12,
+        stats, hasStats: !!stats, op: s.stale ? 0.75 : 1, selected: st.sel === s.id,
+        onClick: e => { e.stopPropagation(); if (!this.dragged) this.setState({ sel: s.id }); } };
+    });
+    {
+      const z = this.cam.z, placed = [], prio = { petition: 0, fallen: 1, awaiting: 2, spoils: 3, marching: 9 };
+      const hit = R => placed.some(P => R[0] < P[2] && R[2] > P[0] && R[1] < P[3] && R[3] > P[1]);
+      const cols = [];
+      markers.forEach(m => {
+        const sx = m.x * z, sy = m.y * z;
+        const ws = m.squads.map(q => { const pw = Math.min(144, q.name.length * 6.4 + 16); return { q, pw, cw: Math.max(q.boxW, pw) }; });
+        const total = ws.reduce((a, c) => a + c.cw, 0) + Math.max(0, ws.length - 1) * 10;
+        let x = sx - total / 2;
+        ws.forEach(c => { c.q.colW = c.cw; const cx = x + c.cw / 2; x += c.cw + 10; placed.push([cx - c.q.boxW / 2 - 2, sy - 54, cx + c.q.boxW / 2 + 2, sy]); cols.push({ ...c, cx, sy, st: c.q.state }); });
+        if (m.empty) placed.push([sx - 5, sy - 5, sx + 5, sy + 5]);
+      });
+      cols.sort((a, b) => prio[a.st] - prio[b.st]);
+      const lines = c => Math.ceil((c.q.name.length * 6.4) / 130);
+      cols.forEach(c => {
+        const ph = lines(c) * 15 + 5, half = c.pw / 2 + 3;
+        const below = [c.cx - half, c.sy + 2, c.cx + half, c.sy + 4 + ph];
+        const above = [c.cx - half, c.sy - 58 - ph, c.cx + half, c.sy - 56];
+        c.q.showBelow = false; c.q.showAbove = false; c.q.aboveBottom = 54;
+        if (!hit(below)) { c.q.showBelow = true; placed.push(below); }
+        else if (!hit(above)) { c.q.showAbove = true; placed.push(above); }
+      });
+    }
+    const regionLabels = REGIONS.map((r, k) => ({ x: st.gen ? st.gen.labels[k].x : r.lx, y: st.gen ? st.gen.labels[k].y : r.ly, name: r.name, biome: BNAME[biomes[k]] }));
+    const legend = REGIONS.map((r, k) => ({ name: r.name, biome: BNAME[biomes[k]], color: col(r), onClick: () => { const z = 1.3; this.cam.z = z; this.cam.x = -r.sx * z; this.cam.y = -r.sy * z; this.apply(); } }));
+    const sel = SETTLE.find(s => s.id === st.sel);
+    const selM = sel && markers.find(m => m.id === sel.id);
+    return {
+      viewRef: this.viewRef, planeRef: this.planeRef, worldRef: this.worldRef, terrainRef: this.terrainRef, tilesRef: this.tilesRef, cloudsRef: this.cloudsRef,
+      loading: st.loading, markers, regionLabels, legend, fogRef: this.fogRef, zoomPct: st.zoomPct,
+      showDetail: st.zb >= 1, showSquads: st.zb >= 2, labelOpacity: st.zb >= 2 ? 0.4 : 1,
+      hasSel: !!sel, sel: sel ? { name: sel.name, branch: sel.branch, where: `${REGIONS[sel.r].name} · ${BNAME[biomes[sel.r]]}${selM.stats ? ' · ' + selM.stats : ''}`, squads: selM.squads, noSquads: !selM.squads.length } : { squads: [] },
+      clearSel: () => this.setState({ sel: null }),
+      topBg: st.oblique ? 'transparent' : '#2b2219', topFg: st.oblique ? '#2e251c' : '#f6ecd6', obBg: st.oblique ? '#2b2219' : 'transparent', obFg: st.oblique ? '#f6ecd6' : '#2e251c',
+      setTop: () => this.setState({ oblique: false }), setOblique: () => this.setState({ oblique: true }),
+      zoomIn: () => this.zoomAt(this.cam.z * 1.35, 0, 0), zoomOut: () => this.zoomAt(this.cam.z / 1.35, 0, 0), fit: () => { this.userMoved = false; this.fit(); },
+      onDown: e => { if (e.target.closest && e.target.closest('[data-ui]')) return; this.drag = { x: e.clientX, y: e.clientY, cx: this.cam.x, cy: this.cam.y }; this.dragged = false; },
+      onMove: e => {
+        if (!this.drag) return;
+        const dx = e.clientX - this.drag.x, dy = e.clientY - this.drag.y;
+        if (!this.dragged && Math.hypot(dx, dy) > 4) { this.dragged = true; this.userMoved = true; this.viewRef.current.setPointerCapture && this.viewRef.current.setPointerCapture(e.pointerId); this.viewRef.current.style.cursor = 'grabbing'; }
+        if (!this.dragged) return;
+        const k = 1 / Math.max(0.45, Math.cos(this.cam.tilt * Math.PI / 180));
+        this.cam.x = this.drag.cx + dx; this.cam.y = this.drag.cy + dy * k; this.apply();
+      },
+      onUp: () => { this.drag = null; this.viewRef.current.style.cursor = 'grab'; setTimeout(() => { this.dragged = false; }, 0); }
+    };
+  }
+}
+</script>
+</body>
+</html>
