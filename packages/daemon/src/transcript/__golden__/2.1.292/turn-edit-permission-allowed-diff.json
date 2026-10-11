@@ -1,0 +1,24 @@
+[
+  {
+    "k": "user",
+    "id": "cbbd8ee5-cf94-4dca-8572-c40f2016e483",
+    "text": "Edit probe.md: change hello to goodbye. Use the Edit tool.",
+    "at": 1791725184504
+  },
+  {
+    "k": "tool",
+    "id": "toolu_01GSbCWVzeyC1WHb91VHi4LL",
+    "tool": "Edit",
+    "summary": "C:\\dev\\strategos-sandbox\\probe.md",
+    "at": 1791725186481,
+    "diff": "--- a/C:/dev/strategos-sandbox/probe.md\n+++ b/C:/dev/strategos-sandbox/probe.md\n@@ -1,1 +1,1 @@\n-hello\n+goodbye",
+    "result": "The file C:\\dev\\strategos-sandbox\\probe.md has been updated successfully. (file state is current in your context — no need to Read it back)",
+    "ok": true
+  },
+  {
+    "k": "assistant",
+    "id": "46d4d119-3a42-4f4c-bc98-62b3a0702758",
+    "md": "I used the Edit tool to change the word in `probe.md` (in `C:\\dev\\strategos-sandbox`) from `hello` to `goodbye`. The file now holds the single line `goodbye`.\n\n**Done:** Changed `hello` to `goodbye` in `probe.md`.\n**Not done:** Nothing.\n**Your next step:** Nothing.",
+    "at": 1791725189972
+  }
+]

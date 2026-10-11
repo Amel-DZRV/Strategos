@@ -1,0 +1,23 @@
+[
+  {
+    "k": "user",
+    "id": "fe353d6e-59eb-426a-8982-51f5c2b5c4e9",
+    "text": "Use the AskUserQuestion tool to ask me one multiple-choice question: which colour do I prefer, with options Red, Green and Blue. Do nothing else until I answer, then reply with only my chosen colour.",
+    "at": 1791723839320
+  },
+  {
+    "k": "tool",
+    "id": "toolu_01HCyUxxmyyeixuePyyQeWcf",
+    "tool": "AskUserQuestion",
+    "summary": "Which colour do you prefer?",
+    "at": 1791723841844,
+    "result": "Your questions have been answered: \"Which colour do you prefer?\"=\"Green\". You can now continue with these answers in mind.",
+    "ok": true
+  },
+  {
+    "k": "assistant",
+    "id": "9afcef5e-45e7-4498-b9d3-35fa621b8cbb",
+    "md": "Green",
+    "at": 1791723862558
+  }
+]

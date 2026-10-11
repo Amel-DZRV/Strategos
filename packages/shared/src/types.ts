@@ -126,10 +126,12 @@ export interface PlanetInfo {
 export type ChatItem =
   | { k: 'user'; id: string; text: string; at: number }
   | { k: 'assistant'; id: string; md: string; at: number }
-  | { k: 'tool'; id: string; tool: string; summary: string; result?: string; ok?: boolean; diff?: string; agentId?: string }
+  | { k: 'tool'; id: string; tool: string; summary: string; result?: string; ok?: boolean; diff?: string; agentId?: string; at?: number }
   | { k: 'subagent'; id: string; agentId: string; brief: string; items: ChatItem[] }
   | { k: 'compact'; id: string; at: number }
-  | { k: 'interrupted'; id: string; at: number };
+  | { k: 'interrupted'; id: string; at: number }
+  /** Where the conversation changed identity: /clear, resume, fork ('unknown': the transcripts changed and no marker was recorded, e.g. after a daemon restart). */
+  | { k: 'marker'; id: string; marker: 'clear' | 'resume' | 'fork' | 'unknown'; at: number };
 
 // ---------------------------------------------------------------------------
 // Types §5 references but does not spell out (design choices, see task 1.02 report)

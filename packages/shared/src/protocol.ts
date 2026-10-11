@@ -19,7 +19,8 @@ export type DaemonEvent =
   | { t: 'suggestion'; seq: number; id: string; kind: 'initiative' | 'park'; text: string; strategosIds: string[] }
   | { t: 'pty.data'; strategosId: string; data: string }
   | { t: 'pty.replay'; strategosId: string; data: string }
-  | { t: 'chat.items'; strategosId: string; from: number; items: ChatItem[]; reset: boolean }
+  /** `items` replace the client's list from absolute index `from` onward (reset: replace everything). `truncatedBefore`: the history was cut and `from` is that many items in. */
+  | { t: 'chat.items'; strategosId: string; from: number; items: ChatItem[]; reset: boolean; truncatedBefore?: number }
   | { t: 'review'; strategosId: string; review: ReviewData }
   | { t: 'digest'; since: number; digest: DigestData }
   /** Answer to `pending.full` (D21): the whole tool input of a held request. Channel event: goes to the asking connection only. */

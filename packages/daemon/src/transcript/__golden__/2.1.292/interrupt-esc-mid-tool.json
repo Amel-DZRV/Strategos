@@ -1,0 +1,28 @@
+[
+  {
+    "k": "user",
+    "id": "8110ba73-63af-4070-89e9-80899a0758fb",
+    "text": "Run the shell command: ping -n 8 127.0.0.1",
+    "at": 1791724914139
+  },
+  {
+    "k": "tool",
+    "id": "toolu_01YJuaajkTBYFdPYo96An6x2",
+    "tool": "Bash",
+    "summary": "ping -n 8 127.0.0.1",
+    "at": 1791724916709,
+    "result": "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.\n\nNote: The user's next message may contain a correction or preference. Pay close attention — if they explain what went wrong or how they'd prefer you to work, consider saving that to memory for future sessions.",
+    "ok": false
+  },
+  {
+    "k": "interrupted",
+    "id": "22418cc0-f212-4b22-be5d-226ad23c0add",
+    "at": 1791724921881
+  },
+  {
+    "k": "user",
+    "id": "3efe09e8-a345-4e0e-a737-f84bb4b2f845",
+    "text": "Write a 3000 word essay about forests, with no tools.",
+    "at": 1791724934230
+  }
+]

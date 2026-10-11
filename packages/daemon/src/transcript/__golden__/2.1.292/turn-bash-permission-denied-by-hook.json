@@ -1,0 +1,23 @@
+[
+  {
+    "k": "user",
+    "id": "d9e59ebc-3bf8-4af1-8b0d-f0c31dee982f",
+    "text": "Line one: run the shell command echo strategos-probe > probe.txt\nLine two: if it is denied just say denied and stop\nLine three: do nothing else",
+    "at": 1791723714861
+  },
+  {
+    "k": "tool",
+    "id": "toolu_01HteWTMvRj2dsrkyfpm6svd",
+    "tool": "Bash",
+    "summary": "echo strategos-probe > probe.txt",
+    "at": 1791723717410,
+    "result": "Denied by the Strategos spike (S2 deny test)",
+    "ok": false
+  },
+  {
+    "k": "assistant",
+    "id": "4c1c9619-0b1d-4108-904b-682854d50981",
+    "md": "Denied.",
+    "at": 1791723728973
+  }
+]

@@ -1,0 +1,23 @@
+[
+  {
+    "k": "user",
+    "id": "ad80dd2a-faeb-4dd0-ac52-e8dcbd8253d6",
+    "text": "Run exactly this shell command and nothing appended: exit 3 . Then tell me in one short sentence what happened.",
+    "at": 1791724275354
+  },
+  {
+    "k": "tool",
+    "id": "toolu_01WoxQiJeh8sq6rWYppSzZgj",
+    "tool": "Bash",
+    "summary": "exit 3",
+    "at": 1791724277900,
+    "result": "Exit code 3",
+    "ok": false
+  },
+  {
+    "k": "assistant",
+    "id": "52e02c6f-f46c-4cce-ac9e-1af14dbfbb24",
+    "md": "The command `exit 3` ran and stopped with exit code 3, so the tool reported it as an error.",
+    "at": 1791724289872
+  }
+]

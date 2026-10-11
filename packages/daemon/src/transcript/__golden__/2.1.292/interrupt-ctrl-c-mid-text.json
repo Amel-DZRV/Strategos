@@ -1,0 +1,25 @@
+[
+  {
+    "k": "user",
+    "id": "3efe09e8-a345-4e0e-a737-f84bb4b2f845",
+    "text": "Write a 3000 word essay about forests, with no tools.",
+    "at": 1791724934230
+  },
+  {
+    "k": "assistant",
+    "id": "26e654e0-3090-44ee-8c57-4e402c5f1f11",
+    "md": "# The Green Cathedral: An Essay on Forests\n\nWalk into an old forest and the world changes. The air turns cool and damp. Sound grows soft. Light comes down in thin gold beams through layers of leaves. Underfoot, the ground is springy with moss and fallen needles. Many people say a forest feels like a cathedral, a place that is both alive and calm. But a forest is far more than a pretty place to walk. It is one of the most complex living systems on Earth. Forests make much of the oxygen we breathe, store huge amounts of carbon, shelter most of the land's plants and animals, shape the weather, protect water supplies and support the lives of more than a billion people. This essay looks at what forests are, how they work, the many kinds there are, how people have depended on them, and why their future matters to everyone.\n\n## What a Forest Is\n\nAt its simplest, a forest is a large area where trees grow close enough together that their tops, called the canopy, mostly cover the ground. But that dry definition misses the point. A forest is not just a crowd of trees, the same way a city is not just a crowd of buildings. It is a community. Trees, shrubs, ferns, mosses, fungi, insects, birds, mammals, bacteria and countless other living things all depend on one another.\n\nToday, forests cover a bit less than a third of the Earth's land, roughly four billion hectares. That is about the size of Africa and Europe combined. They are not spread evenly. Just a handful of countries, including Russia, Brazil, Canada, the United States and China, hold more than half of the world's forests. Some regions, like the Amazon basin or the great northern belt across Siberia and Canada, are covered in forest for thousands of kilometers. Other places, like much of the Middle East or North Africa, have very little.\n\nForests have not always looked the way they do now. The first tree-like plants appeared roughly three hundred and eighty million years ago. Early forests were made of giant ferns, horsetails and club mosses, some as tall as a modern ...[cut, 4484 chars total]",
+    "at": 1791724953042
+  },
+  {
+    "k": "interrupted",
+    "id": "db730b10-8c9c-4dd3-8ddc-f3b02e32bb7a",
+    "at": 1791724953074
+  },
+  {
+    "k": "user",
+    "id": "15960d51-0bbd-413a-b524-4e777e5b0e73",
+    "text": "C:/Program Files/Git/bg",
+    "at": 1791724975140
+  }
+]
