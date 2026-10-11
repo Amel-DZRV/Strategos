@@ -305,10 +305,8 @@ export function createHookReceiver(deps: ReceiverDeps): HookReceiver {
       return;
     }
 
-    let fx: Effect[] = [];
     try {
-      fx = deps.dispatch(sid, { k: 'hook', hook: n.input });
-      deps.registry.applyEffects(sid, fx);
+      deps.registry.applyEffects(sid, deps.dispatch(sid, { k: 'hook', hook: n.input }));
     } catch (err) {
       onError(err, 'dispatch');
     }

@@ -120,19 +120,19 @@ export function runSettingsPath(home: string, strategosId: string): string {
 }
 
 /** Write `<home>/run/<id>.settings.json` through safe-fs. Returns the path. */
-export async function writeRunSettings(fs: SafeFs, home: string, o: RunSettingsOptions): Promise<string> {
+export async function writeRunSettings(safeFs: SafeFs, home: string, o: RunSettingsOptions): Promise<string> {
   const file = runSettingsPath(home, o.strategosId);
-  await fs.mkdirp(runDir(home), { allow: [home] });
-  await fs.writeFileAtomic(file, JSON.stringify(buildRunSettings(o), null, 2) + '\n', { allow: [home] });
+  await safeFs.mkdirp(runDir(home), { allow: [home] });
+  await safeFs.writeFileAtomic(file, JSON.stringify(buildRunSettings(o), null, 2) + '\n', { allow: [home] });
   return file;
 }
 
-export async function removeRunSettings(fs: SafeFs, home: string, strategosId: string): Promise<void> {
-  await fs.rm(runSettingsPath(home, strategosId), { allow: [home], force: true });
+export async function removeRunSettings(safeFs: SafeFs, home: string, strategosId: string): Promise<void> {
+  await safeFs.rm(runSettingsPath(home, strategosId), { allow: [home], force: true });
 }
 
 /** Delete every `run/*.settings.json` (and stray temp files) whose owner is not in `liveIds`. Returns the removed file names. */
-export async function sweepRunDir(fs: SafeFs, home: string, liveIds: Iterable<string>): Promise<string[]> {
+export async function sweepRunDir(safeFs: SafeFs, home: string, liveIds: Iterable<string>): Promise<string[]> {
   const live = new Set(liveIds);
   let names: string[];
   try {
@@ -145,7 +145,7 @@ export async function sweepRunDir(fs: SafeFs, home: string, liveIds: Iterable<st
     const m = /^([A-Za-z0-9_-]{1,128})\.settings\.json(\..*\.tmp)?$/.exec(name);
     if (m === null) continue; // not ours: leave it alone
     if (live.has(m[1]!) && m[2] === undefined) continue;
-    await fs.rm(path.join(runDir(home), name), { allow: [home], force: true });
+    await safeFs.rm(path.join(runDir(home), name), { allow: [home], force: true });
     removed.push(name);
   }
   return removed;
