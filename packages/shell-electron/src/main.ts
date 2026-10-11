@@ -249,7 +249,7 @@ async function runSmoke(w: BrowserWindow): Promise<void> {
     hasRequire: typeof require !== 'undefined', hasProcess: typeof process !== 'undefined',
     text: document.body ? document.body.innerText.slice(0, 400) : ''
   }))()`;
-  let state: Record<string, unknown> = {};
+  let state: Record<string, unknown>;
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
     try {
@@ -277,7 +277,7 @@ async function runSmoke(w: BrowserWindow): Promise<void> {
   }
   const text = JSON.stringify(result, null, 2);
   if (out !== undefined) writeFileSync(path.resolve(out), text);
-  console.log(text);
+  try { console.log(text); } catch { /* a packaged GUI app may have no console */ }
   quitting = true;
   app.exit(result.ok ? 0 : 1);
 }
@@ -324,7 +324,7 @@ async function start(): Promise<void> {
   } else {
     globalShortcut.register(HOTKEY, showWindow);
   }
-  win.webContents.once('did-finish-load', () => { if (smoke && win !== null) void runSmoke(win); });
+  win.webContents.once('did-finish-load', () => { if (smoke && win !== null) runSmoke(win).catch((err: unknown) => { console.error(err); app.exit(3); }); });
   await win.loadURL(`${origin}/`).catch(() => undefined); // did-fail-load takes over
 }
 

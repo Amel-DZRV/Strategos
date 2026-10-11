@@ -1,0 +1,40 @@
+# Packaging (task 7.05). Unsigned on purpose: no certificates in v1.
+#   npm run dist:win     -> release/Strategos-<version>-setup.exe (NSIS)
+#   npm run dist:mac     -> release/Strategos-<version>.dmg   (run on the Mac)
+# The installer carries the shell and the daemon as ONE bundled file plus what it reads (resources/app/...).
+# It does NOT carry Node: the daemon runs under the Node the owner has installed (decision D7).
+appId: com.strategos.app
+productName: Strategos
+copyright: MIT
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/main.cjs
+  - dist/preload.cjs
+  - package.json
+extraResources:
+  - from: dist/payload
+    to: app
+# package.json keeps a ^range; electron-builder wants the exact version. Keep this equal to node_modules/electron.
+electronVersion: 44.7.0
+npmRebuild: false
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+artifactName: Strategos-${version}-${os}-${arch}.${ext}
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  # Unsigned: skip the signing tool download (it needs symlink rights that a normal Windows account lacks).
+  signAndEditExecutable: false
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+mac:
+  target:
+    - target: dmg
+  category: public.app-category.developer-tools
+  identity: null

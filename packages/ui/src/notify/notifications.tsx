@@ -32,6 +32,8 @@ export function handleNotify(ev: NotifyEvent): void {
   const n: UiNotification = { kind: ev.kind, strategosId: ev.strategosId, title: ev.title, body: ev.body };
   if (ev.risk) n.risk = ev.risk;
   if (ev.requestId) n.requestId = ev.requestId;
+  const actions = actionsFor(ev);
+  if (actions) n.actions = actions;
   if (store.prefs.value.notifications.enabled) shell.notify(n);
 }
 

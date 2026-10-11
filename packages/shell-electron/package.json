@@ -10,14 +10,16 @@
     "start": "node scripts/run.ts",
     "smoke": "node scripts/run.ts --smoke",
     "dist:win": "node scripts/dist.ts --win",
-    "typecheck": "tsc -p tsconfig.json"
-  },
-  "dependencies": {
-    "@strategos/shared": "*"
+    "typecheck": "tsc -p tsconfig.json",
+    "dist:mac": "node scripts/dist.ts --mac",
+    "dist:dir": "node scripts/dist.ts --win --dir"
   },
   "devDependencies": {
     "electron": "^44.7.0",
     "electron-builder": "^26.15.3",
-    "esbuild": "^0.28.2"
-  }
+    "esbuild": "^0.28.2",
+    "@strategos/shared": "*"
+  },
+  "author": "Amel-DZRV",
+  "license": "MIT"
 }
