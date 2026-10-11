@@ -167,7 +167,8 @@ export function createWorktrees(deps: { git: Git; safeFs: SafeFs }): Worktrees {
       if (!SAFE_NAME.test(name) || name.endsWith('.') || name.includes('..')) {
         throw new WorktreeError('invalid', `"${name}" is not a usable folder name. Use letters, digits, dots, dashes and underscores.`);
       }
-      return path.join(repo, worktreeRoot, name);
+      // A relative root lives inside the repository (D17). An absolute root (config.machine.worktreeRoot) gets one folder per repository.
+      return path.isAbsolute(worktreeRoot) ? path.join(worktreeRoot, path.basename(repo), name) : path.join(repo, worktreeRoot, name);
     },
 
     async worktreeAdd(repo, wtPath, branch, base, o = {}) {
