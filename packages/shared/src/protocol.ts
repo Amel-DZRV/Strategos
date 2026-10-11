@@ -22,6 +22,8 @@ export type DaemonEvent =
   | { t: 'chat.items'; strategosId: string; from: number; items: ChatItem[]; reset: boolean }
   | { t: 'review'; strategosId: string; review: ReviewData }
   | { t: 'digest'; since: number; digest: DigestData }
+  /** Answer to `pending.full` (D21): the whole tool input of a held request. Channel event: goes to the asking connection only. */
+  | { t: 'pending.full'; strategosId: string; requestId: string; event: 'PermissionRequest' | 'PreToolUse'; toolName: string; toolInput: Record<string, unknown> }
   | { t: 'ack'; id: string; ok: boolean; error?: string };
 
 export type UiCommand = { id: string } & (
@@ -35,10 +37,11 @@ export type UiCommand = { id: string } & (
   | { c: 'pty.input'; strategosId: string; data: string }
   | { c: 'pty.resize'; strategosId: string; cols: number; rows: number }
   | { c: 'pty.focus'; strategosId: string } // triggers auto-release (D13)
-  | { c: 'perm.decide'; strategosId: string; requestId: string; decision: 'allow' | 'deny' | 'always'; message?: string; suggestionIndex?: number }
+  | { c: 'perm.decide'; strategosId: string; requestId: string; decision: 'allow' | 'deny' | 'always'; message?: string; suggestionIndex?: number; via?: string } // via: audit label, default 'drawer'
   | { c: 'perm.release'; strategosId: string; requestId: string }
+  | { c: 'pending.full'; strategosId: string; requestId: string } // D21: answered with a `pending.full` event
   | { c: 'perm.approveLowRisk'; initiativeId: string }
-  | { c: 'question.answer'; strategosId: string; requestId: string; answers: Record<string, string> }
+  | { c: 'question.answer'; strategosId: string; requestId: string; answers: Record<string, string>; via?: string }
   | { c: 'reply.send'; strategosId: string; text: string }
   | { c: 'slash.send'; strategosId: string; cmd: AllowedSlash }
   | { c: 'chat.subscribe'; strategosId: string; from: number }
@@ -76,7 +79,7 @@ export function isDaemonEvent(x: unknown): x is DaemonEvent {
 
 const DAEMON_EVENT_TYPES: ReadonlySet<string> = new Set([
   'hello', 'snapshot', 'session.upsert', 'session.removed', 'planets', 'initiatives', 'usage', 'resources', 'notify',
-  'suggestion', 'pty.data', 'pty.replay', 'chat.items', 'review', 'digest', 'ack',
+  'suggestion', 'pty.data', 'pty.replay', 'chat.items', 'review', 'digest', 'pending.full', 'ack',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -155,10 +158,12 @@ const SPECS: Record<UiCommandKind, Check[]> = {
     need('decision', (v) => v === 'allow' || v === 'deny' || v === 'always', "'allow' | 'deny' | 'always'"),
     optional('message', isStr, 'a string'),
     optional('suggestionIndex', (v) => isInt(v) && (v as number) >= 0, 'a non-negative integer'),
+    optional('via', isStr, 'a string'),
   ],
   'perm.release': [sid, rid],
+  'pending.full': [sid, rid],
   'perm.approveLowRisk': [need('initiativeId', isNonEmpty, 'a non-empty string')],
-  'question.answer': [sid, rid, need('answers', isStringRecord, 'a string-to-string record')],
+  'question.answer': [sid, rid, need('answers', isStringRecord, 'a string-to-string record'), optional('via', isStr, 'a string')],
   'reply.send': [sid, need('text', isStr, 'a string')],
   'slash.send': [sid, need('cmd', isAllowedSlash, 'one of /compact, /handoff-now, /keepwarm 60m|90m|2h')],
   'chat.subscribe': [sid, need('from', (v) => isInt(v) && (v as number) >= 0, 'a non-negative integer')],

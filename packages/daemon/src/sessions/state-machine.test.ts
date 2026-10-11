@@ -1133,3 +1133,15 @@ describe('spike batch 2: lineage, lastHookAt, drift throttle, Agent View', () =>
     expect(run(stopped, { k: 'reconciler', obs: o }).next).toBe(stopped);
   });
 });
+
+describe('guard.denied', () => {
+  it('counts the denial, keeps the status and persists', () => {
+    const s = makeSession({ status: 'working' });
+    const { next, effects } = run(s, { k: 'guard.denied' });
+    expect(next.flags.guardDenials).toBe(1);
+    expect(next.status).toBe('working');
+    expect(effects.some((e) => e.e === 'persist')).toBe(true);
+    expect(run(next, { k: 'guard.denied' }).next.flags.guardDenials).toBe(2);
+    expect(s.flags.guardDenials).toBe(0);
+  });
+});

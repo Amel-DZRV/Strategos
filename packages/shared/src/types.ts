@@ -105,6 +105,7 @@ export interface Initiative {
   archived: boolean;
 }
 
+/** Rate-limit readings. `resetsAt` is epoch MILLISECONDS (Claude sends seconds; the status-line ingest converts). */
 export interface Usage {
   fiveHour?: { pct: number; resetsAt: number };
   sevenDay?: { pct: number; resetsAt: number };
@@ -149,6 +150,10 @@ export interface UiPrefs {
   reducedMotion?: boolean; // undefined = follow the OS setting
   notifications: NotificationPrefs;
   keymap: Record<string, string>; // action id -> key chord override
+  /** Set by the daemon in the snapshot only (never persisted): the installed Claude Code is outside the tested range (task 1.16). */
+  claudeVersionOutOfRange?: boolean;
+  /** Set by the daemon in the snapshot only: state.json was corrupt and was restored or started empty. */
+  stateBanner?: string;
 }
 
 export interface GuardRule {
@@ -326,6 +331,7 @@ export type MachineInput =
   | { k: 'statusline'; ctx?: SessionRecord['ctx']; cost?: { claudeSessionId: string; usd: number }; model?: string; cache?: SessionRecord['cache'] }
   | { k: 'user'; u: UserMachineCommand }
   | { k: 'daemon.restart' } // every non-live record becomes stopped
+  | { k: 'guard.denied' } // an auto-deny guard denied a tool call of this session: flags.guardDenials += 1
   | { k: 'tick' }; // time-based rules: interruptPending 10 s, pending expiry, hook-quiet inference window
 
 export type Effect =

@@ -581,6 +581,7 @@ export function reduce(s: SessionRecord, e: MachineInput, now: number): { next: 
     case 'statusline': onStatusline(c, e); break;
     case 'user': onUser(c, e.u); break;
     case 'daemon.restart': onRestart(c); break;
+    case 'guard.denied': c.s.flags = { ...s.flags, guardDenials: s.flags.guardDenials + 1 }; break;
     case 'tick': onTick(c); break;
   }
 

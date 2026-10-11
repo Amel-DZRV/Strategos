@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import type { RiskClass } from '@strategos/shared';
 import type { SafeFs } from '../safe-fs.ts';
 
-export type AuditVia = 'map' | 'strip' | 'drawer' | 'toast' | 'palette' | 'guard' | 'lowRiskBatch';
+export type AuditVia = 'map' | 'strip' | 'drawer' | 'toast' | 'palette' | 'guard' | 'lowRiskBatch' | (string & {});
 export type AuditDecision = 'allow' | 'deny' | 'always' | 'release' | 'answer';
 
 export interface AuditEntry {

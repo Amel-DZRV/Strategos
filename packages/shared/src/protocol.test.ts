@@ -20,6 +20,7 @@ const VALID: Record<UiCommandKind, Record<string, unknown>> = {
   'pty.focus': { strategosId: 's' },
   'perm.decide': { strategosId: 's', requestId: 'q', decision: 'always', suggestionIndex: 0 },
   'perm.release': { strategosId: 's', requestId: 'q' },
+  'pending.full': { strategosId: 's', requestId: 'q' },
   'perm.approveLowRisk': { initiativeId: 'i' },
   'question.answer': { strategosId: 's', requestId: 'q', answers: { Q: 'A' } },
   'reply.send': { strategosId: 's', text: 'go' },
