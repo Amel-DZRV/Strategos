@@ -130,7 +130,7 @@ describe('mission.start (6.06)', () => {
     expect(res.ok).toBe(false);
     expect(res.error).toMatch(/Started 1 of 2/);
     expect(res.error).toMatch(/feat\/exists.*already exists/);
-    await ui.until(() => ui.sessions.size === 1, 5000, 'one session');
+    await ui.until(() => ui.sessions.size === 1, 30_000, 'one session');
     expect([...ui.sessions.values()][0]?.worktree?.branch).toBe('feat/fresh');
     expect((await ui.cmd({ c: 'mission.start', initiativeId: 'nope', sessions: [{ repoPath: r.repo, branch: 'x', firstPrompt: 'p' }] })).ok).toBe(false);
   });

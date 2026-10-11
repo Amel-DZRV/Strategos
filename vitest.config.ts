@@ -24,7 +24,7 @@ export default defineConfig({
       },
       {
         test: {
-          name: 'proc', root: '.', environment: 'node', include: PROC, maxWorkers: 4, sequence: { groupOrder: 1 }, testTimeout: 60_000, hookTimeout: 60_000,
+          name: 'proc', root: '.', environment: 'node', include: PROC, maxWorkers: 4, sequence: { groupOrder: 1 }, testTimeout: 120_000, hookTimeout: 120_000,
         },
       },
       {

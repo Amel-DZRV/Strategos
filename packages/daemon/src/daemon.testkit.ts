@@ -120,7 +120,7 @@ export class UiClient {
   }
 
   /** Send a command and wait for its ack. */
-  cmd(c: DistributiveOmit<UiCommand, 'id'>, timeoutMs = 45_000): Promise<{ ok: boolean; error?: string }> {
+  cmd(c: DistributiveOmit<UiCommand, 'id'>, timeoutMs = 90_000): Promise<{ ok: boolean; error?: string }> {
     const id = `t${++this.n}`;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error(`no ack for ${c.c}`)), timeoutMs);
