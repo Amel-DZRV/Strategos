@@ -125,7 +125,8 @@ describe('a held request resolves in all five ways', () => {
     expect(h.get(SID).status).toBe('working');
     expect(h.registry.size).toBe(0);
     await h.audit.idle();
-    expect(h.audit.read()[0]).toMatchObject({ decision: 'release', via: 'terminal' });
+    expect(h.audit.read()[0]).toMatchObject({ decision: 'release', via: 'terminal_cancel' });
+    expect(h.get(SID).interruptPendingAt).toBeTypeOf('number');
   });
 });
 

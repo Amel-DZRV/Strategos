@@ -111,7 +111,8 @@ describe('fake-claude permission scenario', () => {
     expect(h.get(SID).status).toBe('working');
     expect(h.registry.size).toBe(0);
     await h.audit.idle();
-    expect(h.audit.read().at(-1)).toMatchObject({ decision: 'release', via: 'terminal', tool: 'Bash' });
+    expect(h.audit.read().at(-1)).toMatchObject({ decision: 'release', via: 'terminal_cancel', tool: 'Bash' });
+    expect(h.get(SID).interruptPendingAt).toBeTypeOf('number');
   }, T);
 
   it('answered in the terminal (Yes does NOT close the connection): PostToolUse releases the held request', async () => {
