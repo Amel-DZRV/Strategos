@@ -1,0 +1,11 @@
+{
+  "name": "@strategos/daemon",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/main.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": { "@strategos/shared": "*" }
+}

@@ -6,3 +6,6 @@ dist/
 .strategos/
 .DS_Store
 Thumbs.db
+
+coverage/
+*.tsbuildinfo
