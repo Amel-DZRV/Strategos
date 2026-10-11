@@ -10,7 +10,10 @@
     "typecheck": "npm run typecheck --workspaces --if-present && tsc -p tools/tsconfig.json",
     "test": "vitest run",
     "lint": "eslint .",
-    "strategos": "node packages/daemon/src/cli.ts"
+    "strategos": "node packages/daemon/src/cli.ts",
+    "app": "node packages/shell-electron/scripts/run.ts",
+    "app:smoke": "node packages/shell-electron/scripts/run.ts --smoke --smoke-shot docs/screenshots/m7-electron.png",
+    "dist:win": "npm run dist:win -w @strategos/shell-electron"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
