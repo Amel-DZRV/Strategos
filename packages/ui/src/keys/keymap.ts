@@ -30,7 +30,7 @@ export function matches(e: KeyLike, c: Chord): boolean {
 // --- Single-key actions (plan section 7 table). One table for both platforms; the handler only reads this. -------------
 export type ActionId =
   | 'next' | 'prev' | 'left' | 'right' | 'up' | 'down' | 'open' | 'close' | 'approve' | 'deny' | 'always' | 'option'
-  | 'reply' | 'terminal' | 'review' | 'new' | 'stop' | 'park' | 'seen' | 'group' | 'list' | 'help';
+  | 'reply' | 'terminal' | 'review' | 'new' | 'stop' | 'park' | 'seen' | 'group' | 'list' | 'help' | 'initiative';
 
 export interface KeyAction {
   id: ActionId;
@@ -61,6 +61,7 @@ export const KEY_ACTIONS: readonly KeyAction[] = [
   { id: 'stop', keys: ['s'], show: 's', label: 'Stop (asks first)' },
   { id: 'park', keys: ['p'], show: 'p', label: 'Park (asks first)' },
   { id: 'seen', keys: ['x'], show: 'x', label: 'Mark seen' },
+  { id: 'initiative', keys: ['i'], show: 'i', label: 'Put the session in an initiative' },
   { id: 'group', keys: ['g'], show: 'g', label: 'Group by repo or initiative' },
   { id: 'list', keys: ['L'], show: 'Shift+L', label: 'Map or list view' },
   { id: 'help', keys: ['?'], show: '?', label: 'This help' },

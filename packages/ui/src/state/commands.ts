@@ -15,9 +15,12 @@ export type Ack = Extract<DaemonEvent, { t: 'ack' }>;
 /** Channel events (pty, chat, review) plus the invented `pending.full`. */
 export type ChannelMessage = DaemonEvent | { t: 'pending.full'; strategosId: string; requestId: string; input: string };
 
+/** timeoutMs: how long to wait for the ack (default 10 s; pr.create pushes a branch and takes longer). */
+export interface SendOptions { timeoutMs?: number }
+
 export interface Transport {
   /** Resolves with the daemon's ack (ok or not). Rejects when not connected, on disconnect, or after the timeout. */
-  send(cmd: CommandInput): Promise<Ack>;
+  send(cmd: CommandInput, opts?: SendOptions): Promise<Ack>;
   /** Every non-seq message from the daemon (pty.data, pty.replay, chat.items, review, digest, pending.full). */
   onChannel(fn: (ev: ChannelMessage) => void): () => void;
 }
@@ -31,8 +34,8 @@ let transport: Transport = offline;
 export function setTransport(t: Transport): void { transport = t; }
 
 /** Send and throw if the daemon refuses. */
-export async function send(cmd: CommandInput): Promise<Ack> {
-  const ack = await transport.send(cmd);
+export async function send(cmd: CommandInput, opts?: SendOptions): Promise<Ack> {
+  const ack = await transport.send(cmd, opts);
   if (!ack.ok) throw new Error(ack.error ?? 'command failed');
   return ack;
 }

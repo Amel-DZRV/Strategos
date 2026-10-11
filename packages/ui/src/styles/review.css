@@ -1,0 +1,82 @@
+/* M6: quiet top bar, review pane, worktree / initiative / mission dialogs. Same tokens as the rest. */
+
+/* Top bar: left = state of the work, right = spend and two small controls */
+.sumbar { flex-wrap: nowrap; gap: 6px 12px; white-space: nowrap; }
+@media (max-width: 900px) { .sumbar { flex-wrap: wrap; } }
+.sumbar .quiet.small { padding: 1px 8px; font: 12px var(--sans); }
+.sumbar .more { position: relative; }
+.sumbar .more > .quiet { min-width: 28px; font-size: 14px; line-height: 1.3; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 220px; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55); display: flex; flex-direction: column; }
+.menu button { display: flex; justify-content: space-between; align-items: center; gap: 16px; text-align: left; background: none; border: 0; border-radius: 5px; padding: 6px 10px; font-size: 13px; color: var(--fg); }
+.menu button:hover, .menu button:focus-visible { background: var(--raise); }
+.menu button[aria-checked="true"]::after { content: "✓"; color: var(--c-ready); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
+.menu kbd { font: 11px var(--mono); color: var(--mute); }
+
+/* Compact usage gauge: "5h 62% · 7d 31%" over two thin bars */
+.gauge { gap: 8px; }
+.gauge .g { display: inline-grid; gap: 2px; justify-items: stretch; color: var(--mute); font-size: 12px; line-height: 1.2; }
+.gauge .gt { white-space: nowrap; }
+.gauge .bar { width: 100%; min-width: 44px; height: 2px; }
+.gauge .gsep { color: var(--mute); align-self: start; }
+.gauge button { gap: 8px; }
+
+.banner.gh { border-left: 3px solid var(--c-reply); justify-content: flex-start; }
+.banner.suggest.initiative { border-left-color: var(--c-work); }
+
+/* Review pane */
+.drawer-wide .body, .app.with-drawer.wide .body { grid-template-columns: minmax(0, 1fr) 580px; }
+.review { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.review-bar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: 12px; flex-wrap: wrap; }
+.review-bar .sp { flex: 1; }
+.review-bar .btn { padding: 2px 10px; font-size: 12px; }
+.add { color: var(--c-ready); }
+.del { color: var(--c-approve); }
+.ok { color: var(--c-ready); margin: 0; }
+.warn { color: var(--c-reply); margin: 0; font-size: 12.5px; }
+.pad { padding: 4px 14px; margin: 0; }
+.testline { margin: 0; padding: 6px 14px; font-size: 12px; color: var(--mute); border-bottom: 1px solid var(--line); }
+.review-scroll { flex: 1; min-height: 120px; overflow: auto; }
+.filelist { list-style: none; margin: 0; padding: 6px 8px; display: flex; flex-direction: column; gap: 1px; border-bottom: 1px solid var(--line); max-height: 30%; overflow: auto; }
+.filelist .file { width: 100%; display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; text-align: left; background: none; border: 0; border-radius: 4px; padding: 3px 6px; font-size: 12px; }
+.filelist .file:hover { background: var(--panel); }
+.filelist .path { overflow-wrap: anywhere; }
+.filelist .st { font: 700 10px var(--mono); text-align: center; border: 1px solid var(--line); border-radius: 3px; color: var(--mute); }
+.filelist .st-added, .filelist .st-untracked { color: var(--c-ready); border-color: var(--c-ready); }
+.filelist .st-deleted { color: var(--c-approve); border-color: var(--c-approve); }
+.filelist .st-modified, .filelist .st-renamed { color: var(--c-reply); border-color: var(--c-reply); }
+.review-foot { flex: none; border-top: 1px solid var(--line); padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+.review-foot .notes textarea { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; color: var(--fg); font: 12.5px var(--sans); resize: vertical; }
+.review-foot .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.review-foot .prline { margin: 0; font-size: 12.5px; }
+
+/* diff2html on the dark app background */
+.diff-wrap { font-size: 12px; }
+.diff-wrap .d2h-wrapper { background: transparent; }
+.diff-wrap .d2h-file-wrapper { border-color: var(--line); margin-bottom: 10px; border-radius: 6px; }
+.diff-wrap .d2h-file-header { background: var(--panel); border-bottom-color: var(--line); }
+.diff-wrap .d2h-code-linenumber, .diff-wrap .d2h-code-side-linenumber { background: var(--bg); border-color: var(--line); color: var(--mute); }
+.diff-wrap .d2h-code-line-ctn { font-family: var(--mono); font-size: 11.5px; }
+.diff-wrap .d2h-file-name { font-family: var(--mono); font-size: 12px; }
+
+.drawer-head .dtools { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
+.drawer-head .dtools .btn.link { padding: 0; font-size: 12px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+
+/* Dialog extras */
+.dialog.wide { width: min(680px, 100%); max-height: 92vh; overflow: auto; }
+.dialog label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--fg); }
+.dialog label.check input { width: auto; }
+.dialog select { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; color: var(--fg); font: 13px var(--mono); }
+.dialog .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dialog code { font-family: var(--mono); font-size: 12px; }
+.dialog fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.dialog legend { padding: 0 6px; font-size: 12px; color: var(--mute); }
+.dialog .crow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 8px; align-items: center; }
+.dialog .field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--mute); }
+.swatches { display: flex; gap: 8px; }
+.swatch { width: 22px; height: 22px; border-radius: 99px; border: 2px solid transparent; background: var(--sw); padding: 0; }
+.swatch.on { border-color: var(--fg); }
+.working { display: flex; align-items: center; gap: 8px; color: var(--mute); margin: 0; }
+.spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin 0.8s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -7,6 +7,8 @@ import { Toasts, useNotifications } from './notify/notifications.tsx';
 import { startViewFocus } from './state/focus.ts';
 import { SuggestionBanners } from './topbar/UsageGauge.tsx';
 import { NewSessionDialog } from './dialogs/NewSession.tsx';
+import { AssignInitiativeDialog, InitiativeDialog, MissionDialog } from './dialogs/Initiatives.tsx';
+import { RemoveWorktreeDialog } from './dialogs/RemoveWorktree.tsx';
 import { Drawer } from './drawer/Drawer.tsx';
 import { handleKey, focusRow } from './keys/global-keys.ts';
 import { MapView } from './map/MapView.tsx';
@@ -15,7 +17,7 @@ import { SessionRows } from './rows/SessionRows.tsx';
 import { shell, titleFor } from './shell-bridge.ts';
 import { startClock } from './state/clock.ts';
 import { store } from './state/store.ts';
-import { closeDrawer, drawerOpen, errorNotice, helpOpen, lowRiskOpen, newSessionOpen, paletteOpen, parkTarget, selectedId, stopTarget, view } from './state/ui.ts';
+import { assignTarget, closeDrawer, drawerOpen, drawerTab, errorNotice, initiativeDialog, missionOpen, removeWorktreeTarget, helpOpen, lowRiskOpen, newSessionOpen, paletteOpen, parkTarget, selectedId, stopTarget, view } from './state/ui.ts';
 import { TopBar } from './topbar/TopBar.tsx';
 
 export function App() {
@@ -37,7 +39,7 @@ export function App() {
   }, [needs]);
 
   return (
-    <div class={`app ${open ? 'with-drawer' : ''}`}>
+    <div class={`app ${open ? 'with-drawer' : ''} ${open && drawerTab.value === 'review' ? 'wide' : ''}`}>
       <a class="skip" href="#sessions">Skip to sessions</a>
       <TopBar />
       {errorNotice.value ? (
@@ -88,6 +90,10 @@ export function App() {
       {parkTarget.value !== null ? <ConfirmParkDialog id={parkTarget.value} /> : null}
       {newSessionOpen.value ? <NewSessionDialog /> : null}
       {stopTarget.value !== null ? <ConfirmStopDialog id={stopTarget.value} /> : null}
+      {removeWorktreeTarget.value !== null ? <RemoveWorktreeDialog id={removeWorktreeTarget.value} /> : null}
+      {initiativeDialog.value !== null ? <InitiativeDialog {...initiativeDialog.value} /> : null}
+      {assignTarget.value !== null ? <AssignInitiativeDialog id={assignTarget.value} /> : null}
+      {missionOpen.value ? <MissionDialog /> : null}
     </div>
   );
 }

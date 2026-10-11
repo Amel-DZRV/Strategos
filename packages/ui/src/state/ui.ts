@@ -50,3 +50,12 @@ export function setGroupBy(g: GroupBy): void { groupByOverride.value = g; }
 export const helpOpen = signal(false);
 /** Session the park confirmation is open for (key p). */
 export const parkTarget = signal<string | null>(null);
+
+// --- M6 dialogs ------------------------------------------------------------------------------------------------------
+/** Session whose worktree the remove dialog is open for. */
+export const removeWorktreeTarget = signal<string | null>(null);
+/** Create or edit an initiative: `{}` creates, `{ id }` edits; `assignTo`: put this session in it once saved. */
+export const initiativeDialog = signal<{ id?: string; assignTo?: string } | null>(null);
+/** Session the "which initiative?" picker is open for (key i). */
+export const assignTarget = signal<string | null>(null);
+export const missionOpen = signal(false);

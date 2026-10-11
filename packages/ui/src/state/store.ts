@@ -51,6 +51,10 @@ export function createStore() {
   const synced = signal(false);
   /** Suggestions from the daemon (a park nudge, an initiative match) until the owner answers or dismisses them. */
   const suggestions = signal<readonly Suggestion[]>([]);
+  /** Repositories the daemon knows (snapshot.repos), for the new-session picker. */
+  const repos = signal<readonly string[]>([]);
+  /** gh is missing or not logged in (R14): the snapshot's pref, then gh.status events. */
+  const gh = signal<{ needsLogin: boolean; message?: string }>({ needsLogin: false });
   const notifyListeners = new Set<(ev: NotifyEvent) => void>();
   let lastSeq: number | null = null;
 
@@ -84,6 +88,8 @@ export function createStore() {
       initiatives.value = ev.initiatives;
       usage.value = ev.usage;
       prefs.value = ev.prefs;
+      repos.value = ev.repos ?? [];
+      gh.value = { needsLogin: ev.prefs.ghNeedsLogin === true };
       lastSeq = ev.seq;
       synced.value = true;
     });
@@ -101,7 +107,7 @@ export function createStore() {
         digestToday.value = ev.digest;
         return 'applied';
       case 'session.upsert': case 'session.removed': case 'planets': case 'initiatives': case 'usage': case 'resources':
-      case 'notify': case 'suggestion':
+      case 'notify': case 'suggestion': case 'gh.status':
         break;
       default:
         return 'ignored'; // channel events and acks are handled by the connection
@@ -122,6 +128,7 @@ export function createStore() {
         case 'planets': planets.value = ev.planets; break;
         case 'initiatives': initiatives.value = ev.initiatives; break;
         case 'usage': usage.value = ev.usage; break;
+        case 'gh.status': gh.value = { needsLogin: ev.needsLogin, ...(ev.message === undefined ? {} : { message: ev.message }) }; break;
         case 'resources': resources.value = { totalMb: ev.totalMb, cpuPct: ev.cpuPct }; break;
         case 'suggestion':
           suggestions.value = [...suggestions.value.filter((x) => x.id !== ev.id), { id: ev.id, kind: ev.kind, text: ev.text, strategosIds: ev.strategosIds }];
@@ -152,7 +159,7 @@ export function createStore() {
   }
 
   return {
-    suggestions, onNotify, removeSuggestion,
+    repos, gh, suggestions, onNotify, removeSuggestion,
     sessions, planets, initiatives, usage, prefs, resources, connection, hello, digestToday, announcement, synced,
     sorted, needsYou,
     applyEvent, markDisconnected,

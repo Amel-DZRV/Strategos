@@ -3,7 +3,10 @@ import type { SessionRecord } from '@strategos/shared';
 import { ChatPane } from '../chat/ChatPane.tsx';
 import { branchOf, ctxColour, ctxPct, fmtWait, money, repoName, statusInfo, waitingMs } from '../format.ts';
 import { now } from '../state/clock.ts';
-import { drawerTab, type DrawerTab } from '../state/ui.ts';
+import { store } from '../state/store.ts';
+import { assignTarget, drawerTab, removeWorktreeTarget, type DrawerTab } from '../state/ui.ts';
+import { canRemoveWorktree } from '../dialogs/RemoveWorktree.tsx';
+import { ReviewPane } from './ReviewPane.tsx';
 import { ContextActions } from './ContextActions.tsx';
 import { PendingCard } from './PendingCard.tsx';
 import { TerminalPane } from './TerminalPane.tsx';
@@ -29,6 +32,7 @@ export function DrawerHeader({ s }: { s: SessionRecord }) {
   const pct = ctxPct(s);
   const waiting = s.waitingSince !== undefined || s.status === 'permission' || s.status === 'question';
   const branch = branchOf(s);
+  const ini = s.initiativeId === undefined ? undefined : store.initiatives.value.find((i) => i.id === s.initiativeId);
   return (
     <header class="drawer-head" style={`--stc:${st.colour}`}>
       <h2>{s.displayName}</h2>
@@ -45,6 +49,12 @@ export function DrawerHeader({ s }: { s: SessionRecord }) {
         </span>
         <span class="cost mono" title="Estimated cost of this session and its lineage">{money(s.cost.lineageUsd)}</span>
       </div>
+      <div class="dtools">
+        <button type="button" class="btn link" aria-keyshortcuts="i" title="Put this session in an initiative (i)" onClick={() => { assignTarget.value = s.strategosId; }}>
+          {ini ? <><span class="dot" style={`background:${ini.colour}`} aria-hidden="true" /> {ini.name}</> : 'Add to an initiative'}
+        </button>
+        {canRemoveWorktree(s) ? <button type="button" class="btn link" onClick={() => { removeWorktreeTarget.value = s.strategosId; }}>Remove worktree…</button> : null}
+      </div>
     </header>
   );
 }
@@ -60,6 +70,8 @@ export function Drawer({ session, onClose, onLeaveTerminal }: DrawerProps) {
   // The chat mounts the first time it is shown and then stays, like the terminal: switching tabs loses nothing.
   const [chatSeen, setChatSeen] = useState(tab === 'chat');
   if (tab === 'chat' && !chatSeen) setChatSeen(true);
+  const [reviewSeen, setReviewSeen] = useState(tab === 'review');
+  if (tab === 'review' && !reviewSeen) setReviewSeen(true);
   const live = session.status !== 'stopped' && session.status !== 'parked' && session.status !== 'open_elsewhere';
   return (
     <aside class="drawer" aria-label={`Session ${session.displayName}`}>
@@ -87,7 +99,7 @@ export function Drawer({ session, onClose, onLeaveTerminal }: DrawerProps) {
         {chatSeen ? <ChatPane key={session.strategosId} session={session} active={tab === 'chat'} /> : null}
       </div>
       <div id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden={tab !== 'review'} class="panel">
-        <p class="placeholder">The review view comes in a later milestone (M6).</p>
+        {reviewSeen ? <ReviewPane key={session.strategosId} session={session} active={tab === 'review'} /> : null}
       </div>
       <ContextActions session={session} />
       {session.pending || tab === 'chat' ? (

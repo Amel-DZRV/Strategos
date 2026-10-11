@@ -79,14 +79,14 @@ export function createConnection(deps: ConnectionDeps): Connection {
     ws?.send(JSON.stringify({ ...cmd, id }));
   }
 
-  function send(cmd: CommandInput): Promise<Ack> {
+  function send(cmd: CommandInput, opts?: { timeoutMs?: number }): Promise<Ack> {
     if (ws === null || ws.readyState !== OPEN) return Promise.reject(new Error('not connected'));
     const id = newId();
     return new Promise<Ack>((resolve, reject) => {
       const timer = setT(() => {
         pending.delete(id);
         reject(new Error(`no answer from the daemon (${cmd.c})`));
-      }, timeoutMs);
+      }, opts?.timeoutMs ?? timeoutMs);
       pending.set(id, { resolve, reject, timer });
       try {
         transmit(cmd, id);

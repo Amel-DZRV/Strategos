@@ -7,7 +7,7 @@ import { spatialNext } from '../map/model.ts';
 import { fire, send } from '../state/commands.ts';
 import { store } from '../state/store.ts';
 import {
-  closeDrawer, denyFocusTick, drawerOpen, drawerTab, errorNotice, groupBy, helpOpen, newSessionOpen, openDrawer, parkTarget,
+  assignTarget, closeDrawer, denyFocusTick, drawerOpen, drawerTab, errorNotice, groupBy, helpOpen, newSessionOpen, openDrawer, parkTarget,
   replyFocusTick, selectedId, selectSession, setGroupBy, stopTarget, view,
 } from '../state/ui.ts';
 import type { ActionId } from './keymap.ts';
@@ -62,7 +62,7 @@ export function canPerform(id: ActionId, opt: PerformOptions = {}): boolean {
       return opt.option === undefined || (p.questions?.[0]?.options.length ?? 0) >= opt.option;
     }
     case 'next': case 'prev': return store.needsYou.value.length > 0;
-    case 'seen': case 'open': case 'terminal': case 'review': case 'reply': return s !== undefined;
+    case 'seen': case 'open': case 'terminal': case 'review': case 'reply': case 'initiative': return s !== undefined;
     case 'stop': case 'park': return !!s && canStop(s);
     case 'close': return drawerOpen.value || helpOpen.value;
     default: return true;
@@ -136,6 +136,9 @@ export function perform(id: ActionId, opt: PerformOptions = {}): boolean {
       return false;
     case 'reply':
       if (s) { openDrawer(s.strategosId, 'chat'); replyFocusTick.value++; return true; }
+      return false;
+    case 'initiative':
+      if (s) { assignTarget.value = s.strategosId; return true; }
       return false;
     case 'new':
       newSessionOpen.value = true;
