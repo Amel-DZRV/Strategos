@@ -1,0 +1,34 @@
+[
+  {
+    "k": "compact",
+    "id": "b305aa0f-f926-4947-afd9-312f29219c4d",
+    "at": 1791724070921
+  },
+  {
+    "k": "user",
+    "id": "f1f51f30-6dfc-4f5e-bd00-22d234db3716",
+    "text": "/compact",
+    "at": 1791724051628
+  },
+  {
+    "k": "user",
+    "id": "2230075e-c150-4162-9783-03c0be73b13c",
+    "text": "Run the shell command: cmd /c exit 3 . Then tell me the exit code in one short sentence.",
+    "at": 1791724234589
+  },
+  {
+    "k": "tool",
+    "id": "toolu_013eGF3yivNs3wjGWBEoJsRZ",
+    "tool": "Bash",
+    "summary": "cmd //c exit 3; echo \"exit=$?\"",
+    "at": 1791724237117,
+    "result": "exit=3",
+    "ok": true
+  },
+  {
+    "k": "assistant",
+    "id": "f99b700e-bed7-403f-8438-1c86f6f486d7",
+    "md": "The command `cmd /c exit 3` finished with exit code 3.",
+    "at": 1791724262605
+  }
+]

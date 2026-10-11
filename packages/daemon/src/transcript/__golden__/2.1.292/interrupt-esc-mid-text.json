@@ -1,0 +1,19 @@
+[
+  {
+    "k": "user",
+    "id": "a5124d16-03bb-41bc-863a-307a3acd39fc",
+    "text": "Write a 3000 word essay about oceans, with no tools.",
+    "at": 1791724883816
+  },
+  {
+    "k": "assistant",
+    "id": "e9153b37-5e8c-4ee4-a9bb-5bc0366f38a9",
+    "md": "# The Blue Heart of the World: An Essay on Oceans\n\nSeen from space, Earth is not really a brown or green planet. It is a blue one. Oceans cover about seventy-one percent of its surface. They hold about ninety-seven percent of all the water on the planet. They are so big, so deep and so full of life that, in many ways, they are still less explored than the surface of the Moon. Yet they touch almost everything about our lives: the air we breathe, the weather we feel, the food we eat and the goods we buy. This essay looks at what oceans are, how they work, what lives in them, how people have used them, and what is happening to them now.\n\n## One Ocean, Many Names\n\nWe usually talk about five oceans: the Pacific, the Atlantic, the Indian, the Southern and the Arctic. But in truth, they are all connected. Water flows freely from one to the next. A drop of water off the coast of Norway could, given enough time, end up near Antarctica or Japan. Scientists often call it the \"world ocean\" for this reason. The names are a bit like the names of rooms in one big house. The walls are imaginary.\n\nThe Pacific is by far the largest. It is bigger than all the land on Earth put together. It is also the deepest. Its Mariana Trench drops nearly eleven kilometers, about seven miles, below the surface. If you dropped Mount Everest into it, the peak would still be more than two kilometers underwater. The Atlantic is the second largest and is slowly growing wider, by a few centimeters a year, as the continents on either side drift apart. The Indian Ocean is the warmest. The Southern Ocean swirls around Antarctica, cold and stormy. The Arctic, the smallest and shallowest, is partly covered in floating ice.\n\nSmaller parts of the ocean that are partly closed in by land are called seas. The Mediterranean, the Caribbean and the South China Sea are examples. These have shaped human history in their own special ways, because they are easier to cross than the open ocean.\n\n## Where the Oceans Came From\n\nEarth formed about four and a half billion y...[cut, 5133 chars total]",
+    "at": 1791724902858
+  },
+  {
+    "k": "interrupted",
+    "id": "3609a4d0-0f15-44c6-84c4-3d8347aa2b54",
+    "at": 1791724902896
+  }
+]

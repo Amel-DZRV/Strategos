@@ -17,6 +17,7 @@ function fromSend(r: SendResult): CommandResult {
 }
 
 export const ptyChannel = (strategosId: string): string => `pty:${strategosId}`;
+export const chatChannel = (strategosId: string): string => `chat:${strategosId}`;
 
 /**
  * stop, park and forget are acknowledged when they have started, not when the process is gone: the hub handles one
@@ -110,6 +111,30 @@ export function registerSessionCommands(hub: WsHub, m: SessionManager, onError: 
   hub.registerCommand('digest.get', (c, ctx) => {
     const since = c.since ?? Date.now() - 86_400_000;
     ctx.send({ t: 'digest', since, digest: m.digest(since) });
+  });
+
+  // ---- chat view (task 5.01) -------------------------------------------------------
+  // One feed per (connection, session); subscribing again replaces it. Closing the connection ends all of its feeds.
+  const chatFeeds = new Map<string, () => void>();
+  const feedKey = (connId: string, sid: string): string => `${connId}|${sid}`;
+  const dropFeed = (key: string): void => {
+    chatFeeds.get(key)?.();
+    chatFeeds.delete(key);
+  };
+  hub.registerCommand('chat.subscribe', async (c, ctx) => {
+    const bad = known(c.strategosId);
+    if (bad !== undefined) return bad;
+    const key = feedKey(ctx.connId, c.strategosId);
+    dropFeed(key);
+    ctx.subscribe(chatChannel(c.strategosId));
+    const unsub = await m.chat.subscribe(c.strategosId, c.from, (ev) => { ctx.send(ev); });
+    chatFeeds.set(key, () => { unsub(); ctx.unsubscribe(chatChannel(c.strategosId)); });
+  });
+  hub.registerCommand('chat.unsubscribe', (c, ctx) => {
+    dropFeed(feedKey(ctx.connId, c.strategosId));
+  });
+  hub.onDisconnect((connId) => {
+    for (const key of [...chatFeeds.keys()]) if (key.startsWith(`${connId}|`)) dropFeed(key);
   });
 
   // ---- sending text ---------------------------------------------------------------

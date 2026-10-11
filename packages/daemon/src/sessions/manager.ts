@@ -27,6 +27,9 @@ import {
 } from '@strategos/shared';
 import type { Config } from '../config.ts';
 import type { UsageTracker } from '../features/usage.ts';
+import { expireCache, keepTranscriptCache, mergeTranscriptCache } from '../features/cache.ts';
+import { addConflict, createConflictTracker, pruneConflicts } from '../features/conflicts.ts';
+import type { Mods } from '../features/mods.ts';
 import { createNotifyPolicy, type NotifyOut, type NotifyPolicy } from '../notify/policy.ts';
 import { createPendingRegistry, type PendingRegistry, type ReleaseWhy, type Result } from '../hooks/pending.ts';
 import { createHookReceiver, type GuardVerdict, type HookReceiver } from '../hooks/receiver.ts';
@@ -43,6 +46,7 @@ import { createStatusLineHandler } from '../statusline/ingest.ts';
 import type { AuditLog } from '../store/audit-log.ts';
 import type { EventLog } from '../store/event-log.ts';
 import type { StateStore } from '../store/state-store.ts';
+import { createChatService, type ChatService } from '../transcript/chat-service.ts';
 import { classifyTail } from '../transcript/parse.ts';
 import { FileTailer, type Tailer } from '../transcript/tailer.ts';
 import type { VersionStatus } from '../claude-version.ts';
@@ -115,6 +119,8 @@ export interface ManagerDeps {
   classifyRisk?: (sid: string, tool: string, input: Record<string, unknown>) => RiskClass[];
   /** Task 4.08: burn rate, ETA and the park suggestion (features/usage.ts). Without it usage is published as received. */
   usage?: UsageTracker;
+  /** Task 5.05: which owner mods are present (features/mods.ts, read-only). Default: none. */
+  mods?: () => Mods;
   timing?: ManagerTiming;
   now?: () => number;
 }
@@ -151,6 +157,8 @@ export interface SessionManager {
   markers(id: string): Marker[];
   /** Minimal digest: time spent in needs-you statuses since `since` (in memory, since the daemon started). */
   digest(since: number): DigestData;
+  /** Task 5.01: the chat view's feed (transcripts -> ChatItem[]). */
+  readonly chat: ChatService;
   readonly registry: PendingRegistry;
   readonly receiver: HookReceiver;
   /** Tasks 2.09/4.05: which `notify` effects reach the UI. Starts disarmed (the daemon arms it a moment after startup). */
@@ -337,6 +345,8 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       if (sessions.get(sid) !== live) return;
       const next = info.reset ? 0 : off;
       if (live.rec.transcriptOffset !== next) patch(live, { transcriptOffset: next }, { publish: false });
+      const cache = mergeTranscriptCache(live.rec.cache, records, now()); // 5.07: fallback when the status line gave nothing
+      if (cache !== undefined) patch(live, { cache });
       const v = classifyTail(records);
       if (v !== undefined) feed(sid, { k: 'transcript', signal: v.signal, ...(v.lastIsQuestion === undefined ? {} : { lastIsQuestion: v.lastIsQuestion }), ...(v.at === undefined ? {} : { at: v.at }) });
     });
@@ -428,9 +438,40 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     onError: logErr('notify policy'),
   });
 
+  // ---- conflict warnings (task 5.06, D9) ---------------------------------------------
+  const conflictWindowMs = deps.config.portable.conflicts.windowMinutes * 60_000;
+  const conflicts = createConflictTracker({
+    session: (sid) => sessions.get(sid)?.rec,
+    sessions: () => [...sessions.values()].map((l) => l.rec),
+    initiatives: () => (store.loaded ? store.get().initiatives : []),
+    now,
+    windowMs: conflictWindowMs,
+    trackerOff: () => deps.config.portable.conflicts.disableTrackerInStrategos,
+    planetLabel,
+  });
+
+  /** A PostToolUse happened: record edits, set the flags (both sides) and hand back the note for Claude, if any. */
+  function onPostToolUse(sid: string, ev: { tool: string; toolInput: Record<string, unknown> | undefined; agentId?: string }): string | undefined {
+    const out = conflicts.onEdit({ sid, tool: ev.tool, toolInput: ev.toolInput, ...(ev.agentId === undefined ? {} : { agentId: ev.agentId }) });
+    const touched = new Set([...out.warnings.map((w) => w.sid), ...out.contract.map((c) => c.sid)]);
+    for (const id of touched) {
+      const l = sessions.get(id);
+      if (l === undefined) continue;
+      let list = l.rec.flags.conflicts;
+      for (const w of out.warnings) if (w.sid === id) list = addConflict(list, w.conflict);
+      const marked = new Set(l.rec.flags.contractChanged);
+      for (const c of out.contract) if (c.sid === id) marked.add(c.relPath);
+      patch(l, { flags: { ...l.rec.flags, conflicts: list, contractChanged: [...marked].slice(-20) } });
+    }
+    if (out.warnings.length > 0) logger.info(`conflict: ${out.warnings.filter((w) => w.sid === sid).map((w) => `${w.conflict.file} with ${w.conflict.other}`).join(', ')} (${sid})`);
+    const notes = [...(out.note === undefined ? [] : [out.note]), ...conflicts.takeNotes(sid)];
+    return notes.length === 0 ? undefined : notes.join('\n');
+  }
+
   const receiver = createHookReceiver({
     registry,
     dispatch: run,
+    onPostToolUse,
     audit: deps.audit,
     ...(deps.guards === undefined ? {} : { checkGuards: deps.guards }),
     ...(deps.classifyRisk === undefined ? {} : { classifyRisk: deps.classifyRisk }),
@@ -443,7 +484,15 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
   });
 
   const statusLineHandler = createStatusLineHandler({
-    dispatch: (sid, input) => feed(sid, input),
+    dispatch: (sid, input) => {
+      // 5.07: a status line that knows nothing about the cache must not wipe what the transcript told us.
+      if (input.k === 'statusline' && keepTranscriptCache(sessions.get(sid)?.rec.cache, input.cache)) {
+        const rest = { ...input };
+        delete rest.cache;
+        return feed(sid, rest);
+      }
+      return feed(sid, input);
+    },
     onUsage: (_sid, u) => onUsage(u),
     onError: logErr('status line'),
     now,
@@ -617,6 +666,19 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     return deps.platform.paths.canonical(abs);
   }
 
+  const chat = createChatService({
+    tailer,
+    session: (sid) => sessions.get(sid)?.rec,
+    markers: (sid) => [...(sessions.get(sid)?.markers ?? [])],
+    onSessionChange: (cb) => {
+      const l = (s: SessionRecord): void => { cb(s.strategosId); };
+      listeners.add(l);
+      return () => { listeners.delete(l); };
+    },
+    now,
+    onError: (err, where) => { logger.warn(`${where}: ${errText(err)}`); },
+  });
+
   const api: SessionManager = {
     async start(o) {
       if (deps.claude === undefined) throw new Error(deps.claudeError ?? 'Claude Code was not found');
@@ -706,6 +768,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       }
       registry.dropSession(id);
       receiver.forget(id);
+      conflicts.forget(id);
       notifications.forget(id);
       live.unfollow?.();
       sessions.delete(id);
@@ -725,6 +788,9 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
 
     async sendSlash(id, cmd) {
       if (!isAllowedSlash(cmd)) return { ok: false, reason: 'not_allowed', message: `${cmd} is not an allowed command` };
+      if (cmd === '/handoff-now' && !(deps.mods?.().autoHandoff ?? false)) {
+        return { ok: false, reason: 'not_allowed', message: '/handoff-now needs the auto-handoff mod, which is not installed.' };
+      }
       return sendText(id, cmd, true);
     },
 
@@ -819,6 +885,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       };
     },
     markers: (id) => [...(sessions.get(id)?.markers ?? [])],
+    chat,
     registry,
     receiver,
     notifications,
@@ -856,12 +923,22 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       }, t.reconcileMs);
       tickTimer = setInterval(() => {
         for (const l of sessions.values()) if (l.pty !== undefined || l.rec.pending !== undefined) feed(l.rec.strategosId, { k: 'tick' });
+        // 5.07: a warm cache goes cold when its TTL passes, whether or not anything was said about it
+        const t0 = now();
+        for (const l of sessions.values()) {
+          const cache = expireCache(l.rec.cache, t0);
+          if (cache !== undefined) patch(l, { cache });
+          // 5.06: a conflict warning fades when its window is over
+          const fresh = pruneConflicts(l.rec.flags.conflicts, t0, conflictWindowMs);
+          if (fresh !== l.rec.flags.conflicts) patch(l, { flags: { ...l.rec.flags, conflicts: [...fresh] } });
+        }
+        conflicts.sweep();
       }, t.tickMs);
       tickTimer.unref();
     },
 
     snapshot() {
-      const prefs = { ...store.get().prefs };
+      const prefs = { ...store.get().prefs, mods: deps.mods?.() ?? { autoHandoff: false } };
       if (!deps.version.inRange) prefs.claudeVersionOutOfRange = true;
       const banner = deps.stateBanner ?? store.banner?.message;
       if (banner !== undefined) prefs.stateBanner = banner;
@@ -876,6 +953,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     async shutdown() {
       if (shuttingDown) return;
       shuttingDown = true;
+      chat.dispose();
       stopReconciler?.();
       if (tickTimer !== undefined) clearInterval(tickTimer);
       registry.releaseAll();
@@ -896,8 +974,10 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     const l = sessions.get(id);
     if (l?.pty === undefined) return { ok: false, reason: 'not_live', message: 'The session is not running.' };
     const s = l.rec;
-    const turnOver = s.status === 'done' || s.status === 'seen' || s.status === 'interrupted';
-    const openQuestion = s.status === 'question' && s.pending !== undefined && !s.pending.held;
+    // 5.04: a reply goes in only when the turn is over (done, seen, interrupted) or Claude waits on a question only the
+    // terminal can answer. 5.05: a slash command is stricter: done or seen, nothing else.
+    const turnOver = s.status === 'done' || s.status === 'seen' || (!slash && s.status === 'interrupted');
+    const openQuestion = !slash && s.status === 'question' && s.pending !== undefined && !s.pending.held;
     if (!turnOver && !openQuestion) return { ok: false, reason: 'busy', message: `The session is ${s.status}; wait until it has finished its turn.` };
     if (l.pty.dirtyInput) return { ok: false, reason: 'dirty_input', message: 'Something is typed in the terminal prompt; clear it or submit it first.' };
     if (text.trim() === '') return { ok: false, reason: 'not_allowed', message: 'Nothing to send.' };

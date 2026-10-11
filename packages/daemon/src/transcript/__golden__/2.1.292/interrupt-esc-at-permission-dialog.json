@@ -1,0 +1,22 @@
+[
+  {
+    "k": "user",
+    "id": "cf313c93-13e6-4e37-887b-11ac38ae2c90",
+    "text": "Run the shell command: echo strategos-probe > probe.txt",
+    "at": 1791724753099
+  },
+  {
+    "k": "tool",
+    "id": "toolu_013dWwGFH8PxsCP693nSfzYU",
+    "tool": "Bash",
+    "summary": "echo strategos-probe > probe.txt && cat probe.txt",
+    "at": 1791724756042,
+    "result": "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.\n\nNote: The user's next message may contain a correction or preference. Pay close attention — if they explain what went wrong or how they'd prefer you to work, consider saving that to memory for future sessions.",
+    "ok": false
+  },
+  {
+    "k": "interrupted",
+    "id": "dcba4318-5337-4d3f-bb5d-c6e5f6f24582",
+    "at": 1791724762001
+  }
+]
