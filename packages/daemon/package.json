@@ -7,5 +7,11 @@
     "dev": "node src/main.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
-  "dependencies": { "@strategos/shared": "*" }
+  "dependencies": {
+    "@strategos/shared": "*",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.2"
+  }
 }
