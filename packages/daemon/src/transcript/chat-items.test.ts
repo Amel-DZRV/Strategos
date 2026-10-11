@@ -174,6 +174,15 @@ describe('compaction, interrupts, markers, subagents', () => {
     expect(b.items()[1]).toMatchObject({ k: 'marker', marker: 'clear', at: 5 });
   });
 
+  it('a marker goes before the first item that is newer than it', () => {
+    const b = new ChatBuilder();
+    const rec = (id: string, s: number) => ({ type: 'user', uuid: id, timestamp: new Date(Date.UTC(2026, 9, 11, 10, 0, s)).toISOString(), message: { content: id } });
+    b.ingest([rec('a', 1), rec('b', 2), rec('c', 10), rec('d', 11)]);
+    const d = b.addMarker('resume', Date.UTC(2026, 9, 11, 10, 0, 5));
+    expect(d?.from).toBe(2);
+    expect(b.items().map((i) => i.id)).toEqual(['a', 'b', 'marker:resume:1791712805000', 'c', 'd']);
+  });
+
   it('a live subagent file grows its thread; a late result in it updates the parent item', () => {
     const b = new ChatBuilder();
     b.ingest([

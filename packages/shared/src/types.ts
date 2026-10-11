@@ -156,6 +156,8 @@ export interface UiPrefs {
   claudeVersionOutOfRange?: boolean;
   /** Set by the daemon in the snapshot only: state.json was corrupt and was restored or started empty. */
   stateBanner?: string;
+  /** Set by the daemon in the snapshot only (task 5.05): owner mods found read-only in the Claude config dir. */
+  mods?: { autoHandoff: boolean };
 }
 
 export interface GuardRule {

@@ -28,6 +28,7 @@ import {
 import type { Config } from '../config.ts';
 import type { UsageTracker } from '../features/usage.ts';
 import { expireCache, keepTranscriptCache, mergeTranscriptCache } from '../features/cache.ts';
+import { addConflict, createConflictTracker, pruneConflicts } from '../features/conflicts.ts';
 import type { Mods } from '../features/mods.ts';
 import { createNotifyPolicy, type NotifyOut, type NotifyPolicy } from '../notify/policy.ts';
 import { createPendingRegistry, type PendingRegistry, type ReleaseWhy, type Result } from '../hooks/pending.ts';
@@ -437,9 +438,40 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     onError: logErr('notify policy'),
   });
 
+  // ---- conflict warnings (task 5.06, D9) ---------------------------------------------
+  const conflictWindowMs = deps.config.portable.conflicts.windowMinutes * 60_000;
+  const conflicts = createConflictTracker({
+    session: (sid) => sessions.get(sid)?.rec,
+    sessions: () => [...sessions.values()].map((l) => l.rec),
+    initiatives: () => (store.loaded ? store.get().initiatives : []),
+    now,
+    windowMs: conflictWindowMs,
+    trackerOff: () => deps.config.portable.conflicts.disableTrackerInStrategos,
+    planetLabel,
+  });
+
+  /** A PostToolUse happened: record edits, set the flags (both sides) and hand back the note for Claude, if any. */
+  function onPostToolUse(sid: string, ev: { tool: string; toolInput: Record<string, unknown> | undefined; agentId?: string }): string | undefined {
+    const out = conflicts.onEdit({ sid, tool: ev.tool, toolInput: ev.toolInput, ...(ev.agentId === undefined ? {} : { agentId: ev.agentId }) });
+    const touched = new Set([...out.warnings.map((w) => w.sid), ...out.contract.map((c) => c.sid)]);
+    for (const id of touched) {
+      const l = sessions.get(id);
+      if (l === undefined) continue;
+      let list = l.rec.flags.conflicts;
+      for (const w of out.warnings) if (w.sid === id) list = addConflict(list, w.conflict);
+      const marked = new Set(l.rec.flags.contractChanged);
+      for (const c of out.contract) if (c.sid === id) marked.add(c.relPath);
+      patch(l, { flags: { ...l.rec.flags, conflicts: list, contractChanged: [...marked].slice(-20) } });
+    }
+    if (out.warnings.length > 0) logger.info(`conflict: ${out.warnings.filter((w) => w.sid === sid).map((w) => `${w.conflict.file} with ${w.conflict.other}`).join(', ')} (${sid})`);
+    const notes = [...(out.note === undefined ? [] : [out.note]), ...conflicts.takeNotes(sid)];
+    return notes.length === 0 ? undefined : notes.join('\n');
+  }
+
   const receiver = createHookReceiver({
     registry,
     dispatch: run,
+    onPostToolUse,
     audit: deps.audit,
     ...(deps.guards === undefined ? {} : { checkGuards: deps.guards }),
     ...(deps.classifyRisk === undefined ? {} : { classifyRisk: deps.classifyRisk }),
@@ -455,7 +487,8 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     dispatch: (sid, input) => {
       // 5.07: a status line that knows nothing about the cache must not wipe what the transcript told us.
       if (input.k === 'statusline' && keepTranscriptCache(sessions.get(sid)?.rec.cache, input.cache)) {
-        const { cache: _drop, ...rest } = input;
+        const rest = { ...input };
+        delete rest.cache;
         return feed(sid, rest);
       }
       return feed(sid, input);
@@ -735,6 +768,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       }
       registry.dropSession(id);
       receiver.forget(id);
+      conflicts.forget(id);
       notifications.forget(id);
       live.unfollow?.();
       sessions.delete(id);
@@ -894,7 +928,11 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
         for (const l of sessions.values()) {
           const cache = expireCache(l.rec.cache, t0);
           if (cache !== undefined) patch(l, { cache });
+          // 5.06: a conflict warning fades when its window is over
+          const fresh = pruneConflicts(l.rec.flags.conflicts, t0, conflictWindowMs);
+          if (fresh !== l.rec.flags.conflicts) patch(l, { flags: { ...l.rec.flags, conflicts: [...fresh] } });
         }
+        conflicts.sweep();
       }, t.tickMs);
       tickTimer.unref();
     },

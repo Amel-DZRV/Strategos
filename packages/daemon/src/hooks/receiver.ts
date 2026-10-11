@@ -37,6 +37,11 @@ export interface ReceiverDeps {
   audit?: Pick<AuditLog, 'append'>;
   /** A guard denied a tool call (task 4.04 counts these in `flags.guardDenials`). */
   onGuardDeny?: (sid: string, info: { ruleId: string; reason: string; tool: string; requestId: string }) => void;
+  /**
+   * Task 5.06 / D9: called for every PostToolUse after the reducer saw it. A returned string goes back to Claude as the
+   * hook's `additionalContext` (a short plain note); undefined keeps the empty 200.
+   */
+  onPostToolUse?: (sid: string, ev: { tool: string; toolInput: Record<string, unknown> | undefined; toolUseId?: string; agentId?: string }) => string | undefined;
   onError?: (err: unknown, where: string) => void;
   now?: () => number;
   newRequestId?: () => string;
@@ -312,6 +317,24 @@ export function createHookReceiver(deps: ReceiverDeps): HookReceiver {
     }
     if (parsed.hook_event_name === 'SessionEnd') lastPre.delete(sid);
     if (parsed.hook_event_name === 'PreToolUse' && guard(sid, parsed, res)) return;
+    if (parsed.hook_event_name === 'PostToolUse' && deps.onPostToolUse !== undefined) {
+      let note: string | undefined;
+      try {
+        const agentId = typeof parsed.agent_id === 'string' && parsed.agent_id !== '' ? parsed.agent_id : undefined;
+        note = deps.onPostToolUse(sid, {
+          tool: parsed.tool_name ?? 'unknown', toolInput: parsed.tool_input,
+          ...(parsed.tool_use_id === undefined ? {} : { toolUseId: parsed.tool_use_id }),
+          ...(agentId === undefined ? {} : { agentId }),
+        });
+      } catch (err) {
+        onError(err, 'onPostToolUse'); // fail open: the empty 200
+      }
+      if (note !== undefined && note !== '') {
+        const out = JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: note } });
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length': String(Buffer.byteLength(out)) }).end(out);
+        return;
+      }
+    }
     reply(res, 200); // empty 200 = no decision
   }
 
