@@ -152,6 +152,8 @@ export interface UiPrefs {
   keymap: Record<string, string>; // action id -> key chord override
   /** Set by the daemon in the snapshot only (never persisted): the installed Claude Code is outside the tested range (task 1.16). */
   claudeVersionOutOfRange?: boolean;
+  /** Set by the daemon in the snapshot only (M6, R14): `gh` is missing or not logged in. */
+  ghNeedsLogin?: boolean;
   /** Set by the daemon in the snapshot only: state.json was corrupt and was restored or started empty. */
   stateBanner?: string;
 }
@@ -300,7 +302,7 @@ export type HookMachineInput = HookBase & (
   | { event: 'UserPromptSubmit' }
   | { event: 'PreToolUse'; tool: string; toolUseId?: string; summary: string; pending?: Pending } // pending set for AskUserQuestion (held)
   | { event: 'PostToolUse'; tool: string; toolUseId?: string; summary?: string; testResult?: { command: string; ok: boolean | null } }
-  | { event: 'PostToolUseFailure'; tool: string; toolUseId?: string; summary?: string; isInterrupt: boolean; error?: string }
+  | { event: 'PostToolUseFailure'; tool: string; toolUseId?: string; summary?: string; isInterrupt: boolean; error?: string; testResult?: { command: string; ok: boolean | null } }
   | { event: 'PermissionRequest'; pending: Pending }
   | { event: 'Notification'; notificationType?: string; message?: string; pending?: Pending } // pending for elicitation_dialog (held:false)
   | { event: 'Stop'; lastMessage?: string }
@@ -344,3 +346,6 @@ export type Effect =
   | { e: 'transcript.follow'; path: string; offset: number }
   | { e: 'log'; type: 'status' | 'drift' | 'error'; data: Record<string, unknown> } // every transition is appended with its source (rule 7)
   | { e: 'persist' };
+
+/** The fixed text of the review pane's "Ask to commit" button (the UI sends it with `reply.send`). */
+export const ASK_TO_COMMIT_TEXT = 'Please commit your changes now with a clear commit message, then tell me the branch name and the commit hash.';

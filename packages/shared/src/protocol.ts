@@ -22,12 +22,16 @@ export type DaemonEvent =
   | { t: 'chat.items'; strategosId: string; from: number; items: ChatItem[]; reset: boolean }
   | { t: 'review'; strategosId: string; review: ReviewData }
   | { t: 'digest'; since: number; digest: DigestData }
+  /** M6: answer to `worktree.exclude`: is `.claude/worktrees/` in the repo's .git/info/exclude? Channel event: the asking connection only. */
+  | { t: 'worktree.exclude'; repoPath: string; excluded: boolean }
+  /** M6 (R14): `gh` is missing or not logged in. Broadcast when it changes; also `prefs.ghNeedsLogin` in the snapshot. */
+  | { t: 'gh.status'; seq: number; needsLogin: boolean; message?: string }
   /** Answer to `pending.full` (D21): the whole tool input of a held request. Channel event: goes to the asking connection only. */
   | { t: 'pending.full'; strategosId: string; requestId: string; event: 'PermissionRequest' | 'PreToolUse'; toolName: string; input: Record<string, unknown> }
   | { t: 'ack'; id: string; ok: boolean; error?: string };
 
 export type UiCommand = { id: string } & (
-  | { c: 'session.start'; repoPath: string; worktree?: { name: string; branch: string; base: string }; firstPrompt?: string; name?: string; initiativeId?: string; model?: string; permissionMode?: string }
+  | { c: 'session.start'; repoPath: string; worktree?: { name: string; branch: string; base: string; addExclude?: boolean }; firstPrompt?: string; name?: string; initiativeId?: string; model?: string; permissionMode?: string }
   | { c: 'session.stop' | 'session.park' | 'session.resume' | 'session.forget' | 'session.seen'; strategosId: string }
   | { c: 'session.archive'; strategosId: string; on: boolean }
   | { c: 'session.resumeAll' }
@@ -52,6 +56,8 @@ export type UiCommand = { id: string } & (
   | { c: 'review.sendBack'; strategosId: string; text: string }
   | { c: 'pr.create'; strategosId: string; title: string; body: string; draft: boolean }
   | { c: 'worktree.remove'; strategosId: string; deleteBranch: boolean; confirmText?: string }
+  /** add=false: report whether `.claude/worktrees/` is excluded in this repo (answered with a `worktree.exclude` event); add=true: add it (only after the person agreed). */
+  | { c: 'worktree.exclude'; repoPath: string; add: boolean }
   | { c: 'initiative.upsert'; initiative: Initiative }
   | { c: 'initiative.assign'; strategosId: string; initiativeId: string | null }
   | { c: 'mission.start'; initiativeId: string; sessions: { repoPath: string; branch: string; firstPrompt: string }[] }
@@ -82,7 +88,7 @@ export function isDaemonEvent(x: unknown): x is DaemonEvent {
 
 const DAEMON_EVENT_TYPES: ReadonlySet<string> = new Set([
   'hello', 'snapshot', 'session.upsert', 'session.removed', 'planets', 'initiatives', 'usage', 'resources', 'notify',
-  'suggestion', 'pty.data', 'pty.replay', 'chat.items', 'review', 'digest', 'pending.full', 'ack',
+  'suggestion', 'pty.data', 'pty.replay', 'chat.items', 'review', 'digest', 'worktree.exclude', 'gh.status', 'pending.full', 'ack',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -174,6 +180,7 @@ const SPECS: Record<UiCommandKind, Check[]> = {
   'review.get': [sid],
   'review.sendBack': [sid, need('text', isStr, 'a string')],
   'pr.create': [sid, need('title', isStr, 'a string'), need('body', isStr, 'a string'), need('draft', isBool, 'a boolean')],
+  'worktree.exclude': [need('repoPath', isNonEmpty, 'a non-empty string'), need('add', isBool, 'a boolean')],
   'worktree.remove': [sid, need('deleteBranch', isBool, 'a boolean'), optional('confirmText', isStr, 'a string')],
   'initiative.upsert': [need('initiative', isInitiative, 'a valid Initiative')],
   'initiative.assign': [sid, need('initiativeId', (v) => v === null || isNonEmpty(v), 'a string or null')],
