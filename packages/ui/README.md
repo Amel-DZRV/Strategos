@@ -29,6 +29,13 @@ Vite proxies `/api` and `/ws` (see `vite.config.ts`) so the page stays same-orig
 In production the daemon serves `dist/` (`npm run build -w @strategos/ui`) itself; the CSP there is
 `default-src 'self'`, so the UI uses system fonts only and no external resources.
 
+## The Map (M3)
+
+The Map is the home screen (`src/map/`): `layout.ts` (pure sticky grid and ring slots), `scene.ts` (state to positions),
+`model.ts` (signals, drag, expand), `MapView/Planet/Token/NeedsStrip/InitiativeLines.tsx`. The session list is the
+secondary "List" view (Shift+L). `g` groups by repo or initiative, `?` shows every key. Mock options: `MOCK_PLAY=0`
+stops the scripted changes, `MOCK_CROWD=1` adds 12 repos and 27 sessions. Screenshots: `docs/screenshots/m3-map-*.png`.
+
 ## Layout
 
 ```
