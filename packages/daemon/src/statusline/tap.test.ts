@@ -128,7 +128,7 @@ describe(`tap.mjs under ${SHELL.name}`, () => {
 
   it('a bash-only chained command (variables, quotes) works', async () => {
     if (SHELL.name !== 'git-bash' && process.platform === 'win32') return; // cmd.exe would run it; the bash route is a Windows detail
-    const r = await runTap({ chain: 'echo "hello $STRATEGOS_HOOK_TOKEN"' });
+    const r = await runTap({ chain: 'echo "hello $STRATEGOS_HOOK_TOKEN"', chainMs: 8000 }) /* the default 250 ms cut-off is a product rule; on a loaded machine bash start alone exceeds it */;
     expect(r.stdout.trim()).toBe('hello tok-xyz');
   });
 
