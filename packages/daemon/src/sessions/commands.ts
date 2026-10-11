@@ -1,6 +1,7 @@
 // WebSocket commands for the session manager (plan section 5 UiCommand). Each handler validates nothing the protocol
 // already validated; it maps a command to a manager call and a failure to `{ ok: false, error }` (an `ack` with ok:false).
 import type { SendResult } from '@strategos/shared';
+import { approveLowRisk } from '../features/risk.ts';
 import type { CommandResult, WsHub } from '../server/ws-hub.ts';
 import type { Result } from '../hooks/pending.ts';
 import type { SessionManager } from './manager.ts';
@@ -67,8 +68,18 @@ export function registerSessionCommands(hub: WsHub, m: SessionManager, onError: 
   hub.registerCommand('pty.focus', (c, ctx) => {
     const bad = known(c.strategosId);
     if (bad !== undefined) return bad;
+    m.notifications.setFocus(ctx.connId, c.strategosId); // the terminal pane being focused means this session is being looked at
     m.focus(c.strategosId, ctx.connId); // D13: nothing held is fine
   });
+  // Tasks 2.09/4.05: which session this connection shows, so no notification is raised for it. null: none.
+  hub.registerCommand('view.focus', (c, ctx) => {
+    if (c.strategosId !== null) {
+      const bad = known(c.strategosId);
+      if (bad !== undefined) return bad;
+    }
+    m.notifications.setFocus(ctx.connId, c.strategosId);
+  });
+  hub.onDisconnect((connId) => { m.notifications.dropConnection(connId); });
 
   // ---- requests -----------------------------------------------------------------
   hub.registerCommand('perm.decide', (c, ctx) => {
@@ -77,6 +88,12 @@ export function registerSessionCommands(hub: WsHub, m: SessionManager, onError: 
       : c.decision === 'deny' ? { kind: 'deny' as const, via, ...(c.message === undefined ? {} : { message: c.message }) }
         : { kind: 'always' as const, via, ...(c.suggestionIndex === undefined ? {} : { suggestionIndex: c.suggestionIndex }) };
     return fromResult('decide', m.decide(c.strategosId, c.requestId, d, { connId: ctx.connId, via }));
+  });
+  // Task 4.03 / D20 / D21: approve only what features/risk.ts allows, tested on the full input. initiativeId '*' = every
+  // session (initiatives do not exist yet). `requestIds` limits it to the list the person confirmed.
+  hub.registerCommand('perm.approveLowRisk', (c, ctx) => {
+    const r = approveLowRisk(m, c.initiativeId, { connId: ctx.connId, ...(c.requestIds === undefined ? {} : { only: c.requestIds }) });
+    if (r.approved.length === 0 && r.skipped > 0) return fail('Nothing could be approved as low risk. Open the requests and decide one by one.');
   });
   hub.registerCommand('perm.release', (c, ctx) =>
     fromResult('release', m.release(c.strategosId, c.requestId, 'user', { connId: ctx.connId })));

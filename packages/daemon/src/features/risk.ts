@@ -234,11 +234,10 @@ function gitSub(words: string[]): { sub: string; rest: string[] } | undefined {
 function analyseSegment(seg: Segment, ctx: RiskCtx, into: Set<RiskClass>, depth: number): void {
   const plat = ctx.platform ?? process.platform;
   let words = seg.words;
-  let skipped = 0;
   // leading VAR=value, then wrappers
   for (let guard = 0; guard < 12 && words.length > 0; guard++) {
     const w = words[0] ?? '';
-    if (isAssignment(w)) { words = words.slice(1); skipped++; continue; }
+    if (isAssignment(w)) { words = words.slice(1); continue; }
     const n = baseName(w, plat);
     if (WRAPPERS.has(n)) {
       let k = 1;
@@ -248,7 +247,6 @@ function analyseSegment(seg: Segment, ctx: RiskCtx, into: Set<RiskClass>, depth:
         else break;
       }
       words = words.slice(k);
-      skipped++;
       continue;
     }
     break;

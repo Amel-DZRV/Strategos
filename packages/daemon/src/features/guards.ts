@@ -81,7 +81,7 @@ function compile(rule: GuardRule, home: string | undefined): RegExp | null {
   const key = `${home ?? ''}\u0000${rule.pattern}`;
   const hit = compiled.get(key);
   if (hit !== undefined) return hit;
-  let re: RegExp | null = null;
+  let re: RegExp | null;
   try {
     re = new RegExp(rule.pattern.replaceAll('{HOME}', homeAlternation(home)), 'i');
   } catch {
