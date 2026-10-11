@@ -75,3 +75,11 @@ Invented, not in `protocol.ts`:
   failure.
 - The New session dialog takes the repo from a text box (plus a datalist of repos existing sessions use and a few
   recently typed ones in `localStorage`). A daemon-provided repo list (for example in the snapshot) would replace it.
+
+## Chat, usage, palette, notifications (M4/M5)
+
+Chat tab (`src/chat/`): `feed.ts` applies `chat.items` (items replace the list from absolute index `from`; `truncatedBefore` rebases it), `VirtualList.tsx` windows long transcripts, `ChatItemView.tsx` draws the cards, `markdown.ts` is markdown-it with HTML off, `ReplyBox.tsx` gates and sends `reply.send`. Context actions: `drawer/ContextActions.tsx`. Usage gauge and park banner: `topbar/UsageGauge.tsx`. Palette: `palette/` over the shared registry `keys/actions.ts` + `keys/keymap.ts`. Approve all low-risk: `features/lowrisk.ts` + `dialogs/LowRiskDialog.tsx`. Notifications: `notify/notifications.tsx`. `view.focus`: `state/focus.ts`.
+
+Mock extras: `MOCK_BIG=1` gives session s5 a 5000-item chat. The mock shows chat, a diff, a sub-agent, a compact marker, usage with burn rate, a park suggestion (4 s after connecting), a notify event (with `MOCK_PLAY` on), guard denials and a conflict on s4, a low-risk Read request on s12 and half-typed terminal input on s10. Screenshots: `docs/screenshots/m5-*.png`, `m4-palette.png`.
+
+`suggestion.respond` has a field `id` (the suggestion) that collides with the command envelope `id`; the UI sends the suggestion id as the envelope id and the ack comes back with it.
