@@ -27,6 +27,8 @@ import {
 } from '@strategos/shared';
 import type { Config } from '../config.ts';
 import type { UsageTracker } from '../features/usage.ts';
+import { expireCache, keepTranscriptCache, mergeTranscriptCache } from '../features/cache.ts';
+import type { Mods } from '../features/mods.ts';
 import { createNotifyPolicy, type NotifyOut, type NotifyPolicy } from '../notify/policy.ts';
 import { createPendingRegistry, type PendingRegistry, type ReleaseWhy, type Result } from '../hooks/pending.ts';
 import { createHookReceiver, type GuardVerdict, type HookReceiver } from '../hooks/receiver.ts';
@@ -116,6 +118,8 @@ export interface ManagerDeps {
   classifyRisk?: (sid: string, tool: string, input: Record<string, unknown>) => RiskClass[];
   /** Task 4.08: burn rate, ETA and the park suggestion (features/usage.ts). Without it usage is published as received. */
   usage?: UsageTracker;
+  /** Task 5.05: which owner mods are present (features/mods.ts, read-only). Default: none. */
+  mods?: () => Mods;
   timing?: ManagerTiming;
   now?: () => number;
 }
@@ -340,6 +344,8 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       if (sessions.get(sid) !== live) return;
       const next = info.reset ? 0 : off;
       if (live.rec.transcriptOffset !== next) patch(live, { transcriptOffset: next }, { publish: false });
+      const cache = mergeTranscriptCache(live.rec.cache, records, now()); // 5.07: fallback when the status line gave nothing
+      if (cache !== undefined) patch(live, { cache });
       const v = classifyTail(records);
       if (v !== undefined) feed(sid, { k: 'transcript', signal: v.signal, ...(v.lastIsQuestion === undefined ? {} : { lastIsQuestion: v.lastIsQuestion }), ...(v.at === undefined ? {} : { at: v.at }) });
     });
@@ -446,7 +452,14 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
   });
 
   const statusLineHandler = createStatusLineHandler({
-    dispatch: (sid, input) => feed(sid, input),
+    dispatch: (sid, input) => {
+      // 5.07: a status line that knows nothing about the cache must not wipe what the transcript told us.
+      if (input.k === 'statusline' && keepTranscriptCache(sessions.get(sid)?.rec.cache, input.cache)) {
+        const { cache: _drop, ...rest } = input;
+        return feed(sid, rest);
+      }
+      return feed(sid, input);
+    },
     onUsage: (_sid, u) => onUsage(u),
     onError: logErr('status line'),
     now,
@@ -741,6 +754,9 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
 
     async sendSlash(id, cmd) {
       if (!isAllowedSlash(cmd)) return { ok: false, reason: 'not_allowed', message: `${cmd} is not an allowed command` };
+      if (cmd === '/handoff-now' && !(deps.mods?.().autoHandoff ?? false)) {
+        return { ok: false, reason: 'not_allowed', message: '/handoff-now needs the auto-handoff mod, which is not installed.' };
+      }
       return sendText(id, cmd, true);
     },
 
@@ -873,12 +889,18 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       }, t.reconcileMs);
       tickTimer = setInterval(() => {
         for (const l of sessions.values()) if (l.pty !== undefined || l.rec.pending !== undefined) feed(l.rec.strategosId, { k: 'tick' });
+        // 5.07: a warm cache goes cold when its TTL passes, whether or not anything was said about it
+        const t0 = now();
+        for (const l of sessions.values()) {
+          const cache = expireCache(l.rec.cache, t0);
+          if (cache !== undefined) patch(l, { cache });
+        }
       }, t.tickMs);
       tickTimer.unref();
     },
 
     snapshot() {
-      const prefs = { ...store.get().prefs };
+      const prefs = { ...store.get().prefs, mods: deps.mods?.() ?? { autoHandoff: false } };
       if (!deps.version.inRange) prefs.claudeVersionOutOfRange = true;
       const banner = deps.stateBanner ?? store.banner?.message;
       if (banner !== undefined) prefs.stateBanner = banner;
@@ -914,8 +936,10 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     const l = sessions.get(id);
     if (l?.pty === undefined) return { ok: false, reason: 'not_live', message: 'The session is not running.' };
     const s = l.rec;
-    const turnOver = s.status === 'done' || s.status === 'seen' || s.status === 'interrupted';
-    const openQuestion = s.status === 'question' && s.pending !== undefined && !s.pending.held;
+    // 5.04: a reply goes in only when the turn is over (done, seen, interrupted) or Claude waits on a question only the
+    // terminal can answer. 5.05: a slash command is stricter: done or seen, nothing else.
+    const turnOver = s.status === 'done' || s.status === 'seen' || (!slash && s.status === 'interrupted');
+    const openQuestion = !slash && s.status === 'question' && s.pending !== undefined && !s.pending.held;
     if (!turnOver && !openQuestion) return { ok: false, reason: 'busy', message: `The session is ${s.status}; wait until it has finished its turn.` };
     if (l.pty.dirtyInput) return { ok: false, reason: 'dirty_input', message: 'Something is typed in the terminal prompt; clear it or submit it first.' };
     if (text.trim() === '') return { ok: false, reason: 'not_allowed', message: 'Nothing to send.' };

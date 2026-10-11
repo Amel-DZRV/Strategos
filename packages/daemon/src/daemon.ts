@@ -14,6 +14,7 @@ import { checkClaudeVersion, TESTED_RANGE, type VersionStatus } from './claude-v
 import { loadConfig, strategosHome, type Config } from './config.ts';
 import { acquireLock } from './daemon-lock.ts';
 import { checkGuards } from './features/guards.ts';
+import { createModsProbe } from './features/mods.ts';
 import { classifyRisk, riskCtxOf } from './features/risk.ts';
 import { createUsageTracker } from './features/usage.ts';
 import { cliSecretPath, daemonJsonPath, type DaemonInfo } from './home-files.ts';
@@ -216,6 +217,7 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
       guards: (_sid, ev) => checkGuards(config.portable.guards, ev, { home: os.homedir() }),
       classifyRisk: (sid, tool, input) => { const s = ref.m?.get(sid); return s === undefined ? [] : classifyRisk(tool, input, riskCtxOf(s)); },
       usage: createUsageTracker(),
+      mods: createModsProbe(claudeDir), // 5.05: read-only look at the owner's mods (auto-handoff)
       version, logger, ...(opts.timing === undefined ? {} : { timing: opts.timing }),
     });
     ref.m = m;
