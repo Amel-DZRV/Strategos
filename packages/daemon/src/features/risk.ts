@@ -427,6 +427,22 @@ export function isBatchApprovable(tool: string, input: unknown, ctx: RiskCtx): b
   }
 }
 
+/**
+ * M7 (7.03): an "allow" that arrives with `via: 'toast'` is accepted only if D20 holds on the FULL input (with symbolic
+ * links, which the shell's pure copy cannot see) and the summary was not cut (D21). The shell hides the Approve button
+ * in those cases; this is the check that does not trust the shell. Returns an error text, or null when allowed.
+ */
+export function toastAllowRefusal(d: Pick<LowRiskDeps, 'registry'>, s: SessionRecord | undefined, requestId: string): string | null {
+  const p = s?.pending;
+  if (s === undefined || p === undefined || p.requestId !== requestId || p.kind !== 'permission') return 'not a pending permission request';
+  const full = d.registry.getFull(s.strategosId, requestId);
+  if (p.inputTruncated || full === undefined || full.event !== 'PermissionRequest' || full.toolName !== p.toolName
+    || !isBatchApprovable(p.toolName, full.toolInput, riskCtxOf(s))) {
+    return 'this request cannot be approved from a notification; open it and decide there';
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // perm.approveLowRisk
 // ---------------------------------------------------------------------------
