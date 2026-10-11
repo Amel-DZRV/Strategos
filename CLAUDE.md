@@ -7,10 +7,11 @@ Strategos is a Windows desktop tool (macOS later) that shows every running Claud
 ## Read first
 
 1. `README.md`: what it is, the owner's decisions, the approved design, where to start.
-2. `docs/strategos-implementation-plan.md`: the executable plan. It is the newest document, so it wins where documents disagree. Section 3 holds the locked decisions, section 8 the milestones and tasks, section 10 security, section 13 the open questions.
-3. `docs/strategos-technical-writeup.md`: architecture, data model, Map rendering and the feature backlog (section 10). Older than the plan.
-4. `docs/research/bot-crossing-review.md`: what to reuse from the open-source Bot Crossing viewer, and the traps it hit.
-5. `design/screenshots/` and `design/prototype/strategos-looks.html`: the approved Map look (look B). The data shape and drawing code are in the prototype's `map()` and `mapSvg()` functions.
+2. `docs/product-document.md`: what Strategos is and why: principles, scope, every feature and the success criteria. The original macOS-first brief is in `docs/history/` and is superseded.
+3. `docs/strategos-implementation-plan.md`: the executable plan. It is the newest document, so it wins where documents disagree. Section 3 holds the locked decisions, section 8 the milestones and tasks, section 10 security, section 13 the open questions.
+4. `docs/strategos-technical-writeup.md`: architecture, data model, Map rendering and the feature backlog (section 10). Older than the plan.
+5. `docs/research/bot-crossing-review.md`: what to reuse from the open-source Bot Crossing viewer, and the traps it hit.
+6. `design/screenshots/` and `design/prototype/strategos-looks.html`: the approved Map look (look B). The data shape and drawing code are in the prototype's `map()` and `mapSvg()` functions.
 
 ## Decisions that are already made
 

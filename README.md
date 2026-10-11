@@ -67,7 +67,8 @@ Read in this order. Where two documents disagree, the **newer one wins**: the im
 
 | File | What it is | Date |
 |---|---|---|
-| [docs/product-brief.md](docs/product-brief.md) | The owner's original product brief (macOS-first design) | — |
+| [docs/product-document.md](docs/product-document.md) | **What Strategos is and why**: problem, principles, scope, every feature, success criteria (version 2, matches the current decisions) | 11 Oct 2026 |
+| [docs/history/product-brief-v1-macos.md](docs/history/product-brief-v1-macos.md) | The owner's original product brief (macOS-first, parchment campaign map with voice lines). Superseded, kept for history | — |
 | [docs/strategos-technical-writeup.md](docs/strategos-technical-writeup.md) | Building options compared, architecture, data model, Map rendering, feature backlog (section 10), merge log (section 11) | rev. 2, 11 Oct 2026 |
 | [docs/research/bot-crossing-review.md](docs/research/bot-crossing-review.md) | Review of the open-source Bot Crossing viewer: what to reuse, what traps it hit, gaps it exposed in our plan | 11 Oct 2026 |
 | [docs/strategos-implementation-plan.md](docs/strategos-implementation-plan.md) | The executable plan: verification of earlier claims, locked decisions, repository layout, data contracts, state machine, milestones M0 to M9 with tasks, tests, security, parallel lanes, risks, open questions | 11 Oct 2026 |
@@ -112,7 +113,8 @@ README.md
 LICENSE                 MIT
 CLAUDE.md               notes that Claude Code reads when a session starts in this folder
 docs/
-  product-brief.md
+  product-document.md   what Strategos is and why (current)
+  history/product-brief-v1-macos.md   the original brief, superseded
   strategos-technical-writeup.md
   strategos-implementation-plan.md
   research/bot-crossing-review.md
