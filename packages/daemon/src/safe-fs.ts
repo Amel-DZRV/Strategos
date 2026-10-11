@@ -45,6 +45,8 @@ export interface WriteOpts {
   /** Extra roots allowed for this one call (run settings dir, a worktree). Never overrides the Claude dir ban. */
   allow?: readonly string[];
   mode?: number;
+  /** writeFile only: fail with EEXIST when the file already exists (daemon.lock). */
+  exclusive?: boolean;
 }
 
 export interface SafeFs {
@@ -123,7 +125,10 @@ export function createSafeFs(policy: SafeFsPolicy): SafeFs {
     check,
     async writeFile(target, data, opts) {
       const p = check(target, opts?.allow);
-      await fsp.writeFile(p, data, opts?.mode === undefined ? undefined : { mode: opts.mode });
+      const o: { mode?: number; flag?: string } = {};
+      if (opts?.mode !== undefined) o.mode = opts.mode;
+      if (opts?.exclusive === true) o.flag = 'wx';
+      await fsp.writeFile(p, data, o);
     },
     async writeFileAtomic(target, data, opts) {
       const p = check(target, opts?.allow);

@@ -4,6 +4,10 @@
 //   /hook/<sid>/<Event>, /statusline/<sid> : Host (421) -> no Origin header (403) -> X-Strategos-Token (404/401)
 //                                            -> rate limit (429) -> body cap (413) -> pluggable handler
 //   POST /api/pair                         : Host -> Origin exact -> rate limit 5/min -> body cap -> cookie issued
+//   POST /control/<name>                   : Host -> NO Origin header (403) -> X-Strategos-Control equal to the secret in
+//                                            <home>/cli.secret (401) -> rate limit 20/s (429) -> 4 KiB body cap. For the
+//                                            local CLI only (pair, status, shutdown). A browser always sends Origin on a
+//                                            POST and cannot read the secret file, so a web page can never reach it.
 //   /api/*  and  /ws (upgrade)             : Host -> Origin exact -> pairing cookie -> (cap) -> handler
 //   everything else (the built UI)         : Host only. Static files hold no data, and the page must load before it
 //                                            can pair. All data goes through /api and /ws, which need the cookie.
@@ -11,7 +15,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { Duplex } from 'node:stream';
 import { LOOPBACK_HOST } from '../config.ts';
 import {
-  CAPS, LIMITS, createRateLimiter, hasOriginHeader, headerValue, hostAllowed, readBody, reply, replyJson, replyTooLarge,
+  CAPS, KiB, LIMITS, createRateLimiter, hasOriginHeader, headerValue, hostAllowed, readBody, reply, replyJson, replyTooLarge,
   safeEqual, uiOriginAllowed, type RateLimiter,
 } from './guards.ts';
 import { createPairing, type Pairing } from './pairing.ts';
@@ -36,6 +40,8 @@ export interface StrategosServerOptions {
   tokenFor: (strategosId: string) => string | undefined;
   hub?: WsHub;
   pairing?: Pairing;
+  /** Secret for /control/* (the daemon also writes it to a user-only file for the CLI). Without it those routes answer 404. */
+  controlSecret?: string;
   now?: () => number;
 }
 
@@ -50,6 +56,8 @@ export interface StrategosServer {
   setStatusLineHandler(h: StatusLineHandler | null): void;
   /** Mount an API route behind the guards (Origin + cookie, 64 KiB body cap). */
   registerApi(method: string, pathname: string, handler: ApiHandler): void;
+  /** Mount a /control/<name> route (CLI only, see the route table above). */
+  registerControl(name: string, handler: ApiHandler): void;
   /** A new one-time pairing URL: http://127.0.0.1:<port>/#pair=<code>. */
   pairUrl(): string;
 }
@@ -76,6 +84,8 @@ export function createStrategosServer(opts: StrategosServerOptions): StrategosSe
   const pairLimiter: RateLimiter = createRateLimiter({ max: LIMITS.pairingPerMinute, windowMs: 60_000, now });
   const hookLimiter: RateLimiter = createRateLimiter({ max: LIMITS.hookPerSecondPerSession, windowMs: 1000, now });
   const apiRoutes = new Map<string, ApiHandler>();
+  const controlRoutes = new Map<string, ApiHandler>();
+  const controlLimiter: RateLimiter = createRateLimiter({ max: 20, windowMs: 1000, now });
   let hookHandler: HookHandler | null = null;
   let statusHandler: StatusLineHandler | null = null;
   let boundPort = opts.port;
@@ -173,6 +183,20 @@ export function createStrategosServer(opts: StrategosServerOptions): StrategosSe
     await handler(req, res, body);
   }
 
+  async function handleControl(req: IncomingMessage, res: ServerResponse, pathname: string): Promise<void> {
+    if (opts.controlSecret === undefined) return reply(res, 404);
+    if (req.method !== 'POST') return reply(res, 405, { Allow: 'POST' });
+    if (hasOriginHeader(req)) return reply(res, 403);
+    const given = headerValue(req, 'x-strategos-control');
+    if (given === undefined || !safeEqual(given, opts.controlSecret)) return reply(res, 401);
+    if (!controlLimiter.hit('control')) return reply(res, 429, { 'Retry-After': '1' });
+    const handler = controlRoutes.get(pathname);
+    if (handler === undefined) return reply(res, 404);
+    const body = await readBody(req, 4 * KiB);
+    if (body === null) return replyTooLarge(req, res);
+    await handler(req, res, body);
+  }
+
   async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!hostAllowed(headerValue(req, 'host'), boundPort)) return reply(res, 421);
     const url = splitUrl(req.url);
@@ -182,6 +206,7 @@ export function createStrategosServer(opts: StrategosServerOptions): StrategosSe
     if ((m = HOOK_RE.exec(pathname)) !== null) return handleHook(req, res, m[1]!, m[2]!);
     if ((m = STATUS_RE.exec(pathname)) !== null) return handleStatusLine(req, res, m[1]!);
     if (pathname.startsWith('/hook/') || pathname.startsWith('/statusline/')) return reply(res, 404);
+    if (pathname.startsWith('/control/')) return handleControl(req, res, pathname);
     if (pathname === '/api/pair') return handlePair(req, res);
     if (pathname.startsWith('/api/') || pathname === '/api') return handleApi(req, res, pathname);
     if (pathname === '/ws') return reply(res, 426, { Upgrade: 'websocket' });
@@ -248,6 +273,10 @@ export function createStrategosServer(opts: StrategosServerOptions): StrategosSe
       if (pathname === '/api/pair' || pathname === '/api/session') throw new Error(`${pathname} is reserved`);
       if (!pathname.startsWith('/api/')) throw new Error('API routes must start with /api/');
       apiRoutes.set(`${method.toUpperCase()} ${pathname}`, handler);
+    },
+    registerControl(name, handler) {
+      if (!/^[a-z][a-z0-9-]{0,31}$/.test(name)) throw new Error('bad control route name');
+      controlRoutes.set('/control/' + name, handler);
     },
     pairUrl() {
       return `http://${LOOPBACK_HOST}:${boundPort}/#pair=${pairing.issueCode()}`;
