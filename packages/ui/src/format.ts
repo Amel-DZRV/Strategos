@@ -39,7 +39,7 @@ export const RISK_LABEL: Record<RiskClass, string> = {
 };
 
 export function money(usd: number): string {
-  return `≈$${usd.toFixed(2)}`;
+  return `$${usd.toFixed(2)}`;
 }
 
 /** "45s", "14m", "1h 05m". */
