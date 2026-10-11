@@ -192,6 +192,8 @@ interface Sub {
 
 export class ChatBuilder {
   readonly #items: ChatItem[] = [];
+  /** Time of each top-level item (a subagent thread takes the time of its Agent call); lets a marker find its place. */
+  readonly #ats: number[] = [];
   readonly #tools = new Map<string, { item: ToolItem; agentId: string | undefined }>();
   readonly #subs = new Map<string, Sub>();
   readonly #seen = new Set<string>();
@@ -239,11 +241,20 @@ export class ChatBuilder {
     return this.#take();
   }
 
-  /** A lineage marker (/clear, resume, fork) at the end of the list. Same marker twice: ignored. */
+  /**
+   * A lineage marker (/clear, resume, fork) placed by time: before the first item that is newer than `at` (at the end when
+   * none is). Same marker twice: ignored.
+   */
   addMarker(marker: MarkerKind, at: number): ChatDelta | undefined {
     this.#dirty = Infinity;
     const id = `marker:${marker}:${at}`;
-    if (!this.#items.some((i) => i.k === 'marker' && i.id === id)) this.#push({ k: 'marker', id, marker, at });
+    if (!this.#items.some((i) => i.k === 'marker' && i.id === id)) {
+      let i = this.#items.length;
+      while (i > 0 && (this.#ats[i - 1] ?? 0) > at) i--;
+      this.#items.splice(i, 0, { k: 'marker', id, marker, at });
+      this.#ats.splice(i, 0, at);
+      this.#mark(i);
+    }
     return this.#take();
   }
 
@@ -263,6 +274,7 @@ export class ChatBuilder {
   #push(item: ChatItem): void {
     this.#mark(this.#items.length);
     this.#items.push(item);
+    this.#ats.push(item.k === 'subagent' ? this.#lastAt : item.at ?? this.#lastAt);
   }
 
   #touchSub(sub: Sub): void {
@@ -278,6 +290,7 @@ export class ChatBuilder {
       const at = parent === undefined ? -1 : this.#items.lastIndexOf(parent.item);
       if (at >= 0) {
         this.#items.splice(at + 1, 0, sub.item);
+        this.#ats.splice(at + 1, 0, this.#ats[at] ?? this.#lastAt);
         this.#mark(at + 1);
       } else {
         this.#push(sub.item);

@@ -49,6 +49,8 @@ export type UiCommand = { id: string } & (
   | { c: 'reply.send'; strategosId: string; text: string }
   | { c: 'slash.send'; strategosId: string; cmd: AllowedSlash }
   | { c: 'chat.subscribe'; strategosId: string; from: number }
+  /** Additive (M5): stop the chat feed of one session for this connection. Closing the connection does the same. */
+  | { c: 'chat.unsubscribe'; strategosId: string }
   | { c: 'review.get'; strategosId: string }
   | { c: 'review.sendBack'; strategosId: string; text: string }
   | { c: 'pr.create'; strategosId: string; title: string; body: string; draft: boolean }
@@ -171,6 +173,7 @@ const SPECS: Record<UiCommandKind, Check[]> = {
   'question.answer': [sid, rid, need('answers', isStringRecord, 'a string-to-string record'), optional('via', isStr, 'a string')],
   'reply.send': [sid, need('text', isStr, 'a string')],
   'slash.send': [sid, need('cmd', isAllowedSlash, 'one of /compact, /handoff-now, /keepwarm 60m|90m|2h')],
+  'chat.unsubscribe': [sid],
   'chat.subscribe': [sid, need('from', (v) => isInt(v) && (v as number) >= 0, 'a non-negative integer')],
   'review.get': [sid],
   'review.sendBack': [sid, need('text', isStr, 'a string')],

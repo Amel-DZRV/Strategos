@@ -43,6 +43,7 @@ import { createStatusLineHandler } from '../statusline/ingest.ts';
 import type { AuditLog } from '../store/audit-log.ts';
 import type { EventLog } from '../store/event-log.ts';
 import type { StateStore } from '../store/state-store.ts';
+import { createChatService, type ChatService } from '../transcript/chat-service.ts';
 import { classifyTail } from '../transcript/parse.ts';
 import { FileTailer, type Tailer } from '../transcript/tailer.ts';
 import type { VersionStatus } from '../claude-version.ts';
@@ -151,6 +152,8 @@ export interface SessionManager {
   markers(id: string): Marker[];
   /** Minimal digest: time spent in needs-you statuses since `since` (in memory, since the daemon started). */
   digest(since: number): DigestData;
+  /** Task 5.01: the chat view's feed (transcripts -> ChatItem[]). */
+  readonly chat: ChatService;
   readonly registry: PendingRegistry;
   readonly receiver: HookReceiver;
   /** Tasks 2.09/4.05: which `notify` effects reach the UI. Starts disarmed (the daemon arms it a moment after startup). */
@@ -617,6 +620,19 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     return deps.platform.paths.canonical(abs);
   }
 
+  const chat = createChatService({
+    tailer,
+    session: (sid) => sessions.get(sid)?.rec,
+    markers: (sid) => [...(sessions.get(sid)?.markers ?? [])],
+    onSessionChange: (cb) => {
+      const l = (s: SessionRecord): void => { cb(s.strategosId); };
+      listeners.add(l);
+      return () => { listeners.delete(l); };
+    },
+    now,
+    onError: (err, where) => { logger.warn(`${where}: ${errText(err)}`); },
+  });
+
   const api: SessionManager = {
     async start(o) {
       if (deps.claude === undefined) throw new Error(deps.claudeError ?? 'Claude Code was not found');
@@ -819,6 +835,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       };
     },
     markers: (id) => [...(sessions.get(id)?.markers ?? [])],
+    chat,
     registry,
     receiver,
     notifications,
@@ -876,6 +893,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     async shutdown() {
       if (shuttingDown) return;
       shuttingDown = true;
+      chat.dispose();
       stopReconciler?.();
       if (tickTimer !== undefined) clearInterval(tickTimer);
       registry.releaseAll();

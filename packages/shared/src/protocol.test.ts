@@ -27,6 +27,7 @@ const VALID: Record<UiCommandKind, Record<string, unknown>> = {
   'reply.send': { strategosId: 's', text: 'go' },
   'slash.send': { strategosId: 's', cmd: '/keepwarm 90m' },
   'chat.subscribe': { strategosId: 's', from: 0 },
+  'chat.unsubscribe': { strategosId: 's' },
   'review.get': { strategosId: 's' },
   'review.sendBack': { strategosId: 's', text: 'fix' },
   'pr.create': { strategosId: 's', title: 't', body: 'b', draft: true },
