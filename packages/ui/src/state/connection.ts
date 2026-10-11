@@ -81,7 +81,7 @@ export function createConnection(deps: ConnectionDeps): Connection {
 
   function send(cmd: CommandInput): Promise<Ack> {
     if (ws === null || ws.readyState !== OPEN) return Promise.reject(new Error('not connected'));
-    const id = cmd.c === 'suggestion.respond' ? cmd.id : newId(); // see SuggestionRespond in commands.ts
+    const id = newId();
     return new Promise<Ack>((resolve, reject) => {
       const timer = setT(() => {
         pending.delete(id);

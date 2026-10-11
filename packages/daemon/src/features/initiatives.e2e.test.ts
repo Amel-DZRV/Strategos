@@ -20,13 +20,9 @@ afterEach(async () => {
 const suggestions = (ui: UiClient): Extract<DaemonEvent, { t: 'suggestion' }>[] =>
   ui.events.filter((e): e is Extract<DaemonEvent, { t: 'suggestion' }> => e.t === 'suggestion' && e.kind === 'initiative');
 
-/** suggestion.respond reuses the suggestion id as the command id (protocol 1), so it cannot go through ui.cmd, which makes up its own ids. */
-async function respond(ui: UiClient, id: string, accept: boolean): Promise<{ ok: boolean; error?: string }> {
-  const before = ui.events.length;
-  ui.ws.send(JSON.stringify({ id, c: 'suggestion.respond', accept }));
-  await ui.until(() => ui.events.slice(before).some((e) => e.t === 'ack' && e.id === id), 5000, 'ack');
-  const a = ui.events.slice(before).find((e) => e.t === 'ack' && e.id === id) as Extract<DaemonEvent, { t: 'ack' }>;
-  return { ok: a.ok, ...(a.error === undefined ? {} : { error: a.error }) };
+async function respond(ui: UiClient, suggestionId: string, accept: boolean): Promise<{ ok: boolean; error?: string }> {
+  const a = await ui.cmd({ c: 'suggestion.respond', suggestionId, accept });
+  return a.ok ? { ok: true } : { ok: false, ...(a.error === undefined ? {} : { error: a.error }) };
 }
 
 async function startWt(r: Rig, ui: UiClient, name: string, branch: string): Promise<string> {

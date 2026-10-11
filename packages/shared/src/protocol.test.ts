@@ -36,7 +36,7 @@ const VALID: Record<UiCommandKind, Record<string, unknown>> = {
   'initiative.upsert': { initiative: init },
   'initiative.assign': { strategosId: 's', initiativeId: null },
   'mission.start': { initiativeId: 'i', sessions: [{ repoPath: 'r', branch: 'b', firstPrompt: 'p' }] },
-  'suggestion.respond': { id: 'x', accept: false },
+  'suggestion.respond': { suggestionId: 'x', accept: false },
   'layout.setPlanetCell': { planetKey: 'p', col: 1, row: 0 },
   'prefs.set': { prefs: { groupBy: 'initiative' } },
   'guards.set': { rules: [rule] },

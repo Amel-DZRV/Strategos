@@ -245,7 +245,7 @@ export function registerInitiativeCommands(hub: WsHub, ini: Initiatives): void {
     try { ini.assign(c.strategosId, c.initiativeId); } catch (e) { return fail(e); }
   });
   hub.registerCommand('suggestion.respond', (c) => {
-    const r = ini.respond(c.id, c.accept);
+    const r = ini.respond(c.suggestionId, c.accept);
     if (!r.ok) return r;
   });
   hub.registerCommand('mission.start', async (c) => {

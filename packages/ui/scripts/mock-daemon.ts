@@ -359,7 +359,7 @@ function handle(ws: WebSocket, m: Cmd): string | void {
       return;
     }
     case 'view.focus': return;
-    case 'suggestion.respond': suggestionOpen = false; return; // note: the envelope id IS the suggestion id
+    case 'suggestion.respond': suggestionOpen = false; return;
     case 'perm.approveLowRisk': {
       const ids = new Set<string>((m['requestIds'] as string[] | undefined) ?? []);
       let n = 0;

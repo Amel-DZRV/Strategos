@@ -64,7 +64,7 @@ export type UiCommand = { id: string } & (
   | { c: 'initiative.upsert'; initiative: Initiative }
   | { c: 'initiative.assign'; strategosId: string; initiativeId: string | null }
   | { c: 'mission.start'; initiativeId: string; sessions: { repoPath: string; branch: string; firstPrompt: string }[] }
-  | { c: 'suggestion.respond'; id: string; accept: boolean }
+  | { c: 'suggestion.respond'; suggestionId: string; accept: boolean }
   | { c: 'layout.setPlanetCell'; planetKey: string; col: number; row: number }
   | { c: 'prefs.set'; prefs: Partial<UiPrefs> }
   | { c: 'guards.set'; rules: GuardRule[] }
@@ -192,7 +192,7 @@ const SPECS: Record<UiCommandKind, Check[]> = {
     need('initiativeId', isNonEmpty, 'a non-empty string'),
     need('sessions', (v) => Array.isArray(v) && v.length > 0 && v.every((s) => isRecord(s) && isNonEmpty(s['repoPath']) && isStr(s['branch']) && isStr(s['firstPrompt'])), 'a non-empty array of {repoPath, branch, firstPrompt}'),
   ],
-  'suggestion.respond': [need('id', isNonEmpty, 'a non-empty string'), need('accept', isBool, 'a boolean')],
+  'suggestion.respond': [need('suggestionId', isNonEmpty, 'a non-empty string'), need('accept', isBool, 'a boolean')],
   'layout.setPlanetCell': [need('planetKey', isNonEmpty, 'a non-empty string'), need('col', isInt, 'an integer'), need('row', isInt, 'an integer')],
   'prefs.set': [need('prefs', isRecord, 'an object')],
   'guards.set': [need('rules', (v) => Array.isArray(v) && v.every(isGuardRule), 'an array of valid GuardRules')],

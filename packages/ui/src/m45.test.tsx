@@ -368,12 +368,12 @@ describe('usage gauge and park suggestion (4.08)', () => {
     await act(() => { store.applyEvent({ t: 'suggestion', seq: 2, id: 'sg1', kind: 'park', text: 'Park idle sessions?', strategosIds: ['a'] }); });
     expect(screen.getByText('Park idle sessions?')).toBeTruthy();
     await act(() => { fireEvent.click(screen.getByRole('button', { name: 'Accept' })); });
-    expect(sent('suggestion.respond')).toEqual([{ c: 'suggestion.respond', id: 'sg1', accept: true }]);
+    expect(sent('suggestion.respond')).toEqual([{ c: 'suggestion.respond', suggestionId: 'sg1', accept: true }]);
     await waitFor(() => expect(screen.queryByText('Park idle sessions?')).toBeNull());
 
     await act(() => { store.applyEvent({ t: 'suggestion', seq: 3, id: 'sg2', kind: 'park', text: 'Park again?', strategosIds: [] }); });
     await act(() => { fireEvent.click(screen.getByRole('button', { name: 'Dismiss' })); });
-    expect(sent('suggestion.respond').at(-1)).toEqual({ c: 'suggestion.respond', id: 'sg2', accept: false });
+    expect(sent('suggestion.respond').at(-1)).toEqual({ c: 'suggestion.respond', suggestionId: 'sg2', accept: false });
   });
 
   it('a refused answer keeps the banner and shows the reason', async () => {

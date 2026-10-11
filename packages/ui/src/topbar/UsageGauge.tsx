@@ -57,7 +57,7 @@ export function SuggestionBanners() {
   const list = store.suggestions.value.filter((s) => s.kind === 'park');
   if (list.length === 0) return null;
   const answer = (id: string, accept: boolean) => {
-    send({ c: 'suggestion.respond', id, accept })
+    send({ c: 'suggestion.respond', suggestionId: id, accept })
       .then(() => { store.removeSuggestion(id); })
       .catch((e: unknown) => { errorNotice.value = `Could not answer the suggestion: ${e instanceof Error ? e.message : String(e)}`; });
   };
