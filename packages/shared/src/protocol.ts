@@ -29,6 +29,7 @@ export type UiCommand = { id: string } & (
   | { c: 'session.stop' | 'session.park' | 'session.resume' | 'session.forget' | 'session.seen'; strategosId: string }
   | { c: 'session.archive'; strategosId: string; on: boolean }
   | { c: 'session.resumeAll' }
+  | { c: 'resync' }
   | { c: 'pty.subscribe'; strategosId: string; cols: number; rows: number }
   | { c: 'pty.unsubscribe'; strategosId: string }
   | { c: 'pty.input'; strategosId: string; data: string }
@@ -143,6 +144,7 @@ const SPECS: Record<UiCommandKind, Check[]> = {
   'session.stop': [sid], 'session.park': [sid], 'session.resume': [sid], 'session.forget': [sid], 'session.seen': [sid],
   'session.archive': [sid, need('on', isBool, 'a boolean')],
   'session.resumeAll': [],
+  'resync': [],
   'pty.subscribe': [sid, dims],
   'pty.unsubscribe': [sid],
   'pty.input': [sid, need('data', isStr, 'a string')],

@@ -15,7 +15,7 @@ const FS_OBJECTS = ['fs', 'fsp', 'fsPromises', 'promises'];
 const safeFsMessage = 'Filesystem writes in the daemon must go through packages/daemon/src/safe-fs.ts.';
 
 export default tseslint.config(
-  { ignores: ['spike/**', 'design/**', 'docs/**', 'tools/**', 'fixtures/**'] },
+  { ignores: ['.claude/**', 'spike/**', 'design/**', 'docs/**', 'tools/**', 'fixtures/**'] },
   { ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
