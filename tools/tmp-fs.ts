@@ -25,5 +25,6 @@ export function appendText(path: string, content: string): void {
 }
 
 export function rmTree(path: string): void {
-  rmSync(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  // Windows: a just-killed child (or AV/indexer) can hold files for a moment; rmSync retries EBUSY/EPERM/ENOTEMPTY with a growing delay (~40s worst case).
+  rmSync(path, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
 }

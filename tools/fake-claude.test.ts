@@ -35,8 +35,12 @@ describe('fake-claude scenarios', () => {
     server = await startHookServer();
   });
   afterEach(async () => {
-    for (const c of running) if (c.exitCode === null) c.kill('SIGKILL');
-    running.length = 0;
+    // wait for the exit so no child still holds the cwd/config dir when rmTree runs (Windows EPERM/EBUSY)
+    await Promise.all(running.splice(0).map((c) => new Promise<void>((res) => {
+      if (c.exitCode !== null || c.signalCode !== null) return res();
+      c.once('exit', () => res());
+      c.kill('SIGKILL');
+    })));
     await server.close();
     rmTree(root);
   });
@@ -59,6 +63,15 @@ describe('fake-claude scenarios', () => {
   const transcript = (id: string): Record<string, any>[] => {
     const f = join(cfg, 'projects', projectDirName(work), `${id}.jsonl`);
     return existsSync(f) ? readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : [];
+  };
+  // The fake rewrites its sessions file in place (truncate, then write): a read that lands in between sees an empty or partial file.
+  const readSession = (r: Run): Record<string, any> => {
+    for (let i = 0; ; i++) {
+      try { return JSON.parse(readFileSync(join(cfg, 'sessions', `${r.child.pid}.json`), 'utf8')); } catch (e) {
+        if (i >= 100) throw e;
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
+      }
+    }
   };
   const waitOut = async (r: Run, text: string, ms = 15_000): Promise<void> => {
     const end = Date.now() + ms;
@@ -94,7 +107,7 @@ describe('fake-claude scenarios', () => {
     expect(t[0]!['message'].content).toBe('say hi');
     expect(t[0]!['sessionId']).toBe(r.id);
     expect(t[3]!['message'].content[0].text).toBe('Fake reply to: say hi');
-    const sess = JSON.parse(readFileSync(join(cfg, 'sessions', `${r.child.pid}.json`), 'utf8'));
+    const sess = readSession(r);
     expect(sess).toMatchObject({ pid: r.child.pid, sessionId: r.id, cwd: work, kind: 'interactive', status: 'idle', name: 'fake one' });
     r.stdin('/exit\r');
     expect(await r.exited).toBe(0);
@@ -133,7 +146,7 @@ describe('fake-claude scenarios', () => {
       expect((pr.body['tool_input'] as { command: string }).command).toBe('rm -rf /');
       await new Promise((res) => setTimeout(res, 300));
       expect(server.events()).not.toContain('PostToolUse');
-      expect(JSON.parse(readFileSync(join(cfg, 'sessions', `${r.child.pid}.json`), 'utf8'))).toMatchObject({ status: 'waiting', waitingFor: 'permission prompt' });
+      expect(readSession(r)).toMatchObject({ status: 'waiting', waitingFor: 'permission prompt' });
       (await server.waitHeld()).respond(allow);
       await server.waitFor(ev('Stop'));
       expect(server.events()).toContain('PostToolUse');
@@ -197,7 +210,7 @@ describe('fake-claude scenarios', () => {
     const r = start('question', { env: { FAKE_CLAUDE_PROMPT: 'ask me' } });
     await server.waitFor(ev('PreToolUse', 'AskUserQuestion'));
     await new Promise((res) => setTimeout(res, 200));
-    expect(JSON.parse(readFileSync(join(cfg, 'sessions', `${r.child.pid}.json`), 'utf8'))).toMatchObject({ status: 'waiting', waitingFor: 'dialog open' });
+    expect(readSession(r)).toMatchObject({ status: 'waiting', waitingFor: 'dialog open' });
     await server.waitHeld();
     const input = server.held[0]!.hook.body['tool_input'] as { questions: unknown[] };
     for (const h of [...server.held]) {
@@ -265,7 +278,7 @@ describe('fake-claude scenarios', () => {
     expect(transcript(newId)[0]!['message'].content).toBe('second');
     expect(transcript(r.id).length).toBeGreaterThan(0);
     // sessions/<pid>.json now names the new id
-    expect(JSON.parse(readFileSync(join(cfg, 'sessions', `${r.child.pid}.json`), 'utf8')).sessionId).toBe(newId);
+    expect(readSession(r).sessionId).toBe(newId);
     r.stdin('/exit\r');
     await r.exited;
   }, 60_000);
@@ -274,13 +287,13 @@ describe('fake-claude scenarios', () => {
     const r = start('plain');
     await server.waitFor(ev('SessionStart'));
     await waitOut(r, '> ');
-    const before = JSON.parse(readFileSync(join(cfg, 'sessions', `${r.child.pid}.json`), 'utf8')).sessionId;
+    const before = readSession(r).sessionId;
     r.stdin('/clear\r');
     await server.waitFor((h) => h.event === 'SessionStart' && h.body['source'] === 'clear');
     // The hook is recorded before the fake finishes its /clear (the relay is still exiting): wait for the new prompt
     // instead of typing /exit into a half-finished clear.
     await waitOut(r, '(conversation cleared)');
-    expect(JSON.parse(readFileSync(join(cfg, 'sessions', `${r.child.pid}.json`), 'utf8')).sessionId).not.toBe(before);
+    expect(readSession(r).sessionId).not.toBe(before);
     r.stdin('/exit\r');
     await r.exited;
   }, 60_000);
@@ -297,7 +310,7 @@ describe('fake-claude scenarios', () => {
     const marker = transcript(r.id).find((x) => JSON.stringify(x).includes('[Request interrupted by user'));
     expect(marker).toBeDefined();
     expect(JSON.stringify(marker)).toContain('[Request interrupted by user for tool use]');
-    expect(JSON.parse(readFileSync(join(cfg, 'sessions', `${r.child.pid}.json`), 'utf8')).status).toBe('idle');
+    expect(readSession(r).status).toBe('idle');
     // the session is usable afterwards
     r.stdin('again\r');
     await server.waitFor(ev('Stop'));
