@@ -36,7 +36,7 @@ export async function expandFull(s: SessionRecord): Promise<void> {
   } catch (e) {
     errorNotice.value = `Could not load the full input: ${e instanceof Error ? e.message : String(e)}. Answer in the terminal instead.`;
   } finally {
-    off();
+    setTimeout(off, 3000); // the event normally precedes the ack; tolerate it arriving just after
     loading.delete(p.requestId);
   }
 }
