@@ -6,7 +6,8 @@ export type { InputOrigin, KeyEvent } from './input.ts';
 
 /** Environment keys Claude Code treats as its own state or credentials (plan section 10 "Env scrubbing", V24). */
 function isScrubbed(upperKey: string): boolean {
-  return upperKey === 'CLAUDECODE' || upperKey.startsWith('CLAUDE_CODE_') || upperKey.startsWith('CLAUDE_AGENT_SDK_') || upperKey.startsWith('ANTHROPIC_');
+  // CLAUDE_PREVIEW_* was seen leaking from the desktop app; CLAUDE_PID / CLAUDE_EFFORT are scrubbed by the spike host as well.
+  return upperKey === 'CLAUDECODE' || upperKey === 'CLAUDE_PID' || upperKey === 'CLAUDE_EFFORT' || upperKey.startsWith('CLAUDE_PREVIEW_') || upperKey.startsWith('CLAUDE_CODE_') || upperKey.startsWith('CLAUDE_AGENT_SDK_') || upperKey.startsWith('ANTHROPIC_');
 }
 
 export interface EnvPolicy {
@@ -46,7 +47,8 @@ export const SCROLLBACK_LIMIT = 2 * 1024 * 1024;
 export class ScrollbackBuffer {
   private chunks: string[] = [];
   private size = 0;
-  constructor(readonly limit: number = SCROLLBACK_LIMIT) {}
+  readonly limit: number;
+  constructor(limit: number = SCROLLBACK_LIMIT) { this.limit = limit; }
 
   push(data: string): void {
     if (!data) return;
@@ -140,6 +142,7 @@ export function createPtyHost(hostOpts: PtyHostOptions = {}): PtyHost {
         },
         kill() {
           if (exitCode !== null) return;
+          try { process.kill(proc.pid, 0); } catch { return; } // already gone: node-pty would spawn its console-list agent for nothing
           try { proc.kill(); } catch { /* already gone */ }
         },
         onData(cb) { dataCbs.add(cb); return () => { dataCbs.delete(cb); }; },

@@ -7,8 +7,9 @@
 //        STRATEGOS_HOOK_TOKEN (any variable named in a hook's allowedEnvVars is substituted into its headers)
 //        FAKE_CLAUDE_PROMPT  submit this prompt automatically after startup (otherwise wait for a typed line)
 //        FAKE_CLAUDE_STEP_MS pause between steps (default 5)
+import { spawn } from 'node:child_process';
 import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { projectDirName } from '../packages/daemon/src/platform/common/project-dir.ts';
@@ -30,6 +31,7 @@ const resumeId = flagValue('--resume');
 let sessionId = flagValue('--session-id') ?? resumeId ?? randomUUID();
 const sessionName = flagValue('--name');
 const settingsArg = flagValue('--settings');
+const permissionMode = flagValue('--permission-mode') ?? 'default';
 
 // ---------- scenario ----------
 function loadScenario(): Scenario {
@@ -55,10 +57,12 @@ function safeWrite(fn: () => void): void {
 }
 
 // ---------- hooks ----------
-interface HttpHook { url: string; headers: Record<string, string>; allowedEnvVars: string[]; timeoutS: number }
+interface HttpHook { type: 'http'; url: string; headers: Record<string, string>; allowedEnvVars: string[]; timeoutS: number }
+interface CommandHook { type: 'command'; command: string; timeoutS: number }
+type AnyHook = HttpHook | CommandHook;
 
-function loadHooks(): Record<string, { matcher?: string; hooks: HttpHook[] }[]> {
-  const out: Record<string, { matcher?: string; hooks: HttpHook[] }[]> = {};
+function loadHooks(): Record<string, { matcher?: string; hooks: AnyHook[] }[]> {
+  const out: Record<string, { matcher?: string; hooks: AnyHook[] }[]> = {};
   if (!settingsArg) return out;
   let settings: { hooks?: Record<string, { matcher?: string; hooks?: Record<string, unknown>[] }[]> };
   try {
@@ -70,12 +74,14 @@ function loadHooks(): Record<string, { matcher?: string; hooks: HttpHook[] }[]> 
   for (const [event, entries] of Object.entries(settings.hooks ?? {})) {
     out[event] = entries.map((en) => ({
       ...(en.matcher !== undefined ? { matcher: en.matcher } : {}),
-      hooks: (en.hooks ?? []).filter((h) => h['type'] === 'http' && typeof h['url'] === 'string').map((h) => ({
-        url: h['url'] as string,
-        headers: (h['headers'] as Record<string, string> | undefined) ?? {},
-        allowedEnvVars: (h['allowedEnvVars'] as string[] | undefined) ?? [],
-        timeoutS: typeof h['timeout'] === 'number' ? h['timeout'] : 600,
-      })),
+      hooks: (en.hooks ?? []).flatMap((h): AnyHook[] => {
+        const timeoutS = typeof h['timeout'] === 'number' ? h['timeout'] : 600;
+        if (h['type'] === 'http' && typeof h['url'] === 'string') {
+          return [{ type: 'http', url: h['url'], headers: (h['headers'] as Record<string, string> | undefined) ?? {}, allowedEnvVars: (h['allowedEnvVars'] as string[] | undefined) ?? [], timeoutS }];
+        }
+        if (h['type'] === 'command' && typeof h['command'] === 'string') return [{ type: 'command', command: h['command'], timeoutS }];
+        return [];
+      }),
     }));
   }
   return out;
@@ -98,7 +104,27 @@ function headersFor(h: HttpHook): Record<string, string> {
 
 interface HookResult { status: number; json: Record<string, unknown> | null }
 
-async function postOne(h: HttpHook, body: unknown, signal: AbortSignal): Promise<HookResult | null> {
+/** type:"command": the shell command gets the JSON body on stdin and the same env; stdout (JSON) is the result, empty = no decision. */
+function runCommand(h: CommandHook, body: unknown, signal: AbortSignal): Promise<HookResult | null> {
+  return new Promise((resolve) => {
+    const child = spawn(h.command, { shell: true, env: process.env, stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true, signal });
+    let outText = '';
+    child.stdout.on('data', (d: Buffer) => { outText += d.toString(); });
+    child.on('error', () => resolve(null));
+    child.on('close', (code) => {
+      if (code !== 0) { resolve({ status: 500, json: null }); return; }
+      let json: Record<string, unknown> | null = null;
+      try { json = outText.trim() ? (JSON.parse(outText) as Record<string, unknown>) : null; } catch { json = null; }
+      resolve({ status: 200, json });
+    });
+    child.stdin.on('error', () => undefined);
+    child.stdin.end(JSON.stringify(body));
+    setTimeout(() => child.kill(), h.timeoutS * 1000).unref();
+  });
+}
+
+async function postOne(h: AnyHook, body: unknown, signal: AbortSignal): Promise<HookResult | null> {
+  if (h.type === 'command') return runCommand(h, body, signal);
   try {
     const res = await fetch(h.url, { method: 'POST', headers: headersFor(h), body: JSON.stringify(body), signal: AbortSignal.any([signal, AbortSignal.timeout(h.timeoutS * 1000)]) });
     const text = await res.text();
@@ -114,6 +140,7 @@ async function postOne(h: HttpHook, body: unknown, signal: AbortSignal): Promise
 // ---------- state ----------
 const S = {
   working: false,
+  promptId: '',
   turnAbort: new AbortController(),
   ttyAnswer: null as ((ch: string) => void) | null,
   lastUuid: null as string | null,
@@ -223,13 +250,27 @@ function writeTx(step: Extract<Step, { op: 'tx' }>): void {
 
 // ---------- hook posting ----------
 function bodyFor(event: string, extra: Record<string, unknown>): Record<string, unknown> {
-  return { session_id: sessionId, transcript_path: transcriptPathFor(sessionId), cwd, permission_mode: 'default', hook_event_name: event, ...extra };
+  const sessionLevel = event === 'SessionStart' || event === 'SessionEnd';
+  return {
+    session_id: sessionId, transcript_path: transcriptPathFor(sessionId), cwd,
+    scratchpad_dir: join(tmpdir(), 'claude', projectDirName(cwd), sessionId, 'scratchpad'),
+    ...(S.promptId && event !== 'SessionStart' ? { prompt_id: S.promptId } : {}),
+    ...(sessionLevel ? {} : { permission_mode: permissionMode, effort: { level: 'medium' } }),
+    hook_event_name: event, ...extra,
+  };
 }
 
-function matchingHooks(event: string, matcherValue: string | undefined): HttpHook[] {
-  const out: HttpHook[] = [];
-  for (const en of hookConfig[event] ?? []) if (matches(en.matcher, matcherValue)) out.push(...en.hooks);
-  return out;
+function matchingHooks(event: string, matcherValue: string | undefined): AnyHook[] {
+  const found: AnyHook[] = [];
+  for (const en of hookConfig[event] ?? []) if (matches(en.matcher, matcherValue)) found.push(...en.hooks);
+  // Real Claude de-duplicates hooks that share a URL/command: one request per call, the longest timeout wins [ran, S9].
+  const byKey = new Map<string, AnyHook>();
+  for (const h of found) {
+    const key = h.type === 'http' ? 'h:' + h.url : 'c:' + h.command;
+    const prev = byKey.get(key);
+    if (!prev || h.timeoutS > prev.timeoutS) byKey.set(key, h);
+  }
+  return [...byKey.values()];
 }
 
 async function fireHook(event: string, matcherValue: string | undefined, extra: Record<string, unknown>, signal: AbortSignal): Promise<(HookResult | null)[]> {
@@ -292,7 +333,14 @@ async function doHold(step: Extract<Step, { op: 'hold' }>): Promise<void> {
   const onTurnAbort = (): void => holdAbort.abort();
   signal.addEventListener('abort', onTurnAbort, { once: true });
   const extra = toolExtra(step, step.event !== 'PermissionRequest');
-  const hookPromise = fireHook(step.event, step.tool, extra, holdAbort.signal).then((r) => decisionFrom(step.event, r));
+  const hookPromise = (async (): Promise<Decision> => {
+    let d = decisionFrom(step.event, await fireHook(step.event, step.tool, extra, holdAbort.signal));
+    // [ran, S2] after PreToolUse(AskUserQuestion) returns no decision, a PermissionRequest for AskUserQuestion follows
+    if (d.kind === 'none' && isAuq && step.event === 'PreToolUse' && !holdAbort.signal.aborted) {
+      d = decisionFrom('PermissionRequest', await fireHook('PermissionRequest', step.tool, toolExtra(step, false), holdAbort.signal));
+    }
+    return d;
+  })();
   const ttyPromise = ttyAnswer(signal).then((ch): Decision => {
     if (isAuq) {
       const n = Number.parseInt(ch, 10);
@@ -311,7 +359,7 @@ async function doHold(step: Extract<Step, { op: 'hold' }>): Promise<void> {
     });
   } finally {
     signal.removeEventListener('abort', onTurnAbort);
-    holdAbort.abort(); // closes any hook connection that is still open (tty answered)
+    // [ran, S2] real Claude does NOT close a held request when the TUI answers: leave it open. Only an interrupt (turn abort) closes it.
     S.ttyAnswer = null;
   }
   const answers = (decision.updatedInput?.['answers']);
@@ -366,6 +414,7 @@ let booted = false;
 
 async function runTurn(prompt: string, scenario: Scenario): Promise<void> {
   S.vars['prompt'] = prompt;
+  S.promptId = randomUUID();
   S.working = true;
   S.turnAbort = new AbortController();
   const steps = scenario.turns[Math.min(turnIndex, scenario.turns.length - 1)] ?? [];

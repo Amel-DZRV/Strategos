@@ -4,7 +4,7 @@ import { ScrollbackBuffer, scrubEnv } from './pty-host.ts';
 describe('scrubEnv', () => {
   const src = {
     PATH: '/bin', HOME: '/h', CLAUDECODE: '1', CLAUDE_CODE_SIMPLE: '1', CLAUDE_CODE_ENTRYPOINT: 'cli', CLAUDE_AGENT_SDK_VERSION: '1',
-    ANTHROPIC_API_KEY: 'sk-x', ANTHROPIC_BASE_URL: 'http://x', CLAUDE_CONFIG_DIR: '/cfg', CLAUDE_OTHER: 'keepme', MY_ANTHROPIC_THING: 'k',
+    ANTHROPIC_API_KEY: 'sk-x', ANTHROPIC_BASE_URL: 'http://x', CLAUDE_CONFIG_DIR: '/cfg', CLAUDE_OTHER: 'keepme', MY_ANTHROPIC_THING: 'k', CLAUDE_PREVIEW_X: '1', CLAUDE_PID: '5', CLAUDE_EFFORT: 'high',
   };
   it('drops CLAUDECODE, CLAUDE_CODE_*, CLAUDE_AGENT_SDK_*, ANTHROPIC_* and keeps CLAUDE_CONFIG_DIR and the rest', () => {
     expect(scrubEnv(src)).toEqual({ PATH: '/bin', HOME: '/h', CLAUDE_CONFIG_DIR: '/cfg', CLAUDE_OTHER: 'keepme', MY_ANTHROPIC_THING: 'k' });

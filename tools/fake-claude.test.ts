@@ -44,7 +44,7 @@ describe('fake-claude scenarios', () => {
   function start(scenario: string, opts: { args?: string[]; env?: Record<string, string | undefined>; id?: string } = {}): Run {
     const id = opts.id ?? randomUUID();
     const settings = writeTestSettings(root, { port: server.port, strategosId: 'sx-' + id.slice(0, 6) });
-    const env: Record<string, string | undefined> = { ...process.env, CLAUDE_CONFIG_DIR: cfg, FAKE_CLAUDE_SCRIPT: scenario, STRATEGOS_HOOK_TOKEN: 'tok-123', FAKE_CLAUDE_STEP_MS: '1', ...opts.env };
+    const env: Record<string, string | undefined> = { ...process.env, CLAUDE_CONFIG_DIR: cfg, FAKE_CLAUDE_SCRIPT: scenario, STRATEGOS_HOOK_TOKEN: 'tok-123', STRATEGOS_PORT: String(server.port), FAKE_CLAUDE_STEP_MS: '1', ...opts.env };
     const args = opts.args ?? ['--session-id', id];
     const child = spawn(process.execPath, [FAKE, ...args, '--settings', settings, '--name', 'fake one'], { cwd: work, env: env as NodeJS.ProcessEnv, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     running.push(child);
@@ -75,7 +75,7 @@ describe('fake-claude scenarios', () => {
     expect(existsSync(join(cfg, 'sessions', `${r.child.pid}.json`))).toBe(true);
     r.stdin('say hi\r');
     await server.waitFor(ev('Stop'));
-    expect(server.events()).toEqual(['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'Stop']);
+    expect(server.events()).toEqual(['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'SubagentStop', 'Stop']);
     for (const h of server.hooks) {
       expect(h.headers['x-strategos-token']).toBe('tok-123');
       expect(h.strategosId).toBe('sx-' + r.id.slice(0, 6));
@@ -87,7 +87,7 @@ describe('fake-claude scenarios', () => {
     expect(pre['tool_name']).toBe('Read');
     expect(pre['tool_use_id']).toMatch(/^toolu_/);
     expect(server.hooks[1]!.body['prompt']).toBe('say hi');
-    expect(server.hooks[4]!.body['last_assistant_message']).toBe('Fake reply to: say hi');
+    expect(server.hooks[5]!.body['last_assistant_message']).toBe('Fake reply to: say hi');
     expect(server.hooks[0]!.body['source']).toBe('startup');
     const t = transcript(r.id);
     expect(t.map((x) => x['type'])).toEqual(['user', 'assistant', 'user', 'assistant']);
@@ -107,7 +107,7 @@ describe('fake-claude scenarios', () => {
     const r = start('plain', { env: { FAKE_CLAUDE_PROMPT: 'auto prompt' } });
     r.child.stdin!.end();
     expect(await r.exited).toBe(0);
-    expect(server.events()).toEqual(['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'Stop', 'SessionEnd']);
+    expect(server.events()).toEqual(['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'SubagentStop', 'Stop', 'SessionEnd']);
   }, 60_000);
 
   it('--resume keeps the id and reports source=resume', async () => {
@@ -154,14 +154,14 @@ describe('fake-claude scenarios', () => {
       await r.exited;
     }, 60_000);
 
-    it('answering in the terminal closes the held connection (onClosed) and continues', async () => {
+    it('answering in the terminal does NOT close the held request (as in real Claude) and the turn continues', async () => {
       holdPermission();
       const r = start('permission', { env: { FAKE_CLAUDE_PROMPT: 'go' } });
       const pr = await server.waitFor(ev('PermissionRequest'));
       await waitOut(r, 'Do you want to proceed?');
       r.stdin('1');
       await server.waitFor(ev('Stop'));
-      expect(pr.closedByClient).toBe(true);
+      expect(pr.closedByClient).toBe(false); // [ran, S2] real Claude leaves the held request open
       expect(r.out()).toContain('allow via tty');
       r.stdin('/exit\r');
       await r.exited;
@@ -308,7 +308,7 @@ describe('fake-claude scenarios', () => {
     await waitOut(r, 'Do you want to proceed?');
     r.stdin('\x1b');
     await waitOut(r, 'Interrupted');
-    expect(pr.closedByClient).toBe(true);
+    expect(pr.closedByClient).toBe(true); // an interrupt (unlike a TUI answer) ends the request [inferred]
     expect(server.events()).not.toContain('Stop');
     r.stdin('/exit\r');
     await r.exited;
@@ -360,5 +360,54 @@ describe('fake-claude scenarios', () => {
     await server.waitFor(ev('SessionStart'));
     r.stdin('/exit\r');
     expect(await r.exited).toBe(0);
+  }, 60_000);
+
+  it('SessionStart arrives through the command-hook relay (not http), with the token and the real body shape', async () => {
+    const r = start('plain');
+    const h = await server.waitFor(ev('SessionStart'));
+    expect(h.headers['x-strategos-via']).toBe('command-relay');
+    expect(h.headers['x-strategos-token']).toBe('tok-123');
+    expect(h.body).toMatchObject({ session_id: r.id, hook_event_name: 'SessionStart', source: 'startup', model: 'fake-model', session_title: 'fake one' });
+    expect(h.body['scratchpad_dir']).toEqual(expect.any(String));
+    expect(h.body['permission_mode']).toBeUndefined(); // session-level events carry none, like the fixtures
+    r.stdin('/exit\r');
+    await r.exited;
+  }, 60_000);
+
+  it('--permission-mode is recorded in hook bodies; prompt_id and effort follow the fixtures', async () => {
+    const r = start('plain', { args: ['--session-id', randomUUID(), '--permission-mode', 'plan'], env: { FAKE_CLAUDE_PROMPT: 'x' } });
+    await server.waitFor(ev('Stop'));
+    const pre = server.hooks.find((h) => h.event === 'PreToolUse')!;
+    expect(pre.body).toMatchObject({ permission_mode: 'plan', effort: { level: 'medium' } });
+    expect(pre.body['prompt_id']).toEqual(expect.any(String));
+    expect(pre.body['prompt_id']).toBe(server.hooks.find((h) => h.event === 'UserPromptSubmit')!.body['prompt_id']);
+    r.stdin('/exit\r');
+    await r.exited;
+  }, 60_000);
+
+  it('plain turn includes SubagentStop with an empty agent_type and an agent_id (internal helper)', async () => {
+    const r = start('plain', { env: { FAKE_CLAUDE_PROMPT: 'x' } });
+    await server.waitFor(ev('Stop'));
+    const s = server.hooks.find((h) => h.event === 'SubagentStop')!;
+    expect(s.body['agent_type']).toBe('');
+    expect(s.body['agent_id']).toEqual(expect.any(String));
+    r.stdin('/exit\r');
+    await r.exited;
+  }, 60_000);
+
+  it('question: PreToolUse (one request even though two matchers share the URL), then after "no decision" a PermissionRequest for AskUserQuestion', async () => {
+    server.setResponder((h) => (h.event === 'PermissionRequest' ? 'hold' : { status: 200 }));
+    const r = start('question', { env: { FAKE_CLAUDE_PROMPT: 'ask me' } });
+    const pr = await server.waitFor(ev('PermissionRequest'));
+    expect(pr.body['tool_name']).toBe('AskUserQuestion');
+    expect(server.hooks.filter((h) => h.event === 'PreToolUse' && h.body['tool_name'] === 'AskUserQuestion')).toHaveLength(1);
+    // answering in the terminal leaves the PermissionRequest open and the turn continues
+    await waitOut(r, 'Which flavour?');
+    r.stdin('1');
+    await server.waitFor(ev('Stop'));
+    expect(pr.closedByClient).toBe(false);
+    expect(JSON.stringify(transcript(r.id))).toContain('Vanilla');
+    r.stdin('/exit\r');
+    await r.exited;
   }, 60_000);
 });

@@ -38,6 +38,8 @@ const toolTurn = (tool: string, input: Record<string, unknown>, reply: string): 
   { op: 'tx', kind: 'assistant', text: reply },
   { op: 'print', text: `\x1b[32m*\x1b[0m ${reply}\r\n` },
   { op: 'status', status: 'idle' },
+  // [ran] real Claude fires SubagentStop (empty agent_type, an agent_id) after most turns: internal helper agents
+  { op: 'hook', event: 'SubagentStop', agentId: 'ahelper0001', body: { agent_type: '', last_assistant_message: '' } },
   { op: 'hook', event: 'Stop', body: { stop_hook_active: false, last_assistant_message: reply } },
 ];
 

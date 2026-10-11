@@ -3,6 +3,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { writeText } from './tmp-fs.ts';
 
 export interface RecordedHook {
@@ -92,14 +93,18 @@ export async function startHookServer(responder: Responder = () => ({ status: 20
 const EVENTS = ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'PostToolUseFailure', 'Notification', 'Stop', 'StopFailure', 'SubagentStart', 'SubagentStop', 'PreCompact', 'PostCompact', 'CwdChanged', 'PermissionRequest'];
 
 /** Settings in the shape of plan section 5 (http hooks, token header from $STRATEGOS_HOOK_TOKEN, held events with long timeouts). */
-export function buildTestSettings(o: { port: number; strategosId: string }): Record<string, unknown> {
+export function buildTestSettings(o: { port: number; strategosId: string; relayPath?: string }): Record<string, unknown> {
+  const relay = o.relayPath ?? fileURLToPath(new URL('./hook-relay.mjs', import.meta.url));
+  const fwd = (p: string): string => p.replace(/\\/g, '/');
   const hook = (ev: string, timeout?: number): Record<string, unknown> => ({
     type: 'http', url: `http://127.0.0.1:${o.port}/hook/${o.strategosId}/${ev}`,
     headers: { 'X-Strategos-Token': '$STRATEGOS_HOOK_TOKEN' }, allowedEnvVars: ['STRATEGOS_HOOK_TOKEN'], ...(timeout ? { timeout } : {}),
   });
   const hooks: Record<string, unknown[]> = {};
   for (const ev of EVENTS) {
-    if (ev === 'PreToolUse') hooks[ev] = [{ matcher: '*', hooks: [hook(ev, 5)] }, { matcher: 'AskUserQuestion', hooks: [hook(ev, 86400)] }];
+    // [ran, spike S1] SessionStart never arrives over type:"http": it is a command hook running the relay (env: STRATEGOS_PORT, STRATEGOS_HOOK_TOKEN)
+    if (ev === 'SessionStart') hooks[ev] = [{ hooks: [{ type: 'command', command: `"${fwd(process.execPath)}" "${fwd(relay)}" ${o.strategosId} SessionStart`, timeout: 5 }] }];
+    else if (ev === 'PreToolUse') hooks[ev] = [{ matcher: '*', hooks: [hook(ev, 5)] }, { matcher: 'AskUserQuestion', hooks: [hook(ev, 86400)] }];
     else if (ev === 'PermissionRequest') hooks[ev] = [{ matcher: '*', hooks: [hook(ev, 86400)] }];
     else if (ev === 'PostToolUse' || ev === 'PostToolUseFailure') hooks[ev] = [{ matcher: '*', hooks: [hook(ev)] }];
     else if (ev === 'SessionEnd') hooks[ev] = [{ hooks: [hook(ev, 3)] }];
@@ -108,6 +113,6 @@ export function buildTestSettings(o: { port: number; strategosId: string }): Rec
   return { hooks, disableAgentView: true };
 }
 
-export function writeTestSettings(dir: string, o: { port: number; strategosId: string }): string {
+export function writeTestSettings(dir: string, o: { port: number; strategosId: string; relayPath?: string }): string {
   return writeText(join(dir, `${o.strategosId}.settings.json`), JSON.stringify(buildTestSettings(o), null, 2));
 }
