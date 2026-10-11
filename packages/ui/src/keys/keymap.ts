@@ -78,6 +78,10 @@ export function isLeaveTerminal(e: KeyLike, platform: Platform = detectPlatform(
   return matches(e, KEYMAP[platform].leaveTerminal);
 }
 
+export function paletteLabel(platform: Platform = detectPlatform()): string {
+  return platform === 'mac' ? 'Cmd+K' : 'Ctrl+K';
+}
+
 export function leaveTerminalLabel(platform: Platform = detectPlatform()): string {
   return platform === 'mac' ? 'Cmd+Shift+M' : 'Ctrl+Alt+M';
 }

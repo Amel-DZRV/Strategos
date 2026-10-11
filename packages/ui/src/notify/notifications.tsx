@@ -78,5 +78,5 @@ export function Toasts() {
 /** "Enable notifications": shown only while the browser has not been asked, and only on a click does it ask. */
 export function EnableNotifications() {
   if (permission.value !== 'default' || !store.prefs.value.notifications.enabled) return null;
-  return <button type="button" class="quiet" title="Show desktop notifications when a session needs you" onClick={() => void enableNotifications()}>Enable notifications</button>;
+  return <button type="button" class="quiet" title="Enable desktop notifications for sessions that need you" aria-label="Enable notifications" onClick={() => void enableNotifications()}>Notifications</button>;
 }

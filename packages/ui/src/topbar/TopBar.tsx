@@ -6,6 +6,7 @@ import { fire } from '../state/commands.ts';
 import { focusInitiativeChip } from '../map/model.ts';
 import { groupBy, newSessionOpen, paletteOpen, setGroupBy, view } from '../state/ui.ts';
 import { store, type ConnStatus } from '../state/store.ts';
+import { paletteLabel } from '../keys/keymap.ts';
 import { EnableNotifications } from '../notify/notifications.tsx';
 import { UsageGauge } from './UsageGauge.tsx';
 
@@ -86,9 +87,9 @@ export function TopBar() {
       <span class="sp" />
       <EnableNotifications />
       <button
-        type="button" class="quiet" aria-keyshortcuts="Control+K Meta+K" title="Command palette (Ctrl+K)"
+        type="button" class="quiet" aria-keyshortcuts="Control+K Meta+K" title="Command palette"
         onClick={() => { paletteOpen.value = true; }}
-      >Commands</button>
+      >{paletteLabel()}</button>
       <button
         type="button" class="quiet" aria-keyshortcuts="g" title="Group planets by repo or by initiative (g)"
         onClick={() => {
