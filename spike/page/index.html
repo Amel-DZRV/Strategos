@@ -1,0 +1,19 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Strategos spike terminal</title>
+<link rel="stylesheet" href="/xterm.css">
+<style>html,body{margin:0;height:100%;background:#111}#t{height:100vh}</style></head>
+<body><div id="t"></div>
+<script src="/xterm.js"></script><script src="/addon-fit.js"></script>
+<script>
+const term = new Terminal({ fontSize: 14, cursorBlink: true, allowProposedApi: true });
+const fit = new FitAddon.FitAddon();
+term.loadAddon(fit);
+term.open(document.getElementById('t'));
+const ws = new WebSocket('ws://' + location.host + '/ws');
+const sendResize = () => { fit.fit(); if (ws.readyState === 1) ws.send(JSON.stringify({ t: 'resize', cols: term.cols, rows: term.rows })); };
+ws.onopen = sendResize;
+ws.onmessage = (e) => term.write(typeof e.data === 'string' ? e.data : '');
+term.onData((d) => ws.readyState === 1 && ws.send(JSON.stringify({ t: 'in', data: d })));
+window.addEventListener('resize', sendResize);
+ws.onclose = () => term.write('\r\n[ws closed]\r\n');
+</script></body></html>
