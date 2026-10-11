@@ -78,11 +78,9 @@ Read in this order. Where two documents disagree, the **newer one wins**: the im
 
 Windows 10 Pro 19045. Node 24.21.0, npm 11.19.0, git 2.40.1, GitHub CLI 2.102.0 (logged in). Claude Code CLI 2.1.292. No Rust, no MSVC build tools, no .NET SDK, no Python.
 
-## Corrections found while preparing this repository
+## Corrections made while preparing this repository
 
-These are **not yet applied** to the plan; fix them in the first working session.
-
-1. **Edge is not where the plan assumes.** The plan (decisions D1 and D6) uses `msedge --app=…` for the browser window and Playwright with `channel: 'msedge'`. On this machine there is no `msedge.exe` in the standard folders and none registered under *App Paths*, so `msedge` is not on `PATH`. A copy exists at `C:\Program Files (x86)\Microsoft\EdgeCore\154.0.4258.62\msedge.exe`. Google Chrome 155 is installed in the standard place (`C:\Program Files\Google\Chrome\Application\chrome.exe`). Decide which browser the app window and the tests use, and have the launcher locate it instead of assuming `PATH`.
+1. **The browser is Chrome, not Edge.** The plan originally assumed Microsoft Edge for the Strategos app window and for the end-to-end tests. The owner uses Chrome, and Edge is not on `PATH` on this machine anyway (its program file sits in an oddly named folder and is not registered with Windows). The plan now says Chrome: decisions D1 and D6, the shell bridge, check S15 and the test line. The launcher must find Chrome at its install path (`C:\Program Files\Google\Chrome\Application\chrome.exe`, version 155 here) and must not assume it is on `PATH`.
 2. **The prototype's hint line was out of date.** It said switching between terminal and chat "restarts the process". The final design has no process switch. The copy in this repository is corrected, and the screenshots are taken from it.
 
 ## Rules for anyone working here (people and agents)
@@ -103,7 +101,7 @@ From the plan's security section. In short:
 
 ## Licence and third-party code
 
-No licence has been chosen yet, so by default all rights are reserved. The plan recommends MIT (open question Q1); add a `LICENSE` file when decided.
+MIT, see [LICENSE](LICENSE). The copyright line names the GitHub account (`Amel-DZRV`); change it to a full name if you prefer. This settles the plan's open question Q1 on the licence.
 
 No third-party code is included. The plan lists about three days of small pieces to port from [Bot Crossing](https://github.com/Station-Sciences/bot-crossing) (MIT, copyright 2026 Jarren Rocks); if you port any, keep its copyright notice in a `THIRD_PARTY_NOTICES` file. Do not use the name "Bot Crossing" or its character designs.
 
@@ -111,6 +109,7 @@ No third-party code is included. The plan lists about three days of small pieces
 
 ```
 README.md
+LICENSE                 MIT
 docs/
   product-brief.md
   strategos-technical-writeup.md

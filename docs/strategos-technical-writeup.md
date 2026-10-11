@@ -55,7 +55,7 @@ Effort means weeks to a v1 with the binding requirements. Map fidelity means how
 
 **B2. Tauri.** The right instinct if this were a product to distribute widely: a small binary and good security defaults. Here it means installing Rust plus MSVC Build Tools (both absent), then writing hooks, transcript parsing and git in Rust, or running a Node sidecar anyway. `portable-pty` (wezterm, MIT) is solid. Worth reconsidering after v1. The daemon/UI split makes the swap cheap.
 
-**B3. Daemon + browser window.** Not a separate destination but the first half of B1. Phases 1–3 ship as `strategosd` plus a page opened in an Edge/Chrome app window. It needs no packaging, is fastest to iterate on, and is equally Mac-ready. Electron arrives when you want the tray, global hotkeys and OS notifications.
+**B3. Daemon + browser window.** Not a separate destination but the first half of B1. Phases 1–3 ship as `strategosd` plus a page opened in an Chrome app window. It needs no packaging, is fastest to iterate on, and is equally Mac-ready. Electron arrives when you want the tray, global hotkeys and OS notifications.
 
 **B4. .NET/WinUI.** A native Windows feel, but you still need xterm.js in WebView2 for a decent terminal. The .NET SDK isn't installed (only x86 runtimes 5–7), and everything is rewritten for Mac. Rejected.
 

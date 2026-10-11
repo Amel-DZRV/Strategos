@@ -1,6 +1,8 @@
 # Strategos: implementation plan
 
 Status: plan, 11 Oct 2026. Written by the Opus advisor pass. Nothing has been built or installed.
+
+**Edit, 11 Oct 2026 (after this plan was written):** the owner uses Chrome, so every Edge reference below was changed to Chrome (decisions D1 and D6, the shell bridge, check S15 and the end-to-end test line). Edge is installed on this machine but not on `PATH`.
 Inputs: `strategos-technical-writeup.md` (the write-up), `bot-crossing-review.md` (the review), `strategos-looks.html` look B (the prototype), `Strategos_PRODUCT.md` (the product doc), the session-tracker and auto-handoff READMEs, the official Claude Code docs, and the Bot Crossing source read as data.
 
 **Claim tags.** **[docs]** read in official docs on 11 Oct 2026 (URL in §2 or §14). **[code]** read in source code (Bot Crossing or node-pty typings). **[ran]** ran on this machine today. **[inf]** my inference, not yet shown. Anything marked [inf] that matters has a spike check (S1–S18).
@@ -42,7 +44,7 @@ Inputs: `strategos-technical-writeup.md` (the write-up), `bot-crossing-review.md
 6. Clicking a token opens a drawer with three tabs. **Terminal** is the real Claude Code TUI in xterm.js. **Chat** is the same live session drawn as cards. **Review** shows the diff and the PR.
 7. You can approve or deny permissions, answer questions, reply, start, stop, park and resume sessions, create worktrees, review diffs and open draft PRs, by mouse or keyboard.
 8. Hooks and a status-line tap are injected per process with `--settings`. Strategos never edits `~/.claude`.
-9. v1 runs as a browser app window (Edge `--app`). From M7 it runs in an Electron shell with a tray icon, native toasts and a global hotkey. The shell is swappable.
+9. v1 runs as a browser app window (Chrome `--app`). From M7 it runs in an Electron shell with a tray icon, native toasts and a global hotkey. The shell is swappable.
 10. Windows 10 first. The macOS port (M9) only touches the platform module and packaging.
 
 **Not in v1:**
@@ -106,12 +108,12 @@ Still unknown after this pass, so spike-only: hold behaviour and maximum timeout
 
 | # | Decision | Recommendation | Why |
 |---|---|---|---|
-| D1 | v1 shell | **Browser app window** (`msedge --app=http://127.0.0.1:PORT/`) through M6. **Electron** in M7. Tauri stays possible later | Fastest to iterate and needs no packaging. Electron is the only shell with tray, toasts with buttons, global hotkey and no new toolchain (Rust/MSVC absent [write-up, verified]). The UI talks to the daemon only over WebSocket plus a 6-method `ShellBridge`, so Tauri or a native shell later reimplements only the bridge |
+| D1 | v1 shell | **Browser app window** (`chrome.exe --app=http://127.0.0.1:PORT/` (the launcher finds Chrome at its install path; it does not rely on PATH)) through M6. **Electron** in M7. Tauri stays possible later | Fastest to iterate and needs no packaging. Electron is the only shell with tray, toasts with buttons, global hotkey and no new toolchain (Rust/MSVC absent [write-up, verified]). The UI talks to the daemon only over WebSocket plus a 6-method `ShellBridge`, so Tauri or a native shell later reimplements only the bridge |
 | D2 | Must stay shell-independent | Daemon (all logic, all state, all processes), protocol, UI app. Shell-specific: notifications with buttons, tray/badge, global hotkey, window focus, opening external URLs, autostart | Same list is the `ShellBridge` (§4) plus `platform/` |
 | D3 | Repo layout | **One git repo, npm workspaces**: `C:\dev\strategos` with `packages/{shared,daemon,ui,shell-electron}`, `tools/`, `fixtures/`, `spike/` | npm 11 has workspaces; no pnpm/turbo to install. One repo keeps protocol changes atomic |
 | D4 | UI framework | **Preact 10 + @preact/signals + Vite**, SVG written as JSX | The prototype re-renders with `innerHTML`, which would destroy xterm instances, focus and scroll. Keyed diffing fixes that. Signals map 1:1 to daemon deltas, so only the changed token re-renders. About 4 KB. JSX is what sub-agents write most reliably. Solid is equally fast but less familiar; React adds weight for nothing here |
 | D5 | State sync | **WebSocket, JSON, protocol v1**: `hello` → full `snapshot` (with `seq`) → ordered deltas (`session.upsert` carries the whole record). Commands carry an `id` and get an `ack`. A gap in `seq` → the client asks for a snapshot. pty bytes and chat items go on per-subscription channels outside `seq` | Whole-record upserts are about 2 KB each, simple and idempotent. No patch library |
-| D6 | Test runner | **Vitest** for unit, contract and integration. **Playwright with `channel: 'msedge'`** for end-to-end, using the installed Edge (no browser download) | One runner for TS; Playwright only drives the UI |
+| D6 | Test runner | **Vitest** for unit, contract and integration. **Playwright with `channel: 'chrome'`** for end-to-end, using the installed Chrome (no browser download) | One runner for TS; Playwright only drives the UI |
 | D7 | Daemon runtime | System Node 24, TS with types stripped (`erasableSyntaxOnly`: no enums, no namespaces). esbuild bundle only for packaging (M7). The daemon is **not** run inside Electron in v1 | Removes the Electron/node-pty rebuild question (write-up §9 "assumed") until M7 |
 | D8 | Chat view | **Keep it on the same pty** (write-up §3.4): a second renderer over transcript plus hooks. Replies go in as bracketed paste | Confirmed constraints: two writers interleave, and `--settings` is not restored on resume. A process switch would cost a restart and a cache miss |
 | D9 | session-tracker coexistence | **Keep the mod installed.** Strategos shows its own human-side warning for every clash. It adds the "tell Claude" note **only** where the mod can't: different folders (worktrees), cross-repo contract files, and subagent edits. Per-session escape hatch: `conflicts.disableTrackerInStrategos: true` injects `enabledPlugins: {"session-tracker@claude-mods": false}` through `--settings` | The mod scopes to "the same folder" and skips subagents. Strategos worktrees are separate folders, so duplicates are rare. `enabledPlugins` is a user-settings key, so `--settings` can set it [docs; S1 confirms] |
@@ -205,7 +207,7 @@ export interface Platform {
   proc: { isAlive(pid: number, startTime?: string): Promise<boolean>; startTime(pid: number): Promise<string | null>;
           killTree(pid: number): Promise<void>; sample(): AsyncIterable<ProcSample[]> };   // every 5 s, persistent sampler
   openExternal(urlOrPath: string): Promise<void>;     // win32: rundll32 url.dll,FileProtocolHandler
-  openAppWindow(url: string): Promise<void>;          // win32: msedge --app=<url>
+  openAppWindow(url: string): Promise<void>;          // win32: chrome.exe --app=<url>, full path from the registry or the standard install folder
   autostart: { get(): Promise<boolean>; set(on: boolean): Promise<void> };
 }
 // sessions/manager.ts
@@ -482,7 +484,7 @@ Scripts:
 | 13 | S14 | Resume identity | `claude --resume <id> --settings <new file>` keeps the id, appends to the same `.jsonl`, and hooks fire again | Resume uses lineage + the new id |
 | 14 | S13 | Reconciler and sampler cost | Median time and peak memory of `claude agents --json`; `sessions/*.json` read time; sampler CPU. Does the sessions file ever show `waiting`? | Pick intervals from measurements |
 | 15 | S6 | Chat from the transcript tail | Cards for user, assistant, tool, Edit diff, subagent and compaction render within 1 s of the line being written; fixtures saved | Narrow the card set |
-| 16 | S15 | Toast actions | A Web Notification from the 127.0.0.1 page (Edge app window) with a click handler focuses the window; note whether action buttons work through a service worker | Click-to-open in the browser phase; buttons wait for Electron (V15) |
+| 16 | S15 | Toast actions | A Web Notification from the 127.0.0.1 page (Chrome app window) with a click handler focuses the window; note whether action buttons work through a service worker | Click-to-open in the browser phase; buttons wait for Electron (V15) |
 | 17 | S8 | Option E (timebox 2 h) | `claude --bg --settings X` starts; hooks fire; `claude attach` renders in node-pty | Record only |
 | 18 | S7 | Cross-mode resume (timebox 1 h) | Record only | Already out of scope |
 
@@ -736,7 +738,7 @@ Scripts:
 
 **UI tests.**
 - Vitest + `@testing-library/preact` for components and `layout.ts` (property tests).
-- Playwright `channel: 'msedge'` end-to-end against a daemon with fake-claude: approve from the strip, keyboard-only run, reduced motion, 30-session crowding, initiative hover, palette.
+- Playwright `channel: 'chrome'` end-to-end against a daemon with fake-claude: approve from the strip, keyboard-only run, reduced motion, 30-session crowding, initiative hover, palette.
 
 **Testing permission flows safely.**
 - Automated tests use fake-claude only. It posts PermissionRequest/PreToolUse payloads with frightening commands (`rm -rf /`, `git push --force`) as **strings**; nothing executes them.
