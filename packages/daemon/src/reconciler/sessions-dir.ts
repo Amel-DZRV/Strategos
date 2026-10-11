@@ -19,6 +19,7 @@ export interface SessionFile {
   status?: 'busy' | 'idle' | 'waiting';
   waitingFor?: string;
   statusUpdatedAt?: number;
+  parkedJobId?: string;
 }
 
 export function normaliseStatus(v: unknown): 'busy' | 'idle' | 'waiting' | undefined {
@@ -50,6 +51,7 @@ export function parseSessionFile(file: string, text: string): SessionFile | null
     status: normaliseStatus(o.status),
     waitingFor: s('waitingFor'),
     statusUpdatedAt: num(o.statusUpdatedAt),
+    parkedJobId: s('parkedJobId'),
   };
 }
 

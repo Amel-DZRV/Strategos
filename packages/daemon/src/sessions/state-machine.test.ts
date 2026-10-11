@@ -245,13 +245,13 @@ describe('interrupted', () => {
   });
 
   it('confirmed by reconciler idle within 5 s', () => {
-    const s = makeSession({ interruptPendingAt: T0 - 4000, lastActivityAt: T0 - 1000 }); // not even quiet
+    const s = makeSession({ interruptPendingAt: T0 - 4000, lastHookAt: T0 - 1000 }); // not even quiet
     const { next } = run(s, { k: 'reconciler', obs: obs({ status: 'idle' }) });
     expect(next).toMatchObject({ status: 'interrupted', statusSource: 'reconciler' });
   });
 
   it('reconciler idle later than 5 s after Esc does not confirm (and is plain inference instead)', () => {
-    const s = makeSession({ interruptPendingAt: T0 - 6000, lastActivityAt: T0 - 1000 });
+    const s = makeSession({ interruptPendingAt: T0 - 6000, lastHookAt: T0 - 1000 });
     expect(run(s, { k: 'reconciler', obs: obs({ status: 'idle' }) }).next.status).toBe('working');
   });
 
@@ -267,7 +267,7 @@ describe('interrupted', () => {
 
   it('a marker with no pty flag is only inference: needs working and 10 s of hook silence', () => {
     const marker: MachineInput = { k: 'transcript', signal: 'interrupt_marker' };
-    expect(run(makeSession({ lastActivityAt: T0 - 1000 }), marker).next.status).toBe('working');
+    expect(run(makeSession({ lastHookAt: T0 - 1000 }), marker).next.status).toBe('working');
     expect(run(makeSession({ status: 'done' }), marker).next.status).toBe('done');
     expect(run(makeSession(), marker).next.status).toBe('interrupted');
   });
@@ -361,7 +361,7 @@ describe('errored, stopped, parked', () => {
     for (const status of ['stopped', 'parked', 'errored'] as const) {
       const s = makeSession({ status, pty: undefined, exitCode: 1, pending: undefined });
       const { next, effects } = run(s, { k: 'user', u: { cmd } });
-      expect(next).toMatchObject({ status: 'starting', statusSource: 'user', exitCode: undefined, statusSince: T0, lastActivityAt: T0 });
+      expect(next).toMatchObject({ status: 'starting', statusSource: 'user', exitCode: undefined, statusSince: T0, lastActivityAt: T0, lastHookAt: T0 });
       expect(effectsOf(effects, 'spawn')).toEqual([{ e: 'spawn', resume: cmd === 'resume' }]);
     }
   });
@@ -430,12 +430,12 @@ describe('permission and question', () => {
   });
 
   it('reconciler permission is held back while a hook was heard within 10 s (rule 2)', () => {
-    const s = makeSession({ lastActivityAt: T0 - (QUIET_MS - 1) });
+    const s = makeSession({ lastHookAt: T0 - (QUIET_MS - 1) });
     expect(run(s, { k: 'reconciler', obs: obs({ status: 'waiting', waitingFor: 'permission prompt' }) }).next.status).toBe('working');
   });
 
   it('reconciler waiting with another reason does nothing', () => {
-    const s = makeSession();
+    const s = makeSession({ lastHookAt: T0 }); // heard just now: no inference, no drift
     expect(run(s, { k: 'reconciler', obs: obs({ status: 'waiting', waitingFor: 'something else' }) }).next).toBe(s);
     expect(run(s, { k: 'reconciler', obs: obs({ status: 'waiting' }) }).next).toBe(s);
   });
@@ -497,7 +497,23 @@ describe('permission and question', () => {
     const s = makeSession({ status: 'permission', pending: makePending() });
     const { next, effects } = run(s, { k: 'hold.closed', requestId: 'r1' });
     expect(next).toMatchObject({ status: 'working', pending: undefined });
-    expect(effectsOf(effects, 'audit')).toEqual([{ e: 'audit', requestId: 'r1', decision: 'release', via: 'terminal' }]);
+    expect(effectsOf(effects, 'audit')).toEqual([{ e: 'audit', requestId: 'r1', decision: 'release', via: 'terminal_cancel' }]);
+  });
+
+  it('hold.closed means the owner cancelled (Esc): pending cleared, interrupt flagged, confirmed by the reconciler or a marker', () => {
+    const s = makeSession({ status: 'permission', pending: makePending() });
+    const { next } = run(s, { k: 'hold.closed', requestId: 'r1' });
+    expect(next).toMatchObject({ status: 'working', pending: undefined, interruptPendingAt: T0 });
+    // Esc before the first token leaves no transcript marker and no hook: the reconciler's idle must suffice.
+    const idle = run(next, { k: 'reconciler', obs: obs({ status: 'idle' }) }, T0 + 1_500);
+    expect(idle.next).toMatchObject({ status: 'interrupted', statusSource: 'reconciler', interruptPendingAt: undefined });
+    expect(effectsOf(idle.effects, 'chat.marker')).toEqual([{ e: 'chat.marker', marker: 'interrupted' }]);
+    // with the marker instead
+    const marked = run(next, { k: 'transcript', signal: 'interrupt_marker', at: T0 + 500 }, T0 + 800);
+    expect(marked.next.status).toBe('interrupted');
+    // nothing confirms it: the flag is dropped after 10 s and the status stays working
+    const dropped = run(next, { k: 'tick' }, T0 + 10_000);
+    expect(dropped.next).toMatchObject({ status: 'working', interruptPendingAt: undefined });
   });
 
   it('hold.closed for another request, or one that is no longer held, changes nothing', () => {
@@ -650,8 +666,8 @@ describe('rule 1: inferred sources never clear a pending request', () => {
 });
 
 describe('rule 2: hooks beat inference', () => {
-  const justHeard = (over: Partial<SessionRecord> = {}) => makeSession({ lastActivityAt: T0 - 9_999, ...over });
-  const longQuiet = (over: Partial<SessionRecord> = {}) => makeSession({ lastActivityAt: T0 - QUIET_MS, ...over });
+  const justHeard = (over: Partial<SessionRecord> = {}) => makeSession({ lastHookAt: T0 - 9_999, ...over });
+  const longQuiet = (over: Partial<SessionRecord> = {}) => makeSession({ lastHookAt: T0 - QUIET_MS, ...over });
 
   it('transcript awaiting_reply -> done only after 10 s of hook silence, labelled transcript', () => {
     const sig: MachineInput = { k: 'transcript', signal: 'awaiting_reply', lastIsQuestion: true, at: T0 - 500 };
@@ -1007,17 +1023,17 @@ describe('rule 7: every transition is logged with its source; drift', () => {
   });
 
   it('drift: hook says one thing, reconciler another for more than 30 s', () => {
-    const s = makeSession({ status: 'permission', pending: makePending(), lastActivityAt: T0 - DRIFT_MS });
+    const s = makeSession({ status: 'permission', pending: makePending(), lastHookAt: T0 - DRIFT_MS });
     const { effects } = run(s, { k: 'reconciler', obs: obs({ status: 'idle' }) });
     expect(effectsOf(effects, 'log').filter((l) => l.type === 'drift')).toHaveLength(1);
   });
 
   it('no drift inside 30 s, when they agree, when the source is not hook, or before the first hook', () => {
-    const fresh = makeSession({ status: 'permission', pending: makePending(), lastActivityAt: T0 - DRIFT_MS + 1 });
+    const fresh = makeSession({ status: 'permission', pending: makePending(), lastHookAt: T0 - DRIFT_MS + 1 });
     const drift = (s: SessionRecord, o: Parameters<typeof obs>[0]) =>
       effectsOf(run(s, { k: 'reconciler', obs: obs(o) }).effects, 'log').filter((l) => l.type === 'drift').length;
     expect(drift(fresh, { status: 'idle' })).toBe(0);
-    const old = { lastActivityAt: 0 };
+    const old = { lastHookAt: 0 };
     expect(drift(makeSession({ status: 'permission', pending: makePending(), ...old }), { status: 'waiting', waitingFor: 'permission prompt' })).toBe(0);
     expect(drift(makeSession({ status: 'working', ...old }), { status: 'busy' })).toBe(0);
     expect(drift(makeSession({ status: 'done', ...old }), { status: 'idle' })).toBe(0);
@@ -1051,5 +1067,69 @@ describe('purity', () => {
   it('is deterministic', () => {
     const e = H({ event: 'Stop', lastMessage: 'x?' });
     expect(run(makeSession(), e)).toEqual(run(makeSession(), e));
+  });
+});
+
+describe('spike batch 2: lineage, lastHookAt, drift throttle, Agent View', () => {
+  it('SessionStart(compact) on the same id adds no duplicate to the lineage', () => {
+    const s = makeSession({ status: 'working' });
+    const r = run(s, H({ event: 'SessionStart', source: 'compact', claudeSessionId: 'c1' }));
+    expect(r.next.claudeSessionIds).toEqual(['c1']);
+    expect(r.next.currentSessionId).toBe('c1');
+    expect(r.next.status).toBe('working');
+    expect(effectsOf(r.effects, 'chat.marker')).toEqual([{ e: 'chat.marker', marker: 'compact' }]);
+  });
+
+  it('/branch: SessionEnd(resume) is ignored, then SessionStart(fork) with a new id pushes the lineage and finishes', () => {
+    const s = makeSession({ status: 'working' });
+    const end = run(s, H({ event: 'SessionEnd', reason: 'resume', claudeSessionId: 'c1' }));
+    expect(end.next.status).toBe('working');
+    const start = run(end.next, H({ event: 'SessionStart', source: 'fork', claudeSessionId: 'c2' }), T0 + 100);
+    expect(start.next).toMatchObject({ claudeSessionIds: ['c1', 'c2'], currentSessionId: 'c2', status: 'done' });
+    expect(effectsOf(start.effects, 'chat.marker')).toEqual([{ e: 'chat.marker', marker: 'fork' }]);
+  });
+
+  it('every accepted hook sets lastHookAt; a rejected stranger does not', () => {
+    expect(run(makeSession(), H({ event: 'Stop' })).next.lastHookAt).toBe(T0);
+    const stranger = run(makeSession({ status: 'working' }), H({ event: 'Stop', claudeSessionId: 'zzz' }));
+    expect(stranger.next.lastHookAt).toBeUndefined();
+  });
+
+  it('drift is logged once per 5 min per lasting disagreement, and again after it ended', () => {
+    const drifts = (r: ReturnType<typeof run>) => effectsOf(r.effects, 'log').filter((l) => l.type === 'drift').length;
+    const o = { k: 'reconciler', obs: obs({ status: 'idle' }) } as const;
+    const s = makeSession({ status: 'permission', pending: makePending(), lastHookAt: T0 - DRIFT_MS });
+    const a = run(s, o);
+    expect(drifts(a)).toBe(1);
+    expect(a.next.driftLoggedAt).toBe(T0);
+    expect(drifts(run(a.next, o, T0 + 60_000))).toBe(0);
+    expect(drifts(run(a.next, o, T0 + 300_000))).toBe(1);
+    // they agree again: the marker is cleared so the next disagreement logs at once
+    const agree = run(a.next, { k: 'reconciler', obs: obs({ status: 'waiting', waitingFor: 'permission prompt' }) }, T0 + 1000);
+    expect(agree.next.driftLoggedAt).toBeUndefined();
+  });
+
+  it('daemon.restart is labelled with the daemon as source', () => {
+    const { next, effects } = run(makeSession({ status: 'working' }), { k: 'daemon.restart' });
+    expect(next).toMatchObject({ status: 'stopped', statusSource: 'daemon', pty: undefined });
+    expect(transitions(effects)).toEqual(['working>stopped:daemon']);
+  });
+
+  it('start restarts the quiet gate', () => {
+    const { next } = run(makeSession({ status: 'stopped', pty: undefined }), { k: 'user', u: { cmd: 'start' } });
+    expect(next.lastHookAt).toBe(T0);
+  });
+
+  it('Agent View: our pty file with parkedJobId means the conversation moved: open_elsewhere', () => {
+    const s = makeSession({ status: 'permission', pending: makePending(), now: undefined });
+    const o = obs({ claudeSessionId: 'c-new', strategosId: 's1', parkedJobId: 'job1', status: 'idle' });
+    const r = run(s, { k: 'reconciler', obs: o });
+    expect(r.next).toMatchObject({ status: 'open_elsewhere', statusSource: 'reconciler', pending: undefined });
+    // not ours, dead, another record, or not live: ignored
+    for (const bad of [{ ownedByUs: false }, { alive: false }, { strategosId: 'other' }]) {
+      expect(run(s, { k: 'reconciler', obs: { ...o, ...bad } }).next).toBe(s);
+    }
+    const stopped = makeSession({ status: 'stopped' });
+    expect(run(stopped, { k: 'reconciler', obs: o }).next).toBe(stopped);
   });
 });

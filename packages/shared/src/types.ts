@@ -273,6 +273,7 @@ export interface Observation {
   status?: 'busy' | 'idle' | 'waiting';
   waitingFor?: string; // e.g. "permission prompt", "dialog open"
   statusUpdatedAt?: number;
+  parkedJobId?: string; // sessions/<pid>.json of our pty names a background job: Agent View moved the conversation (S18)
   source: 'sessions_dir' | 'agents_cli';
 }
 

@@ -60,6 +60,12 @@ describe('sessions-dir', () => {
     expect(f).toMatchObject({ pid: 48852, sessionId: 'abc', status: 'waiting', waitingFor: 'permission prompt', statusUpdatedAt: 7, procStart: '134361970286705107', kind: 'interactive' });
   });
 
+  it('reads parkedJobId (Agent View moved the conversation, S18)', () => {
+    const f = parseSessionFile('1.json', JSON.stringify({ pid: 1, sessionId: 'new', parkedJobId: 'job9', status: 'idle' }));
+    expect(f?.parkedJobId).toBe('job9');
+    expect(parseSessionFile('1.json', JSON.stringify({ pid: 1, sessionId: 'x' }))?.parkedJobId).toBeUndefined();
+  });
+
   it.each([['not json'], ['[]'], ['null'], ['{"pid":1}'], ['{"sessionId":"x"}'], ['{"pid":"1","sessionId":"x"}'], ['{"pid":1,"sessionId":""}']])('rejects %j', (text) => {
     expect(parseSessionFile('x.json', text)).toBeNull();
   });

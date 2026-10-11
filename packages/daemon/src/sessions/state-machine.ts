@@ -20,6 +20,8 @@ export const INTERRUPT_DROP_MS = 10_000;
 export const TRUST_WINDOW_MS = 20_000;
 /** Rule 7: a hook/reconciler disagreement older than this is logged as drift. */
 export const DRIFT_MS = 30_000;
+/** A lasting disagreement is logged once per this long, not on every observation. */
+export const DRIFT_LOG_EVERY_MS = 300_000;
 /** Transcript timestamps and our clock are the same machine's, but allow a little skew. */
 const MARKER_SLACK_MS = 1_000;
 const LAST_MAX = 160;
@@ -56,7 +58,7 @@ function setStatus(c: Ctx, to: Status, source: StatusSource, why: string, extra?
 }
 
 function quiet(c: Ctx): boolean {
-  return c.now - c.s.lastActivityAt >= QUIET_MS;
+  return c.now - (c.s.lastHookAt ?? 0) >= QUIET_MS;
 }
 
 function hasPending(c: Ctx): boolean {
@@ -158,6 +160,7 @@ function onHook(c: Ctx, h: HookMachineInput): void {
     }
   }
   s.lastActivityAt = c.now;
+  s.lastHookAt = c.now; // only accepted hook events count toward the quiet gate (rule 2) and drift (rule 7)
   if (h.model !== undefined) s.model = h.model;
   if (h.permissionMode !== undefined) s.permissionMode = h.permissionMode;
   if (h.effort !== undefined) s.effort = h.effort;
@@ -347,6 +350,17 @@ function agrees(obs: Observation, st: Status): boolean {
 
 function onReconciler(c: Ctx, obs: Observation): void {
   const s = c.s;
+  // Agent View (spike S18): our pty's sessions file names a new id and carries `parkedJobId`: the conversation moved
+  // to a background job. Matched by pid, so the id check below does not apply.
+  if (obs.parkedJobId !== undefined) {
+    if (obs.alive && obs.ownedByUs && obs.strategosId === s.strategosId && isLive(s.status)) {
+      s.pending = undefined;
+      s.now = undefined;
+      s.interruptPendingAt = undefined;
+      setStatus(c, 'open_elsewhere', 'reconciler', 'agent_view:parkedJobId', { parkedJobId: obs.parkedJobId, pid: obs.pid });
+    }
+    return;
+  }
   if (obs.claudeSessionId !== s.currentSessionId) return;
 
   if (!obs.alive) {
@@ -401,9 +415,14 @@ function onReconciler(c: Ctx, obs: Observation): void {
   // Rule 7: a hook state that the reconciler has contradicted for more than 30 s is drift.
   if (
     s.statusSource === 'hook' && s.status !== 'starting' && !agrees(obs, s.status) &&
-    c.now - s.lastActivityAt >= DRIFT_MS
+    c.now - (s.lastHookAt ?? 0) >= DRIFT_MS
   ) {
-    log(c, 'drift', { hookStatus: s.status, reconcilerStatus: obs.status, waitingFor: obs.waitingFor, quietMs: c.now - s.lastActivityAt });
+    if (s.driftLoggedAt === undefined || c.now - s.driftLoggedAt >= DRIFT_LOG_EVERY_MS) {
+      s.driftLoggedAt = c.now;
+      log(c, 'drift', { hookStatus: s.status, reconcilerStatus: obs.status, waitingFor: obs.waitingFor, quietMs: c.now - (s.lastHookAt ?? 0) });
+    }
+  } else {
+    s.driftLoggedAt = undefined; // the disagreement ended: the next one is logged at once
   }
 }
 
@@ -425,6 +444,8 @@ function onUser(c: Ctx, u: UserMachineCommand): void {
       s.interruptPendingAt = undefined;
       s.exitCode = undefined;
       s.lastActivityAt = c.now;
+      s.lastHookAt = c.now; // the 10 s quiet gate restarts with the new process
+      s.driftLoggedAt = undefined;
       setStatus(c, 'starting', 'user', u.cmd);
       c.s.statusSince = c.now; // restart the trust window even when already `starting`
       c.fx.push({ e: 'spawn', resume: u.cmd === 'resume' });
@@ -476,7 +497,10 @@ function onDecide(c: Ctx, requestId: string, d: Decision): void {
 function onHoldClosed(c: Ctx, requestId: string): void {
   const p = c.s.pending;
   if (p === undefined || p.requestId !== requestId || !p.held) return;
-  c.fx.push({ e: 'audit', requestId, decision: 'release', via: 'terminal' });
+  // Spike S2: Esc at the dialog closes our connection, answering Yes in the TUI does not. So a closed hold means the
+  // owner cancelled: wait for the interrupt confirmation (marker or reconciler idle). Esc leaves no hook trace.
+  c.fx.push({ e: 'audit', requestId, decision: 'release', via: 'terminal_cancel' });
+  c.s.interruptPendingAt = c.now;
   toWorking(c, 'hook', 'hold.closed');
 }
 
@@ -532,7 +556,7 @@ function onRestart(c: Ctx): void {
   s.now = undefined;
   s.interruptPendingAt = undefined;
   s.subagents = s.subagents.map((a) => (a.running ? { ...a, running: false, endedAt: c.now } : a));
-  if (s.status !== 'parked') setStatus(c, 'stopped', 'pty', 'daemon.restart');
+  if (s.status !== 'parked') setStatus(c, 'stopped', 'daemon', 'daemon.restart');
 }
 
 // ---------------------------------------------------------------------------

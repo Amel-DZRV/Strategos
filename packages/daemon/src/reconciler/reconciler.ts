@@ -99,6 +99,7 @@ export class FileReconciler implements Reconciler {
       status: f.status,
       waitingFor: f.waitingFor,
       statusUpdatedAt: f.statusUpdatedAt,
+      parkedJobId: f.parkedJobId,
       source: 'sessions_dir',
     };
   }
