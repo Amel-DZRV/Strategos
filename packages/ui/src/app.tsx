@@ -1,13 +1,16 @@
 import { useEffect } from 'preact/hooks';
-import { ConfirmStopDialog } from './dialogs/ConfirmStop.tsx';
+import { ConfirmParkDialog, ConfirmStopDialog } from './dialogs/ConfirmStop.tsx';
+import { KeyHelpDialog } from './dialogs/KeyHelp.tsx';
 import { NewSessionDialog } from './dialogs/NewSession.tsx';
 import { Drawer } from './drawer/Drawer.tsx';
 import { handleKey, focusRow } from './keys/global-keys.ts';
-import { NeedsStrip, SessionRows } from './rows/SessionRows.tsx';
+import { MapView } from './map/MapView.tsx';
+import { NeedsStrip } from './map/NeedsStrip.tsx';
+import { SessionRows } from './rows/SessionRows.tsx';
 import { shell, titleFor } from './shell-bridge.ts';
 import { startClock } from './state/clock.ts';
 import { store } from './state/store.ts';
-import { closeDrawer, drawerOpen, errorNotice, newSessionOpen, selectedId, stopTarget } from './state/ui.ts';
+import { closeDrawer, drawerOpen, errorNotice, helpOpen, newSessionOpen, parkTarget, selectedId, stopTarget, view } from './state/ui.ts';
 import { TopBar } from './topbar/TopBar.tsx';
 
 export function App() {
@@ -43,8 +46,13 @@ export function App() {
       ) : null}
       <NeedsStrip />
       <div class="body">
-        <main id="sessions" class="main" tabIndex={-1}>
-          <SessionRows />
+        <main id="sessions" class={`main ${view.value === 'map' ? 'mapmain' : ''}`} tabIndex={-1}>
+          {view.value === 'map' ? (
+            <>
+              <MapView />
+              <div class="foot legend"><span>Ring colour: status</span><span>Outer arc: context used</span><span>Pulse: waiting on you</span></div>
+            </>
+          ) : <SessionRows />}
         </main>
         {open && sel ? (
           <Drawer
@@ -54,8 +62,19 @@ export function App() {
           />
         ) : null}
       </div>
+      <div class="foot keyhints" aria-hidden="true">
+        <span><kbd>n</kbd> next needing you</span>
+        <span><kbd>h</kbd><kbd>j</kbd><kbd>k</kbd><kbd>l</kbd> move</span>
+        <span><kbd>Enter</kbd> open</span>
+        <span><kbd>a</kbd> approve</span>
+        <span><kbd>t</kbd> terminal / chat</span>
+        <span><kbd>1</kbd>-<kbd>9</kbd> answer</span>
+        <span><kbd>?</kbd> all keys</span>
+      </div>
       {/* Polite live region: new needs-you items are announced without stealing focus. */}
       <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">{store.announcement.value}</div>
+      {helpOpen.value ? <KeyHelpDialog /> : null}
+      {parkTarget.value !== null ? <ConfirmParkDialog id={parkTarget.value} /> : null}
       {newSessionOpen.value ? <NewSessionDialog /> : null}
       {stopTarget.value !== null ? <ConfirmStopDialog id={stopTarget.value} /> : null}
     </div>
