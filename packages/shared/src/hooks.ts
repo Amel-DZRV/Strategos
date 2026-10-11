@@ -20,7 +20,7 @@ export interface HookCommon {
   cwd?: string;
   scratchpad_dir?: string;
   permission_mode?: string; // default | plan | acceptEdits | auto | dontAsk | bypassPermissions
-  effort?: { level?: string }; // object, only in tool-use-context events (C4)
+  effort?: { level: string }; // object, only in tool-use-context events (C4); parseHookBody wraps a plain string
   agent_id?: string;
   agent_type?: string;
   [extra: string]: unknown;
@@ -218,6 +218,11 @@ export function parseHookBody(event: string, body: unknown): HookInput | HookPar
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(src)) {
       if (key === '__proto__') continue;
+      if (key === 'effort') {
+        const level = typeof value === 'string' ? value : (value as { level?: unknown } | null)?.level;
+        if (typeof level === 'string') out[key] = { level };
+        continue;
+      }
       const want = spec[key];
       if (want !== undefined && !kindOk(value, want)) continue;
       out[key] = value;

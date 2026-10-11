@@ -4,7 +4,7 @@
 export type Status =
   | 'starting' | 'trust_pending' | 'working' | 'permission' | 'question' | 'done' | 'seen'
   | 'interrupted' | 'errored' | 'stopped' | 'parked' | 'open_elsewhere';
-export type StatusSource = 'hook' | 'pty' | 'transcript' | 'reconciler' | 'user';
+export type StatusSource = 'hook' | 'pty' | 'transcript' | 'reconciler' | 'user' | 'daemon';
 export type RiskClass = 'read' | 'write' | 'run' | 'network' | 'delete' | 'outside_repo';
 
 export interface PendingQuestion {
@@ -90,6 +90,8 @@ export interface SessionRecord {
   createdAt: number;
   updatedAt: number;
   lastActivityAt: number;
+  lastHookAt?: number; // last hook event: drives the 10 s quiet gate (rule 2) and drift (rule 7)
+  driftLoggedAt?: number; // last drift log, so a lasting disagreement is logged once per 5 min
   archived: boolean;
   view: 'term' | 'chat' | 'review';
 }

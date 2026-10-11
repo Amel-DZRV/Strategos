@@ -41,8 +41,14 @@ describe('parseHookBody', () => {
   });
 
   test('wrong-typed known fields are dropped, never thrown', () => {
-    const r = parseHookBody('PreToolUse', { session_id: 5, tool_name: 'Bash', tool_input: 'oops', effort: 'high' });
+    const r = parseHookBody('PreToolUse', { session_id: 5, tool_name: 'Bash', tool_input: 'oops', effort: 7 });
     expect(r).toEqual({ tool_name: 'Bash', hook_event_name: 'PreToolUse' });
+  });
+
+  test('effort: object kept, plain string wrapped, object without level dropped (C4)', () => {
+    expect(parseHookBody('PreToolUse', { effort: { level: 'high' } })).toMatchObject({ effort: { level: 'high' } });
+    expect(parseHookBody('PreToolUse', { effort: 'high' })).toMatchObject({ effort: { level: 'high' } });
+    expect(parseHookBody('PreToolUse', { effort: {} })).not.toHaveProperty('effort');
   });
 
   test('errors', () => {
