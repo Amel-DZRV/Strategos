@@ -5,7 +5,7 @@ import { App } from './app.tsx';
 import { expanded } from './drawer/pending-actions.ts';
 import { now } from './state/clock.ts';
 import { store } from './state/store.ts';
-import { drawerOpen, newSessionOpen, selectedId, stopTarget } from './state/ui.ts';
+import { drawerOpen, newSessionOpen, selectedId, stopTarget, view } from './state/ui.ts';
 import { installFakeTransport, type FakeTransport } from './test/fakes.ts';
 import { makePending, makeSession, T0 } from './test/fixtures.ts';
 
@@ -18,6 +18,7 @@ const sent = () => t.sent.filter((c) => c.c !== 'digest.get');
 beforeEach(() => {
   t = installFakeTransport();
   now.value = T0 + 5 * 60_000;
+  view.value = 'list'; // these tests cover the list view and the shell; the Map has its own tests
   selectedId.value = null;
   drawerOpen.value = false;
   newSessionOpen.value = false;

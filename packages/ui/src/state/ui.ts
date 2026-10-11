@@ -1,5 +1,7 @@
 // View state that belongs to this browser tab only (selection, open drawer, dialogs). Never authoritative data.
-import { signal } from '@preact/signals';
+import { computed, signal } from '@preact/signals';
+import type { UiPrefs } from '@strategos/shared';
+import { store } from './store.ts';
 
 export type DrawerTab = 'term' | 'chat' | 'review';
 
@@ -27,3 +29,18 @@ export function openDrawer(id: string, tab?: DrawerTab): void {
 export function closeDrawer(): void {
   drawerOpen.value = false;
 }
+
+// --- Map view state (M3) ---------------------------------------------------------------------------------------------
+export type ViewMode = 'map' | 'list';
+/** The Map is the home screen; the session list is the secondary view (key L). */
+export const view = signal<ViewMode>('map');
+
+export type GroupBy = UiPrefs['groupBy'];
+const groupByOverride = signal<GroupBy | null>(null);
+/** Group by repo or initiative (key g). Follows the daemon's saved preference until the owner toggles it here. */
+export const groupBy = computed<GroupBy>(() => groupByOverride.value ?? store.prefs.value.groupBy);
+export function setGroupBy(g: GroupBy): void { groupByOverride.value = g; }
+
+export const helpOpen = signal(false);
+/** Session the park confirmation is open for (key p). */
+export const parkTarget = signal<string | null>(null);

@@ -82,6 +82,77 @@ for (const s of [
   }),
 ]) sessions.set(s.strategosId, s);
 
+// --- Map scene (M3): four planets, ten-plus sessions in every status, marks and subagents ------------------------------
+const patch = (id: string, p: Partial<SessionRecord>) => sessions.set(id, { ...sessions.get(id)!, ...p } as SessionRecord);
+patch('s1', {
+  createdAt: t0 - 90 * min, initiativeId: 'i-auth', git: { branch: 'feat/pty-host', ahead: 3, behind: 0, dirty: true, at: t0 },
+  cache: { warm: true, expiresAt: t0 + 3 * min, source: 'statusline' },
+});
+patch('s2', { createdAt: t0 - 80 * min, git: { branch: 'feat/onboarding', ahead: 1, behind: 2, dirty: true, at: t0 } });
+patch('s3', { createdAt: t0 - 70 * min, initiativeId: 'i-auth' });
+patch('s4', {
+  createdAt: t0 - 60 * min, initiativeId: 'i-release',
+  subagents: [{ agentId: 'a1', type: 'Explore', running: true, startedAt: t0 - 2 * min }, { agentId: 'a2', type: 'general-purpose', running: true, startedAt: t0 - min }],
+  cache: { warm: true, expiresAt: t0 + 40 * min, source: 'statusline' },
+});
+patch('s5', {
+  createdAt: t0 - 50 * min, initiativeId: 'i-auth', pr: { number: 12, url: 'https://example.invalid/pr/12', state: 'OPEN', ci: 'pending', at: t0 },
+});
+patch('s6', { createdAt: t0 - 45 * min, pr: { number: 41, url: 'https://example.invalid/pr/41', state: 'OPEN', ci: 'pass', at: t0 } });
+patch('s7', { createdAt: t0 - 40 * min });
+for (const s of [
+  rec({
+    strategosId: 's8', displayName: 'CORS headers', repo: 'api-gateway', branch: 'fix/cors', status: 'working', createdAt: t0 - 35 * min, initiativeId: 'i-release',
+    statusSource: 'transcript', ctx: { pct: 24, at: t0, source: 'statusline' }, cost: { lineageUsd: 0.43, byClaudeSession: {} },
+    now: { tool: 'Read', summary: 'test/cors.spec.ts', since: t0 }, last: 'Running the failing spec to see the exact error.',
+    flags: { conflicts: [], contractChanged: [], guardDenials: 0, stuck: { reason: 'repeat', since: t0 - 6 * min } }, cache: { warm: false, source: 'statusline' },
+  }),
+
+  rec({
+    strategosId: 's9', displayName: 'Webhook retries', repo: 'api-gateway', branch: 'fix/webhook-retry', status: 'errored', createdAt: t0 - 30 * min, initiativeId: 'i-release',
+    statusSince: t0 - 7 * min, waitingSince: t0 - 7 * min, ctx: { pct: 45, at: t0, source: 'statusline' }, cost: { lineageUsd: 0.74, byClaudeSession: {} },
+    last: 'API Error: 529 overloaded. The turn stopped.', flags: { conflicts: [{ file: 'src/queue.ts', other: 's8', at: t0 }], contractChanged: [], guardDenials: 0 },
+  }),
+  rec({
+    strategosId: 's10', displayName: 'Changelog draft', repo: 'docs-site', branch: 'docs/changelog', status: 'seen', createdAt: t0 - 25 * min,
+    doneAt: t0 - 30 * min, seenAt: t0 - 20 * min, statusSince: t0 - 30 * min, ctx: { pct: 31, at: t0, source: 'statusline' }, cost: { lineageUsd: 0.38, byClaudeSession: {} },
+    pr: { number: 9, url: 'https://example.invalid/pr/9', state: 'MERGED', ci: 'pass', at: t0 }, last: 'Changelog merged.',
+  }),
+  rec({
+    strategosId: 's11', displayName: 'Migrate to Vite 8', repo: 'strategos-app', branch: 'chore/vite8', status: 'interrupted', createdAt: t0 - 20 * min,
+    statusSince: t0 - 3 * min, waitingSince: t0 - 3 * min, ctx: { pct: null, at: t0, source: 'transcript' }, cost: { lineageUsd: 0.5, byClaudeSession: {} }, last: 'Interrupted by you.',
+  }),
+]) sessions.set(s.strategosId, s);
+
+interface MockPlanet { planetKey: string; label: string; colour: string; cell: { col: number; row: number }; pinned: boolean; folded: boolean }
+let planets: MockPlanet[] = [
+  { planetKey: 'strategos-app', label: 'strategos-app', colour: '#3a4c8a', cell: { col: 0, row: 0 }, pinned: false, folded: false },
+  { planetKey: 'api-gateway', label: 'api-gateway', colour: '#5a3f7a', cell: { col: 1, row: 0 }, pinned: false, folded: false },
+  { planetKey: 'mobile-app', label: 'mobile-app', colour: '#2f6a6a', cell: { col: 0, row: 1 }, pinned: false, folded: false },
+  { planetKey: 'docs-site', label: 'docs-site', colour: '#7a5a3a', cell: { col: 1, row: 1 }, pinned: false, folded: false },
+];
+const initiatives = [
+  { id: 'i-auth', name: 'Auth overhaul', colour: '#7b93ff', createdAt: t0, contractFiles: [], archived: false },
+  { id: 'i-release', name: 'Release 2.4', colour: '#35e0c8', createdAt: t0, contractFiles: [], archived: false },
+];
+
+// MOCK_CROWD=1 adds a crowded scene for checking the 4x4 grid and the "+N" badge: 12 more repos, 27 more sessions.
+if (process.env['MOCK_CROWD']) {
+  const sts: Status[] = ['working', 'working', 'done', 'stopped', 'permission', 'question', 'working', 'seen'];
+  for (let r = 0; r < 12; r++) {
+    const n = r === 0 ? 9 : r < 4 ? 3 : 1;
+    for (let j = 0; j < n; j++) {
+      const id = `c${r}_${j}`;
+      const st = sts[(r + j) % sts.length]!;
+      const pend = st === 'permission' ? { requestId: 'q' + id, kind: 'permission' as const, held: true, toolName: 'Bash', inputSummary: 'npm test', inputTruncated: false, risk: ['run' as const], since: t0 - 2 * min } : undefined;
+      sessions.set(id, rec({
+        strategosId: id, displayName: `Task ${r}.${j}`, repo: `crowd-repo${r}`, status: st, createdAt: t0 - (200 - r * 10 - j) * min, ctx: { pct: 10 + ((r * 7 + j * 13) % 85), at: t0, source: 'statusline' },
+        cost: { lineageUsd: 0.1 * (j + 1), byClaudeSession: {} }, ...(pend ? { pending: pend, waitingSince: t0 - (r + 1) * min } : {}),
+      }));
+    }
+  }
+}
+
 let seq = 0;
 const conns = new Set<WebSocket>();
 const subs = new Map<WebSocket, Set<string>>();
@@ -99,7 +170,7 @@ function upsert(id: string, patch: Partial<SessionRecord>): void {
   sessions.set(id, next);
   publish({ t: 'session.upsert', session: next });
 }
-const snapshot = (): DaemonEvent => ({ t: 'snapshot', seq, sessions: [...sessions.values()], planets: [], initiatives: [], prefs });
+const snapshot = (): DaemonEvent => ({ t: 'snapshot', seq, sessions: [...sessions.values()], planets, initiatives, prefs });
 
 // --- fake terminals -------------------------------------------------------------------------------------------
 const PROMPT = '\x1b[38;5;75m>\x1b[0m ';
@@ -140,6 +211,13 @@ function handle(ws: WebSocket, m: Cmd): string | void {
       return;
     }
     case 'pty.resize': case 'pty.focus': return;
+    case 'layout.setPlanetCell': {
+      const key = String(m['planetKey']);
+      planets = planets.map((p) => (p.planetKey === key ? { ...p, cell: { col: Number(m['col']), row: Number(m['row']) }, pinned: true } : p));
+      publish({ t: 'planets', planets });
+      return;
+    }
+    case 'prefs.set': Object.assign(prefs, m['prefs']); return;
     case 'session.start': {
       const n = sessions.size + 1;
       const repo = String(m['repoPath'] ?? 'repo');
@@ -227,6 +305,31 @@ setInterval(() => {
     ptyBroadcast(s.strategosId, `\x1b[2m· ${s.now?.tool ?? 'Working'} ${s.now?.summary ?? ''}…\x1b[0m\r\n`);
   }
 }, 5000);
+
+// A short play every 12 s so the Map can be watched for stability: a session finishes, a new one arrives and asks for
+// permission, then it stops and goes away. Nothing else on the Map should move while this happens. MOCK_PLAY=0 turns it off.
+const steps: (() => void)[] = [
+  () => upsert('s4', { status: 'done', statusSince: Date.now(), doneAt: Date.now(), seenAt: undefined, subagents: [], last: 'Atomic rename landed, tests pass.' }),
+  () => {
+    sessions.set('sx1', rec({
+      strategosId: 'sx1', displayName: 'Hotfix: login redirect', repo: 'api-gateway', branch: 'hotfix/login', status: 'working', createdAt: Date.now(), statusSince: Date.now(),
+      ctx: { pct: 9, at: Date.now(), source: 'statusline' }, cost: { lineageUsd: 0.04, byClaudeSession: {} }, now: { tool: 'Grep', summary: 'redirect', since: Date.now() }, last: 'Looking for the redirect.',
+    }));
+    publish({ t: 'session.upsert', session: sessions.get('sx1') });
+  },
+  () => upsert('sx1', {
+    status: 'permission', statusSince: Date.now(), waitingSince: Date.now(), last: 'I want to edit the redirect handler.',
+    pending: { requestId: 'rx1', kind: 'permission', held: true, toolName: 'Edit', inputSummary: 'src/auth/redirect.ts', inputTruncated: false, risk: ['write'], since: Date.now() },
+  }),
+  () => upsert('s4', { status: 'working', statusSince: Date.now(), doneAt: undefined, now: { tool: 'Edit', summary: 'src/hooks.rs', since: Date.now() }, last: 'Next: the second writer.' }),
+  () => upsert('sx1', { status: 'stopped', statusSince: Date.now(), waitingSince: undefined, pending: undefined, now: undefined, last: 'Stopped by you.' }),
+  () => {
+    sessions.delete('sx1');
+    publish({ t: 'session.removed', strategosId: 'sx1' });
+  },
+];
+let step = 0;
+if (process.env['MOCK_PLAY'] !== '0') setInterval(() => { steps[step++ % steps.length]!(); }, 12_000);
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`mock daemon on http://127.0.0.1:${PORT}  (pair with any code, e.g. http://localhost:5173/#pair=mock)`);

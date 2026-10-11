@@ -3,7 +3,8 @@ import { useEffect } from 'preact/hooks';
 import { fmtWait, money, startOfLocalDay, waitingMs } from '../format.ts';
 import { now } from '../state/clock.ts';
 import { fire } from '../state/commands.ts';
-import { newSessionOpen } from '../state/ui.ts';
+import { focusInitiativeChip } from '../map/model.ts';
+import { groupBy, newSessionOpen, setGroupBy, view } from '../state/ui.ts';
 import { store, type ConnStatus } from '../state/store.ts';
 
 const CONN_TEXT: Record<ConnStatus, string> = {
@@ -78,7 +79,29 @@ export function TopBar() {
       </span>
       {usage?.fiveHour ? <span class="m">5h <b>{Math.round(usage.fiveHour.pct)}%</b></span> : null}
       {usage?.sevenDay ? <span class="m">7d <b>{Math.round(usage.sevenDay.pct)}%</b></span> : null}
+      {store.initiatives.value.filter((i) => !i.archived).map((i) => (
+        <button
+          key={i.id} type="button" class="ichip" style={`--ic:${i.colour}`} title={`Initiative: ${i.name}`}
+          onMouseEnter={() => { focusInitiativeChip.value = i.id; }} onMouseLeave={() => { focusInitiativeChip.value = null; }}
+          onFocus={() => { focusInitiativeChip.value = i.id; }} onBlur={() => { focusInitiativeChip.value = null; }}
+        >{i.name}</button>
+      ))}
       <span class="sp" />
+      <button
+        type="button" class="mbtn" aria-keyshortcuts="g" title="Group planets by repo or by initiative (g)"
+        onClick={() => {
+          const next = groupBy.value === 'repo' ? 'initiative' : 'repo';
+          setGroupBy(next);
+          fire({ c: 'prefs.set', prefs: { groupBy: next } });
+        }}
+      >Group: {groupBy.value === 'repo' ? 'Repo' : 'Initiative'}</button>
+      <div class="seg" role="group" aria-label="View">
+        <button type="button" class={view.value === 'map' ? 'on' : ''} aria-pressed={view.value === 'map'} onClick={() => { view.value = 'map'; }}>Map</button>
+        <button
+          type="button" class={view.value === 'list' ? 'on' : ''} aria-pressed={view.value === 'list'} aria-keyshortcuts="Shift+L"
+          title="Session list (Shift+L)" onClick={() => { view.value = 'list'; }}
+        >List</button>
+      </div>
       <span class="m">Spend <b class="mono">{money(total)}</b></span>
       <span class={`conn ${conn}`} role="status">{CONN_TEXT[conn]}</span>
       <button type="button" class="btn primary" aria-keyshortcuts="c" onClick={() => { newSessionOpen.value = true; }}>New session</button>
