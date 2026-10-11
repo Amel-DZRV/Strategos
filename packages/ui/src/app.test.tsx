@@ -157,7 +157,7 @@ test('the drawer header follows live updates, and tabs switch', async () => {
   expect(drawer.textContent).toContain('$2.50');
   fireEvent.click(screen.getByRole('tab', { name: 'Chat' }));
   expect(screen.getByRole('tab', { name: 'Chat' }).getAttribute('aria-selected')).toBe('true');
-  expect(screen.getByText(/chat view comes in a later milestone/)).toBeTruthy();
+  expect(screen.getByRole('log', { name: 'Conversation' })).toBeTruthy();
   expect(screen.getByTestId('term')).toBeTruthy(); // the terminal stays mounted behind the other tab
 });
 

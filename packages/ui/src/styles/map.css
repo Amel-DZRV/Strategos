@@ -56,3 +56,4 @@
 .keyhelp .keys div { display: grid; grid-template-columns: 110px 1fr; gap: 10px; align-items: baseline; }
 .keyhelp dt { font: 12px var(--mono); }
 .keyhelp dd { margin: 0; }
+.hc-warn { color: var(--c-reply); }

@@ -9,7 +9,12 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
  */
 export type PendingFullCommand = { id: string; c: 'pending.full'; strategosId: string; requestId: string };
 export type AnyCommand = UiCommand | PendingFullCommand;
-export type CommandInput = DistributiveOmit<AnyCommand, 'id'>;
+/**
+ * `suggestion.respond` has a field called `id` (the suggestion's) that is also the name of the command envelope's id, so on the
+ * wire there is one `id`: the suggestion's, and the ack comes back with it. The UI therefore passes it through as it is.
+ */
+export type SuggestionRespond = { c: 'suggestion.respond'; id: string; accept: boolean };
+export type CommandInput = DistributiveOmit<Exclude<AnyCommand, { c: 'suggestion.respond' }>, 'id'> | SuggestionRespond;
 
 export type Ack = Extract<DaemonEvent, { t: 'ack' }>;
 /** Channel events (pty, chat, review) plus the invented `pending.full`. */

@@ -8,6 +8,12 @@ export interface ShellBridge {
   focusWindow(): void;
   openExternal(url: string): void;
   onNotificationAction(cb: (a: { requestId: string; action: 'approve' | 'deny' | 'open' }) => void): void;
+  /** The owner clicked a desktop notification: the window is already focused, show this session. */
+  onNotificationClick(cb: (strategosId: string) => void): void;
+  /** 'unsupported' where there is no Notification API. 'default' = not asked yet. */
+  notificationPermission(): NotificationPermission | 'unsupported';
+  /** Ask the browser for permission. Call it from a click, never on load. */
+  requestNotificationPermission(): Promise<NotificationPermission | 'unsupported'>;
   kind: 'browser' | 'electron';
 }
 
@@ -48,14 +54,34 @@ function faviconHref(count: number, doc: Document): string | null {
 
 export function createBrowserShellBridge(win: Window = window): ShellBridge {
   const doc = win.document;
+  const NotificationApi = () => (win as unknown as { Notification?: typeof Notification }).Notification;
+  const clickListeners = new Set<(strategosId: string) => void>();
   return {
     kind: 'browser',
+    notificationPermission() {
+      const N = NotificationApi();
+      return N ? N.permission : 'unsupported';
+    },
+    async requestNotificationPermission() {
+      const N = NotificationApi();
+      if (!N) return 'unsupported';
+      try {
+        return await N.requestPermission();
+      } catch {
+        return N.permission;
+      }
+    },
+    onNotificationClick(cb) { clickListeners.add(cb); },
     notify(n) {
-      const N = (win as unknown as { Notification?: typeof Notification }).Notification;
+      const N = NotificationApi();
       if (!N || N.permission !== 'granted') return;
       try {
         const note = new N(n.title, { body: n.body, tag: n.requestId ?? n.strategosId });
-        note.onclick = () => { win.focus(); note.close(); };
+        note.onclick = () => {
+          win.focus();
+          note.close();
+          for (const cb of clickListeners) cb(n.strategosId);
+        };
       } catch {
         // some environments throw on construction; the in-page UI still shows the item
       }

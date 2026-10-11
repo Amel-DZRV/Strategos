@@ -4,8 +4,10 @@ import { fmtWait, money, startOfLocalDay, waitingMs } from '../format.ts';
 import { now } from '../state/clock.ts';
 import { fire } from '../state/commands.ts';
 import { focusInitiativeChip } from '../map/model.ts';
-import { groupBy, newSessionOpen, setGroupBy, view } from '../state/ui.ts';
+import { groupBy, newSessionOpen, paletteOpen, setGroupBy, view } from '../state/ui.ts';
 import { store, type ConnStatus } from '../state/store.ts';
+import { EnableNotifications } from '../notify/notifications.tsx';
+import { UsageGauge } from './UsageGauge.tsx';
 
 const CONN_TEXT: Record<ConnStatus, string> = {
   connecting: 'Connecting…',
@@ -52,7 +54,6 @@ export function TopBar() {
   const c = computeCounts(store.sessions.value.values(), nowMs);
   const total = [...store.sessions.value.values()].reduce((a, s) => a + s.cost.lineageUsd, 0);
   const conn = store.connection.value;
-  const usage = store.usage.value;
   const today = store.digestToday.value;
 
   // Ask the daemon for today's totals once connected, then every minute. (digest.get is a protocol command.)
@@ -74,8 +75,7 @@ export function TopBar() {
       <span class="m"><b>{c.working}</b> working</span>
       <span class="m"><b>{c.done}</b> done</span>
       <span class="m"><b>{c.stopped}</b> stopped</span>
-      {usage?.fiveHour ? <span class="m">5h <b>{Math.round(usage.fiveHour.pct)}%</b></span> : null}
-      {usage?.sevenDay ? <span class="m">7d <b>{Math.round(usage.sevenDay.pct)}%</b></span> : null}
+      <UsageGauge />
       {store.initiatives.value.filter((i) => !i.archived).map((i) => (
         <button
           key={i.id} type="button" class="ichip" style={`--ic:${i.colour}`} title={`Initiative: ${i.name}`}
@@ -84,6 +84,11 @@ export function TopBar() {
         >{i.name}</button>
       ))}
       <span class="sp" />
+      <EnableNotifications />
+      <button
+        type="button" class="quiet" aria-keyshortcuts="Control+K Meta+K" title="Command palette (Ctrl+K)"
+        onClick={() => { paletteOpen.value = true; }}
+      >Commands</button>
       <button
         type="button" class="quiet" aria-keyshortcuts="g" title="Group planets by repo or by initiative (g)"
         onClick={() => {

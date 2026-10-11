@@ -18,6 +18,9 @@ export interface HelloInfo {
 /** What applyEvent decided: 'gap' means the caller must send a resync; 'stale' means the event was a repeat. */
 export type ApplyResult = 'applied' | 'gap' | 'stale' | 'ignored';
 
+export type NotifyEvent = Extract<DaemonEvent, { t: 'notify' }>;
+export interface Suggestion { id: string; kind: 'initiative' | 'park'; text: string; strategosIds: string[] }
+
 export const DEFAULT_PREFS: UiPrefs = {
   groupBy: 'repo',
   notifications: { enabled: true, sound: true, onPermission: true, onQuestion: true, onErrored: true, onDone: false, escalate: true },
@@ -46,6 +49,9 @@ export function createStore() {
   const announcement = signal('');
   /** True once a snapshot has arrived on the current connection. */
   const synced = signal(false);
+  /** Suggestions from the daemon (a park nudge, an initiative match) until the owner answers or dismisses them. */
+  const suggestions = signal<readonly Suggestion[]>([]);
+  const notifyListeners = new Set<(ev: NotifyEvent) => void>();
   let lastSeq: number | null = null;
 
   const sorted = computed(() => [...sessions.value.values()].filter((s) => !s.archived).sort(sortRows));
@@ -117,7 +123,14 @@ export function createStore() {
         case 'initiatives': initiatives.value = ev.initiatives; break;
         case 'usage': usage.value = ev.usage; break;
         case 'resources': resources.value = { totalMb: ev.totalMb, cpuPct: ev.cpuPct }; break;
-        default: break; // notify, suggestion: later milestones
+        case 'suggestion':
+          suggestions.value = [...suggestions.value.filter((x) => x.id !== ev.id), { id: ev.id, kind: ev.kind, text: ev.text, strategosIds: ev.strategosIds }];
+          break;
+        case 'notify':
+          // Only a live delta reaches here: a snapshot or a resync never raises a notification.
+          for (const fn of [...notifyListeners]) fn(ev);
+          break;
+        default: break;
       }
     });
     return 'applied';
@@ -129,7 +142,17 @@ export function createStore() {
     synced.value = false;
   }
 
+  function onNotify(fn: (ev: NotifyEvent) => void): () => void {
+    notifyListeners.add(fn);
+    return () => { notifyListeners.delete(fn); };
+  }
+
+  function removeSuggestion(id: string): void {
+    suggestions.value = suggestions.value.filter((x) => x.id !== id);
+  }
+
   return {
+    suggestions, onNotify, removeSuggestion,
     sessions, planets, initiatives, usage, prefs, resources, connection, hello, digestToday, announcement, synced,
     sorted, needsYou,
     applyEvent, markDisconnected,
