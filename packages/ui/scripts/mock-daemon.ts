@@ -4,7 +4,7 @@
 // It does NOT enforce Origin or real pairing: any code at POST /api/pair gets a cookie. It exists to see the UI move.
 import { createServer, type IncomingMessage } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
-import type { ChatItem, DaemonEvent, SessionRecord, Status, UiPrefs, Usage } from '@strategos/shared';
+import type { ChatItem, DaemonEvent, Initiative, SessionRecord, Status, UiPrefs, Usage } from '@strategos/shared';
 
 const PORT = Number(process.env['MOCK_PORT'] ?? 47800);
 const COOKIE = 'strategos_session=mock-session';
@@ -137,6 +137,49 @@ sessions.set('s12', rec({
 }));
 patch('s10', { pty: { pid: 1, cols: 100, rows: 30, dirtyInput: true } });
 
+
+// --- M6 scene: worktrees, test runs, a review diff, gh login, initiative suggestion ---------------------------------------
+const wt = (name: string, branch: string) => ({ path: `C:\\dev\\strategos-app\\.claude\\worktrees\\${name}`, branch, base: 'main', createdByStrategos: true });
+patch('s1', { worktree: wt('pty-host', 'feat/pty-host'), flags: { conflicts: [], contractChanged: [], guardDenials: 0, lastTest: { command: 'npm test', ok: true, at: t0 - 3 * min } } });
+patch('s2', { flags: { conflicts: [], contractChanged: [], guardDenials: 0, lastTest: { command: 'npm test', ok: false, at: t0 - 11 * min } } });
+patch('s6', {
+  worktree: wt('review-pr-41', 'review/pr-41'),
+  flags: { conflicts: [], contractChanged: [], guardDenials: 0, lastTest: { command: 'npm test', ok: true, at: t0 - 4 * min } },
+  git: { branch: 'review/pr-41', ahead: 2, behind: 0, dirty: false, diffStat: { files: 4, add: 61, del: 9 }, at: t0 },
+});
+patch('s7', { worktree: wt('chore-deps', 'chore/deps'), git: { branch: 'chore/deps', ahead: 1, behind: 0, dirty: true, diffStat: { files: 2, add: 14, del: 3 }, at: t0 } });
+patch('s11', { worktree: wt('vite8', 'chore/vite8'), git: { branch: 'chore/vite8', ahead: 2, behind: 0, dirty: true, diffStat: { files: 4, add: 20, del: 7 }, at: t0 } });
+patch('s4', { git: { branch: 'fix/hook-race', ahead: 1, behind: 0, dirty: true, diffStat: { files: 3, add: 22, del: 7 }, at: t0 } });
+const REPOS = ['C:\\dev\\strategos-app', 'C:\\dev\\api-gateway', 'C:\\dev\\mobile-app', 'C:\\dev\\docs-site', 'C:\\dev\\billing-service'];
+let ghNeedsLogin = process.env['MOCK_GH_LOGIN'] === '1';
+const excluded = new Set<string>();
+const mockDiff = [
+  'diff --git a/src/pty/host.rs b/src/pty/host.rs', 'index 3f1a2c4..9b7d0e1 100644', '--- a/src/pty/host.rs', '+++ b/src/pty/host.rs',
+  '@@ -41,7 +41,12 @@ impl PtyHost {', '     pub fn spawn(&mut self, cmd: &str) -> Result<()> {',
+  '-        let pair = native_pty_system().openpty(self.size)?;', '+        let pair = native_pty_system()', '+            .openpty(self.size)', '+            .context("openpty failed")?;',
+  '         let child = pair.slave.spawn_command(CommandBuilder::new(cmd))?;', '-        self.child = Some(child);', '+        self.child = Some(child);',
+  '+        self.reader = Some(pair.master.try_clone_reader()?);', '         Ok(())', '     }',
+  '@@ -88,6 +93,9 @@ impl PtyHost {', '     pub fn resize(&mut self, size: PtySize) -> Result<()> {', '         self.size = size;',
+  '+        if let Some(child) = &self.child {', '+            child.resize(size)?;', '+        }', '         Ok(())', '     }',
+  'diff --git a/src/pty/size.rs b/src/pty/size.rs', 'index 5d0e771..c2a49f8 100644', '--- a/src/pty/size.rs', '+++ b/src/pty/size.rs',
+  '@@ -1,5 +1,6 @@', ' use portable_pty::PtySize;', ' ', '-pub const DEFAULT: PtySize = PtySize { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 };',
+  '+/// Default size until the browser reports its own.', '+pub const DEFAULT: PtySize = PtySize { rows: 30, cols: 100, pixel_width: 0, pixel_height: 0 };',
+  'diff --git a/tests/pty_spawn.rs b/tests/pty_spawn.rs', 'new file mode 100644', 'index 0000000..71e3b9a', '--- /dev/null', '+++ b/tests/pty_spawn.rs',
+  '@@ -0,0 +1,9 @@', '+use strategos::pty::PtyHost;', '+', '+#[test]', '+fn spawn_reports_context_on_failure() {', '+    let mut host = PtyHost::default();',
+  '+    let err = host.spawn("<script>alert(1)</script>").unwrap_err();', '+    assert!(err.to_string().contains("openpty failed") || err.to_string().contains("not found"));', '+}', '+',
+  'diff --git a/src/pty/legacy.rs b/src/pty/legacy.rs', 'deleted file mode 100644', 'index 8a8a8a8..0000000', '--- a/src/pty/legacy.rs', '+++ /dev/null',
+  '@@ -1,4 +0,0 @@', '-// Old blocking reader, replaced by PtyHost::reader.', '-pub fn read_blocking() -> Vec<u8> {', '-    Vec::new()', '-}',
+].join('\n') + '\n';
+const mockReview = {
+  files: [
+    { path: 'src/pty/host.rs', add: 9, del: 2, status: 'modified' as const },
+    { path: 'src/pty/size.rs', add: 2, del: 1, status: 'modified' as const },
+    { path: 'tests/pty_spawn.rs', add: 9, del: 0, status: 'added' as const },
+    { path: 'src/pty/legacy.rs', add: 0, del: 4, status: 'deleted' as const },
+  ],
+  diff: mockDiff, base: 'main', head: 'feat/pty-host', stat: { files: 4, add: 20, del: 7 },
+};
+
 // --- chat (plan 5.01): a believable conversation per session, built from a few templates ----------------------------
 const ago = (m: number) => t0 - m * min;
 const DIFF = [
@@ -219,6 +262,7 @@ let usage: Usage = {
   burnPctPerHour: 14, etaFull: t0 + 160 * min, at: t0,
 };
 let suggestionOpen = true;
+let initiativeSuggestionOpen = true;
 
 interface MockPlanet { planetKey: string; label: string; colour: string; cell: { col: number; row: number }; pinned: boolean; folded: boolean }
 let planets: MockPlanet[] = [
@@ -227,7 +271,7 @@ let planets: MockPlanet[] = [
   { planetKey: 'mobile-app', label: 'mobile-app', colour: '#2f6a6a', cell: { col: 0, row: 1 }, pinned: false, folded: false },
   { planetKey: 'docs-site', label: 'docs-site', colour: '#7a5a3a', cell: { col: 1, row: 1 }, pinned: false, folded: false },
 ];
-const initiatives = [
+const initiatives: Initiative[] = [
   { id: 'i-auth', name: 'Auth overhaul', colour: '#7b93ff', createdAt: t0, contractFiles: [], archived: false },
   { id: 'i-release', name: 'Release 2.4', colour: '#35e0c8', createdAt: t0, contractFiles: [], archived: false },
 ];
@@ -266,7 +310,7 @@ function upsert(id: string, patch: Partial<SessionRecord>): void {
   sessions.set(id, next);
   publish({ t: 'session.upsert', session: next });
 }
-const snapshot = (): DaemonEvent => ({ t: 'snapshot', seq, sessions: [...sessions.values()], planets, initiatives, usage, prefs });
+const snapshot = (): DaemonEvent => ({ t: 'snapshot', seq, sessions: [...sessions.values()], planets, initiatives, usage, prefs: { ...prefs, ...(ghNeedsLogin ? { ghNeedsLogin: true } : {}) }, repos: REPOS });
 
 // --- fake terminals -------------------------------------------------------------------------------------------
 const PROMPT = '\x1b[38;5;75m>\x1b[0m ';
@@ -289,7 +333,7 @@ function ptyBroadcast(id: string, data: string): void {
 
 // --- commands ---------------------------------------------------------------------------------------------------
 type Cmd = { id: string; c: string; strategosId?: string; requestId?: string; [k: string]: unknown };
-function handle(ws: WebSocket, m: Cmd): string | void {
+function handle(ws: WebSocket, m: Cmd): string | void | Promise<string | void> {
   const id = m.strategosId;
   switch (m.c) {
     case 'resync': out(ws, snapshot()); return;
@@ -359,7 +403,92 @@ function handle(ws: WebSocket, m: Cmd): string | void {
       return;
     }
     case 'view.focus': return;
-    case 'suggestion.respond': suggestionOpen = false; return; // note: the envelope id IS the suggestion id
+    case 'suggestion.respond': {
+      const sg = String(m['suggestionId'] ?? '');
+      if (sg === 'sg-park-1') suggestionOpen = false;
+      if (sg === 'sg-ini-1') {
+        initiativeSuggestionOpen = false;
+        if (m['accept'] === true) {
+          const ini: Initiative = { id: 'i-checkout', name: 'Checkout', colour: '#f5b83d', createdAt: Date.now(), contractFiles: [], archived: false };
+          initiatives.push(ini);
+          publish({ t: 'initiatives', initiatives });
+          for (const sid of ['s2', 's3']) upsert(sid, { initiativeId: ini.id });
+        }
+      }
+      return;
+    }
+    case 'review.get': {
+      if (!id || !sessions.has(id)) return 'unknown session';
+      out(ws, { t: 'review', strategosId: id, review: id === 's10' ? { ...mockReview, files: [], diff: '', stat: { files: 0, add: 0, del: 0 } } : mockReview });
+      return;
+    }
+    case 'review.sendBack': {
+      const s = id ? sessions.get(id) : undefined;
+      if (!id || !s) return 'unknown session';
+      if (s.status !== 'done' && s.status !== 'seen' && s.status !== 'interrupted') return `not_live: the session is ${s.status}`;
+      chatPush(id, [{ k: 'user', id: `sb${Date.now()}`, text: 'Review notes from the owner. Please address each point, then tell me when you are done:\n\n' + String(m['text'] ?? ''), at: Date.now() }]);
+      upsert(id, { status: 'working', statusSince: Date.now(), doneAt: undefined });
+      return;
+    }
+    case 'pr.create': {
+      const s = id ? sessions.get(id) : undefined;
+      if (!id || !s) return 'unknown session';
+      if (ghNeedsLogin) { publish({ t: 'gh.status', needsLogin: true, message: 'gh auth status failed' }); return 'The GitHub CLI is not logged in. Run "gh auth login" in a terminal.'; }
+      return new Promise((resolve) => {
+        setTimeout(() => { // push + gh pr create take a while
+          const n = 100 + sessions.size;
+          upsert(id, { pr: { number: n, url: `https://github.com/example/${s.planetKey}/pull/${n}`, state: m['draft'] === true ? 'DRAFT' : 'OPEN', ci: 'pending', at: Date.now() } });
+          resolve(undefined);
+        }, 2000);
+      });
+    }
+    case 'worktree.exclude': {
+      const repo = String(m['repoPath'] ?? '');
+      if (m['add'] === true) excluded.add(repo);
+      out(ws, { t: 'worktree.exclude', repoPath: repo, excluded: excluded.has(repo) });
+      return;
+    }
+    case 'worktree.remove': {
+      const s = id ? sessions.get(id) : undefined;
+      if (!id || !s) return 'unknown session';
+      if (!s.worktree) return 'This session does not run in a worktree.';
+      if (s.status !== 'stopped' && s.status !== 'parked') return 'Stop the session first: its process is still running in that folder.';
+      const dirty = s.git?.dirty === true;
+      if ((dirty || m['deleteBranch'] === true) && m['confirmText'] !== s.worktree.branch) {
+        const parts: string[] = [];
+        if (dirty) parts.push('2 uncommitted change(s): M package.json; ?? notes.txt', "1 commit(s) that exist nowhere else (the branch was never pushed): 4c1d9e2 bump vite");
+        if (m['deleteBranch'] === true) parts.push(`the branch ${s.worktree.branch} would be deleted`);
+        return `Not removed. This would lose: ${parts.join(' | ')}. To go ahead, type "${s.worktree.branch}" to confirm.`;
+      }
+      upsert(id, { worktree: undefined, git: undefined, archived: true });
+      return;
+    }
+    case 'initiative.upsert': {
+      const ini = m['initiative'] as Initiative;
+      const at = initiatives.findIndex((x) => x.id === ini.id);
+      if (at === -1) initiatives.push(ini); else initiatives[at] = ini;
+      publish({ t: 'initiatives', initiatives });
+      return;
+    }
+    case 'initiative.assign': {
+      if (!id || !sessions.has(id)) return 'unknown session';
+      upsert(id, { initiativeId: (m['initiativeId'] as string | null) ?? undefined });
+      return;
+    }
+    case 'mission.start': {
+      const specs = (m['sessions'] as { repoPath: string; branch: string; firstPrompt: string }[]);
+      let started = 0;
+      const failed: string[] = [];
+      for (const sp of specs) {
+        if (sp.repoPath.toLowerCase().includes('missing')) { failed.push(`${sp.branch}: No base branch found in this repository (looked for origin/HEAD, main and master).`); continue; }
+        const sid = 'm' + (sessions.size + 1);
+        const repo = sp.repoPath.split(/[\\/]/).pop() ?? sp.repoPath;
+        sessions.set(sid, rec({ strategosId: sid, displayName: `${repo}: ${sp.branch}`, repo, repoRoot: sp.repoPath, branch: sp.branch, status: 'starting', initiativeId: String(m['initiativeId']), last: sp.firstPrompt, createdAt: Date.now(), statusSince: Date.now() }));
+        publish({ t: 'session.upsert', session: sessions.get(sid) });
+        started++;
+      }
+      return failed.length > 0 ? `Started ${started} of ${specs.length}. ${failed.join(' | ')}` : undefined;
+    }
     case 'perm.approveLowRisk': {
       const ids = new Set<string>((m['requestIds'] as string[] | undefined) ?? []);
       let n = 0;
@@ -376,7 +505,8 @@ function handle(ws: WebSocket, m: Cmd): string | void {
       const n = sessions.size + 1;
       const repo = String(m['repoPath'] ?? 'repo');
       const sid = 's' + n;
-      sessions.set(sid, rec({ strategosId: sid, displayName: String(m['name'] || `Session ${n}`), repo: repo.split(/[\\/]/).pop() ?? repo, repoRoot: repo, status: 'starting', last: String(m['firstPrompt'] ?? ''), statusSince: Date.now(), createdAt: Date.now() }));
+      sessions.set(sid, rec({ strategosId: sid, displayName: String(m['name'] || `Session ${n}`), repo: repo.split(/[\\/]/).pop() ?? repo, repoRoot: repo, status: 'starting', last: String(m['firstPrompt'] ?? ''), statusSince: Date.now(), createdAt: Date.now(),
+        ...(m['worktree'] ? { worktree: { path: `${repo}\\.claude\\worktrees\\${(m['worktree'] as { name: string }).name}`, branch: (m['worktree'] as { branch: string }).branch, base: (m['worktree'] as { base: string }).base, createdByStrategos: true } } : {}) }));
       publish({ t: 'session.upsert', session: sessions.get(sid) });
       setTimeout(() => upsert(sid, { status: 'working', statusSince: Date.now(), now: { tool: 'Read', summary: 'README.md', since: Date.now() } }), 1500);
       return;
@@ -430,6 +560,12 @@ const server = createServer((req, res) => {
     req.on('end', () => { res.writeHead(204, { 'Set-Cookie': `${COOKIE}; Path=/; HttpOnly; SameSite=Strict` }).end(); });
     return;
   }
+  if (req.url?.startsWith('/mock/gh')) { // curl -X POST 'http://127.0.0.1:47800/mock/gh?needsLogin=1'
+    ghNeedsLogin = new URL(req.url, 'http://x').searchParams.get('needsLogin') === '1';
+    publish({ t: 'gh.status', needsLogin: ghNeedsLogin });
+    res.writeHead(204).end();
+    return;
+  }
   if (req.url === '/api/session') { res.writeHead(hasCookie(req) ? 200 : 401, { 'Content-Type': 'application/json' }).end('{"ok":true}'); return; }
   res.writeHead(404).end();
 });
@@ -448,12 +584,23 @@ server.on('upgrade', (req, socket, head) => {
         }
       }, 4000);
     }
+    if (initiativeSuggestionOpen) {
+      setTimeout(() => {
+        if (initiativeSuggestionOpen && ws.readyState === ws.OPEN) {
+          publish({
+            t: 'suggestion', id: 'sg-ini-1', kind: 'initiative', strategosIds: ['s2', 's3'],
+            text: 'These 2 sessions look like one piece of work, "Checkout" (feat/onboarding, feat/rate-limit). Group them as an initiative?',
+          });
+        }
+      }, 6000);
+    }
     ws.on('close', () => { conns.delete(ws); subs.delete(ws); chatSubs.delete(ws); });
     ws.on('message', (raw) => {
       let m: Cmd;
       try { m = JSON.parse(String(raw)) as Cmd; } catch { return; }
-      const err = handle(ws, m);
-      out(ws, err ? { t: 'ack', id: m.id, ok: false, error: err } : { t: 'ack', id: m.id, ok: true });
+      void Promise.resolve(handle(ws, m)).then((err) => {
+        out(ws, err ? { t: 'ack', id: m.id, ok: false, error: err } : { t: 'ack', id: m.id, ok: true });
+      });
     });
   });
 });

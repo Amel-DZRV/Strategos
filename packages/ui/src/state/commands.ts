@@ -9,20 +9,18 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
  */
 export type PendingFullCommand = { id: string; c: 'pending.full'; strategosId: string; requestId: string };
 export type AnyCommand = UiCommand | PendingFullCommand;
-/**
- * `suggestion.respond` has a field called `id` (the suggestion's) that is also the name of the command envelope's id, so on the
- * wire there is one `id`: the suggestion's, and the ack comes back with it. The UI therefore passes it through as it is.
- */
-export type SuggestionRespond = { c: 'suggestion.respond'; id: string; accept: boolean };
-export type CommandInput = DistributiveOmit<Exclude<AnyCommand, { c: 'suggestion.respond' }>, 'id'> | SuggestionRespond;
+export type CommandInput = DistributiveOmit<AnyCommand, 'id'>;
 
 export type Ack = Extract<DaemonEvent, { t: 'ack' }>;
 /** Channel events (pty, chat, review) plus the invented `pending.full`. */
 export type ChannelMessage = DaemonEvent | { t: 'pending.full'; strategosId: string; requestId: string; input: string };
 
+/** timeoutMs: how long to wait for the ack (default 10 s; pr.create pushes a branch and takes longer). */
+export interface SendOptions { timeoutMs?: number }
+
 export interface Transport {
   /** Resolves with the daemon's ack (ok or not). Rejects when not connected, on disconnect, or after the timeout. */
-  send(cmd: CommandInput): Promise<Ack>;
+  send(cmd: CommandInput, opts?: SendOptions): Promise<Ack>;
   /** Every non-seq message from the daemon (pty.data, pty.replay, chat.items, review, digest, pending.full). */
   onChannel(fn: (ev: ChannelMessage) => void): () => void;
 }
@@ -36,8 +34,8 @@ let transport: Transport = offline;
 export function setTransport(t: Transport): void { transport = t; }
 
 /** Send and throw if the daemon refuses. */
-export async function send(cmd: CommandInput): Promise<Ack> {
-  const ack = await transport.send(cmd);
+export async function send(cmd: CommandInput, opts?: SendOptions): Promise<Ack> {
+  const ack = await transport.send(cmd, opts);
   if (!ack.ok) throw new Error(ack.error ?? 'command failed');
   return ack;
 }

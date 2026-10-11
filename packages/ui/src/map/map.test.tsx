@@ -142,7 +142,8 @@ describe('Map in the app', () => {
     expect(tok.getAttribute('tabindex')).toBe('0');
     expect(screen.getAllByRole('button', { name: /, Working/ }).filter((e) => e.getAttribute('tabindex') === '0').length).toBe(1);
     expect(document.querySelector('.rows')).toBeNull();
-    await act(() => { fireEvent.click(screen.getByRole('button', { name: 'List' })); });
+    await act(() => { fireEvent.click(screen.getByRole('button', { name: 'More' })); });
+    await act(() => { fireEvent.click(screen.getByRole('menuitemradio', { name: /^List/ })); });
     expect(document.querySelector('.rows')).toBeTruthy();
     await press('L');
     expect(view.value).toBe('map');

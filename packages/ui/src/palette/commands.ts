@@ -7,7 +7,8 @@ import { KEY_ACTIONS, type ActionId } from '../keys/keymap.ts';
 import { currentLowRisk } from '../features/lowrisk.ts';
 import { enableNotifications, permission } from '../notify/notifications.tsx';
 import { store } from '../state/store.ts';
-import { lowRiskOpen, openDrawer, selectedId, view } from '../state/ui.ts';
+import { canRemoveWorktree } from '../dialogs/RemoveWorktree.tsx';
+import { initiativeDialog, lowRiskOpen, missionOpen, openDrawer, removeWorktreeTarget, selectedId, view } from '../state/ui.ts';
 
 export interface PaletteCommand {
   id: string;
@@ -66,6 +67,15 @@ function extraCommands(): PaletteCommand[] {
       id: 'terminal-view', label: 'Show the terminal of the selected session', enabled: () => selected() !== undefined,
       run: () => { const s = selected(); if (s) openDrawer(s.strategosId, 'term'); },
     },
+    {
+      id: 'remove-worktree', label: 'Remove the worktree of the selected session…', enabled: () => canRemoveWorktree(selected()),
+      run: () => { const s = selected(); if (s) removeWorktreeTarget.value = s.strategosId; },
+    },
+    { id: 'new-initiative', label: 'New initiative…', enabled: () => true, run: () => { initiativeDialog.value = {}; } },
+    ...store.initiatives.value.filter((i) => !i.archived).map((i): PaletteCommand => ({
+      id: `edit-initiative:${i.id}`, label: `Edit initiative: ${i.name}`, enabled: () => true, run: () => { initiativeDialog.value = { id: i.id }; },
+    })),
+    { id: 'start-mission', label: 'Start a mission…', enabled: () => true, run: () => { missionOpen.value = true; } },
     { id: 'view-map', label: 'Show the Map', enabled: () => view.value !== 'map', run: () => { view.value = 'map'; } },
     { id: 'view-list', label: 'Show the session list', enabled: () => view.value !== 'list', run: () => { view.value = 'list'; } },
     { id: 'notifications', label: 'Enable desktop notifications', enabled: () => permission.value === 'default', run: () => { void enableNotifications(); } },

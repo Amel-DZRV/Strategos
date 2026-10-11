@@ -45,6 +45,12 @@ function HoverCard({ h, t }: { h: HoverState; t: TokenScene }) {
       <div class="hc-title"><span class="hc-g" aria-hidden="true">{st.glyph}</span> {s.displayName}</div>
       <div class="hc-row mono">{st.label}{s.pending ? ` · ${fmtWait(now.value - s.pending.since)}` : ''}</div>
       {branch ? <div class="hc-row mono">{branch}{sync ? ` · ${sync}` : ''}{git?.dirty ? ' · uncommitted changes' : ''}</div> : null}
+      {git?.diffStat ? (
+        <div class="hc-row mono">{git.diffStat.files} {git.diffStat.files === 1 ? 'file' : 'files'} changed · +{git.diffStat.add} −{git.diffStat.del}</div>
+      ) : null}
+      {s.pr ? (
+        <div class="hc-row mono">PR #{s.pr.number} {s.pr.state.toLowerCase()}{s.pr.ci !== 'none' ? ` · CI ${s.pr.ci}` : ''}{s.pr.review ? ` · ${s.pr.review.toLowerCase()}` : ''}</div>
+      ) : null}
       <div class="hc-row mono">ctx {pct === null ? 'unknown' : `${pct}%`} · {money(s.cost.lineageUsd)}{s.resource ? ` · ${Math.round(s.resource.treeWorkingSetMb)} MB` : ''}</div>
       {s.flags.conflicts.map((c) => (
         <div key={`${c.file}|${c.other}`} class="hc-row hc-warn mono">

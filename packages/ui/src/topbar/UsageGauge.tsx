@@ -28,9 +28,8 @@ function One({ label, pct }: { label: string; pct: number }) {
   const p = Math.max(0, Math.min(100, Math.round(pct)));
   return (
     <span class="g">
-      {label}
+      <span class="gt">{label} <b>{p}%</b></span>
       <span class="bar" aria-hidden="true"><i style={{ width: `${p}%`, background: ctxColour(p) }} /></span>
-      <b>{p}%</b>
     </span>
   );
 }
@@ -43,6 +42,7 @@ export function UsageGauge() {
     <span class="gauge m">
       <button type="button" aria-label={`Usage. ${tip.join('. ')}`} aria-describedby="usage-tip">
         {u.fiveHour ? <One label="5h" pct={u.fiveHour.pct} /> : null}
+        {u.fiveHour && u.sevenDay ? <span class="gsep" aria-hidden="true">·</span> : null}
         {u.sevenDay ? <One label="7d" pct={u.sevenDay.pct} /> : null}
       </button>
       <span class="tip" id="usage-tip" role="tooltip">
@@ -54,17 +54,17 @@ export function UsageGauge() {
 
 /** The park nudge (and any other daemon suggestion the UI knows how to show): dismissible, never applied by itself. */
 export function SuggestionBanners() {
-  const list = store.suggestions.value.filter((s) => s.kind === 'park');
+  const list = store.suggestions.value;
   if (list.length === 0) return null;
   const answer = (id: string, accept: boolean) => {
-    send({ c: 'suggestion.respond', id, accept })
+    send({ c: 'suggestion.respond', suggestionId: id, accept })
       .then(() => { store.removeSuggestion(id); })
       .catch((e: unknown) => { errorNotice.value = `Could not answer the suggestion: ${e instanceof Error ? e.message : String(e)}`; });
   };
   return (
     <>
       {list.map((s) => (
-        <div key={s.id} class="banner suggest" role="note">
+        <div key={s.id} class={`banner suggest ${s.kind}`} role="note">
           <span>{s.text}</span>
           <span class="bactions">
             <button type="button" class="btn primary" onClick={() => answer(s.id, true)}>Accept</button>

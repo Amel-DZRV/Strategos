@@ -25,6 +25,7 @@ export function handleKey(e: KeyboardEvent): void {
   }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (paletteOpen.value || lowRiskOpen.value) return; // those dialogs own the keyboard
+  if (e.target instanceof Element && e.target.closest('.dialog')) return; // a dialog owns its keys
   if (typingTarget(e.target) || newSessionOpen.value || stopTarget.value !== null || parkTarget.value !== null) return;
   const act = actionFor(e.key);
   if (!act) return;

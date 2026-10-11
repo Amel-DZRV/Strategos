@@ -282,9 +282,11 @@ describe('notifications (2.09)', () => {
     permission.value = 'default';
     render(<App />);
     expect(ask).not.toHaveBeenCalled();
-    await act(() => { fireEvent.click(screen.getByRole('button', { name: 'Enable notifications' })); });
+    await act(() => { fireEvent.click(screen.getByRole('button', { name: 'More' })); });
+    await act(() => { fireEvent.click(screen.getByRole('menuitem', { name: 'Enable notifications' })); });
     expect(ask).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Enable notifications' })).toBeNull());
+    await act(() => { fireEvent.click(screen.getByRole('button', { name: 'More' })); });
+    await waitFor(() => expect(screen.queryByRole('menuitem', { name: 'Enable notifications' })).toBeNull());
   });
 
   it('title shows the needs-you count', async () => {
@@ -368,12 +370,12 @@ describe('usage gauge and park suggestion (4.08)', () => {
     await act(() => { store.applyEvent({ t: 'suggestion', seq: 2, id: 'sg1', kind: 'park', text: 'Park idle sessions?', strategosIds: ['a'] }); });
     expect(screen.getByText('Park idle sessions?')).toBeTruthy();
     await act(() => { fireEvent.click(screen.getByRole('button', { name: 'Accept' })); });
-    expect(sent('suggestion.respond')).toEqual([{ c: 'suggestion.respond', id: 'sg1', accept: true }]);
+    expect(sent('suggestion.respond')).toEqual([{ c: 'suggestion.respond', suggestionId: 'sg1', accept: true }]);
     await waitFor(() => expect(screen.queryByText('Park idle sessions?')).toBeNull());
 
     await act(() => { store.applyEvent({ t: 'suggestion', seq: 3, id: 'sg2', kind: 'park', text: 'Park again?', strategosIds: [] }); });
     await act(() => { fireEvent.click(screen.getByRole('button', { name: 'Dismiss' })); });
-    expect(sent('suggestion.respond').at(-1)).toEqual({ c: 'suggestion.respond', id: 'sg2', accept: false });
+    expect(sent('suggestion.respond').at(-1)).toEqual({ c: 'suggestion.respond', suggestionId: 'sg2', accept: false });
   });
 
   it('a refused answer keeps the banner and shows the reason', async () => {
@@ -386,11 +388,19 @@ describe('usage gauge and park suggestion (4.08)', () => {
     expect(screen.getByText('Park idle sessions?')).toBeTruthy();
   });
 
-  it('initiative suggestions are not shown as park banners', async () => {
+  it('an initiative suggestion is a banner; Accept and Dismiss answer it by suggestionId, nothing is applied by itself', async () => {
     render(<App />);
     await act(() => { load([]); });
-    await act(() => { store.applyEvent({ t: 'suggestion', seq: 2, id: 'sg9', kind: 'initiative', text: 'Group these?', strategosIds: [] }); });
-    expect(screen.queryByText('Group these?')).toBeNull();
+    await act(() => { store.applyEvent({ t: 'suggestion', seq: 2, id: 'sg9', kind: 'initiative', text: 'These 3 sessions look related: checkout — group them?', strategosIds: ['a', 'b', 'c'] }); });
+    expect(screen.getByText(/look related: checkout/)).toBeTruthy();
+    expect(sent('initiative.upsert')).toEqual([]);
+    expect(sent('initiative.assign')).toEqual([]);
+    await act(() => { fireEvent.click(screen.getByRole('button', { name: 'Accept' })); });
+    expect(sent('suggestion.respond')).toEqual([{ c: 'suggestion.respond', suggestionId: 'sg9', accept: true }]);
+    await waitFor(() => expect(screen.queryByText(/look related/)).toBeNull());
+    await act(() => { store.applyEvent({ t: 'suggestion', seq: 3, id: 'sg10', kind: 'initiative', text: 'Group these?', strategosIds: [] }); });
+    await act(() => { fireEvent.click(screen.getByRole('button', { name: 'Dismiss' })); });
+    expect(sent('suggestion.respond').at(-1)).toEqual({ c: 'suggestion.respond', suggestionId: 'sg10', accept: false });
   });
 });
 

@@ -1,13 +1,13 @@
 import { isNeedsYou, type SessionRecord } from '@strategos/shared';
-import { useEffect } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { fmtWait, money, startOfLocalDay, waitingMs } from '../format.ts';
 import { now } from '../state/clock.ts';
 import { fire } from '../state/commands.ts';
 import { focusInitiativeChip } from '../map/model.ts';
-import { groupBy, newSessionOpen, paletteOpen, setGroupBy, view } from '../state/ui.ts';
+import { groupBy, initiativeDialog, missionOpen, newSessionOpen, paletteOpen, setGroupBy, view } from '../state/ui.ts';
 import { store, type ConnStatus } from '../state/store.ts';
 import { paletteLabel } from '../keys/keymap.ts';
-import { EnableNotifications } from '../notify/notifications.tsx';
+import { enableNotifications, permission } from '../notify/notifications.tsx';
 import { UsageGauge } from './UsageGauge.tsx';
 
 const CONN_TEXT: Record<ConnStatus, string> = {
@@ -50,6 +50,50 @@ export function waitingToday(digestWaitingMs: number | undefined): string {
   return digestWaitingMs === undefined ? '–' : fmtWait(digestWaitingMs);
 }
 
+/** The quiet "⋯" menu: everything that is not the state of the work (view, grouping, notifications, palette, initiatives). */
+export function MoreMenu() {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', away);
+    return () => document.removeEventListener('mousedown', away);
+  }, [open]);
+  const pick = (fn: () => void) => () => { setOpen(false); fn(); };
+  const grouped = groupBy.value;
+  return (
+    <div class="more" ref={root} onKeyDown={(e) => { if (e.key === 'Escape' && open) { e.stopPropagation(); setOpen(false); } }}>
+      <button
+        type="button" class="quiet small" aria-haspopup="menu" aria-expanded={open} aria-label="More" title="View, grouping, notifications, command palette"
+        onClick={() => setOpen(!open)}
+      >⋯</button>
+      {open ? (
+        <div class="menu" role="menu" aria-label="More">
+          <button type="button" role="menuitemradio" aria-checked={view.value === 'map'} onClick={pick(() => { view.value = 'map'; })}>Map</button>
+          <button type="button" role="menuitemradio" aria-checked={view.value === 'list'} aria-keyshortcuts="Shift+L" onClick={pick(() => { view.value = 'list'; })}>List <kbd>Shift+L</kbd></button>
+          <hr />
+          <button
+            type="button" role="menuitem" aria-keyshortcuts="g"
+            onClick={pick(() => {
+              const next = grouped === 'repo' ? 'initiative' : 'repo';
+              setGroupBy(next);
+              fire({ c: 'prefs.set', prefs: { groupBy: next } });
+            })}
+          >Group by {grouped === 'repo' ? 'initiative' : 'repo'} <kbd>g</kbd></button>
+          {permission.value === 'default' && store.prefs.value.notifications.enabled ? (
+            <button type="button" role="menuitem" onClick={pick(() => { void enableNotifications(); })}>Enable notifications</button>
+          ) : null}
+          <hr />
+          <button type="button" role="menuitem" aria-keyshortcuts="Control+K Meta+K" onClick={pick(() => { paletteOpen.value = true; })}>Command palette <kbd>{paletteLabel()}</kbd></button>
+          <button type="button" role="menuitem" onClick={pick(() => { initiativeDialog.value = {}; })}>New initiative…</button>
+          <button type="button" role="menuitem" onClick={pick(() => { missionOpen.value = true; })}>Start a mission…</button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function TopBar() {
   const nowMs = now.value;
   const c = computeCounts(store.sessions.value.values(), nowMs);
@@ -79,35 +123,17 @@ export function TopBar() {
       <UsageGauge />
       {store.initiatives.value.filter((i) => !i.archived).map((i) => (
         <button
-          key={i.id} type="button" class="ichip" style={`--ic:${i.colour}`} title={`Initiative: ${i.name}`}
+          key={i.id} type="button" class="ichip" style={`--ic:${i.colour}`} title={`Initiative: ${i.name} (click to edit)`}
+          onClick={() => { initiativeDialog.value = { id: i.id }; }}
           onMouseEnter={() => { focusInitiativeChip.value = i.id; }} onMouseLeave={() => { focusInitiativeChip.value = null; }}
           onFocus={() => { focusInitiativeChip.value = i.id; }} onBlur={() => { focusInitiativeChip.value = null; }}
         >{i.name}</button>
       ))}
       <span class="sp" />
-      <EnableNotifications />
-      <button
-        type="button" class="quiet" aria-keyshortcuts="Control+K Meta+K" title="Command palette"
-        onClick={() => { paletteOpen.value = true; }}
-      >{paletteLabel()}</button>
-      <button
-        type="button" class="quiet" aria-keyshortcuts="g" title="Group planets by repo or by initiative (g)"
-        onClick={() => {
-          const next = groupBy.value === 'repo' ? 'initiative' : 'repo';
-          setGroupBy(next);
-          fire({ c: 'prefs.set', prefs: { groupBy: next } });
-        }}
-      >Group: {groupBy.value === 'repo' ? 'Repo' : 'Initiative'}</button>
-      <div class="seg" role="group" aria-label="View">
-        <button type="button" class={view.value === 'map' ? 'on' : ''} aria-pressed={view.value === 'map'} onClick={() => { view.value = 'map'; }}>Map</button>
-        <button
-          type="button" class={view.value === 'list' ? 'on' : ''} aria-pressed={view.value === 'list'} aria-keyshortcuts="Shift+L"
-          title="Session list (Shift+L)" onClick={() => { view.value = 'list'; }}
-        >List</button>
-      </div>
       {conn !== 'open' ? <span class={`conn ${conn}`} role="status">{CONN_TEXT[conn]}</span> : <span class="sr-only" role="status">{CONN_TEXT[conn]}</span>}
-      <button type="button" class="quiet" aria-keyshortcuts="c" onClick={() => { newSessionOpen.value = true; }}>New session</button>
       <span class="m spend" title={today ? 'Spend today, from the daemon log' : 'Spend across all sessions'}>Spend today <b class="mono">{money(spend)}</b></span>
+      <button type="button" class="quiet small" aria-keyshortcuts="c" title="New session (c)" onClick={() => { newSessionOpen.value = true; }}>New session</button>
+      <MoreMenu />
     </header>
   );
 }

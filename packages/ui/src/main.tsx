@@ -7,6 +7,7 @@ import './styles/tokens.css';
 import './styles/app.css';
 import './styles/map.css';
 import './styles/chat.css';
+import './styles/review.css';
 import { setTransport } from './state/commands.ts';
 import { createConnection } from './state/connection.ts';
 import { store } from './state/store.ts';
