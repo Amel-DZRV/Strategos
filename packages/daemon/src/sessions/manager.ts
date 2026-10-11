@@ -23,7 +23,7 @@ import * as path from 'node:path';
 import {
   isAllowedSlash, isLive,
   type Decision, type PreToolUseInput, type Effect, type MachineInput, type Observation, type DigestData, type PlanetInfo, type RiskClass, type SendResult, type SessionRecord,
-  type StartOptions, type Usage,
+  type StartOptions, type UiPrefs, type Usage,
 } from '@strategos/shared';
 import type { Config } from '../config.ts';
 import type { UsageTracker } from '../features/usage.ts';
@@ -84,6 +84,13 @@ export interface ManagerTiming {
   reconcileMs?: number;
 }
 
+/** M6 (6.02): create a worktree for session.start; the manager never runs repository writes itself. */
+export interface WorktreeProvider {
+  create(o: { repoRoot: string; name: string; branch: string; base: string; addExclude?: boolean }): Promise<{ path: string; branch: string; base: string }>;
+  /** Undo a worktree this very start created when the spawn failed (it is brand new, so nothing can be lost). */
+  discard(w: { path: string; branch: string }): Promise<void>;
+}
+
 export interface ManagerDeps {
   home: string;
   /** The port the server is bound to; read at every spawn because run settings embed it (D14). */
@@ -107,6 +114,7 @@ export interface ManagerDeps {
   /** The owner's own statusLine command, read once at daemon start. */
   ownerStatusLine?: string;
   git?: GitRunner;
+  worktrees?: WorktreeProvider;
   tailer?: Tailer;
   /** For the reconciler's `claude agents --json` half; omit to run on the sessions folder alone. */
   agentsExec?: ExecFn;
@@ -117,6 +125,10 @@ export interface ManagerDeps {
   guards?: (sid: string, ev: PreToolUseInput) => GuardVerdict;
   /** Task 4.03: risk classes of a tool call of session `sid` (features/risk.ts, wired in daemon.ts). */
   classifyRisk?: (sid: string, tool: string, input: Record<string, unknown>) => RiskClass[];
+  /** Task 6.04: compiled test-command patterns (see test-detect.ts), wired in daemon.ts. */
+  testPatterns?: () => readonly RegExp[];
+  /** Task 6.06: told about every suggestion the manager publishes (the park suggestion), so it can be answered with suggestion.respond. */
+  onSuggestion?: (s: { id: string; kind: 'park'; strategosIds: string[] }) => void;
   /** Task 4.08: burn rate, ETA and the park suggestion (features/usage.ts). Without it usage is published as received. */
   usage?: UsageTracker;
   /** Task 5.05: which owner mods are present (features/mods.ts, read-only). Default: none. */
@@ -143,6 +155,10 @@ export interface SessionManager {
   get(id: string): SessionRecord | undefined;
   list(): SessionRecord[];
   onChange(cb: (s: SessionRecord) => void): () => void;
+  /** M6: patch manager-side fields (git, pr, worktree, initiativeId, archived...) and publish `session.upsert`. A no-op for an unknown id or an empty patch. */
+  update(id: string, p: Partial<SessionRecord>): SessionRecord | undefined;
+  /** M6: daemon-wide facts shown in the snapshot prefs (e.g. `ghNeedsLogin`). Not persisted. */
+  setRuntimePrefs(p: Partial<UiPrefs>): void;
   // beyond 4.1
   seen(id: string): void;
   resumeAll(): Promise<{ resumed: string[]; failed: { id: string; error: string }[] }>;
@@ -222,6 +238,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
   const sessions = new Map<string, Live>();
   const listeners = new Set<(s: SessionRecord) => void>();
   let latestUsage: Usage | undefined;
+  let runtimePrefs: Partial<UiPrefs> = {};
   const waits: { sid: string; from: number; to?: number }[] = [];
   let shuttingDown = false;
   let tickTimer: NodeJS.Timeout | undefined;
@@ -475,6 +492,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     audit: deps.audit,
     ...(deps.guards === undefined ? {} : { checkGuards: deps.guards }),
     ...(deps.classifyRisk === undefined ? {} : { classifyRisk: deps.classifyRisk }),
+    ...(deps.testPatterns === undefined ? {} : { testPatterns: deps.testPatterns }),
     onGuardDeny: (sid, info) => {
       run(sid, { k: 'guard.denied' });
       deps.events.append('guard', { ruleId: info.ruleId, tool: info.tool, reason: info.reason }, sid).catch(logErr('event log'));
@@ -516,6 +534,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     if (suggestion !== undefined) {
       // A suggestion only: nothing is parked until the person accepts it.
       const strategosIds = [...sessions.values()].filter((l) => l.pty !== undefined && l.rec.status === 'working').map((l) => l.rec.strategosId);
+      deps.onSuggestion?.({ id: suggestion.id, kind: 'park', strategosIds });
       hub.publish({ t: 'suggestion', ...suggestion, strategosIds });
     }
   }
@@ -682,13 +701,26 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
   const api: SessionManager = {
     async start(o) {
       if (deps.claude === undefined) throw new Error(deps.claudeError ?? 'Claude Code was not found');
-      if (o.worktree !== undefined) throw new Error('Worktrees arrive in milestone M6; start the session in the repository folder for now.');
-      const cwd = await canonicalDir(o.repoPath);
-      const repo = await resolveRepo(cwd, deps.platform.paths.canonical, git);
+      let cwd = await canonicalDir(o.repoPath);
+      let repo = await resolveRepo(cwd, deps.platform.paths.canonical, git);
+      let worktree: SessionRecord['worktree'];
+      if (o.worktree !== undefined) {
+        if (deps.worktrees === undefined) throw new Error('Worktrees are not available.');
+        if (!repo.isRepo) throw new Error(`Not a repository: ${cwd}`);
+        const made = await deps.worktrees.create({ repoRoot: repo.repoRoot, ...o.worktree });
+        worktree = { path: made.path, branch: made.branch, base: made.base, createdByStrategos: true };
+        try {
+          cwd = await canonicalDir(made.path);
+          repo = await resolveRepo(cwd, deps.platform.paths.canonical, git);
+        } catch (err) {
+          await deps.worktrees.discard(made).catch(logErr('discard worktree'));
+          throw err;
+        }
+      }
       const strategosId = randomUUID();
       const claudeSessionId = randomUUID();
       const label = planetLabel(repo.planetKey);
-      const name = (o.name ?? '').trim() || `${label}-${strategosId.slice(0, 4)}`;
+      const name = (o.name ?? '').trim() || (o.worktree === undefined ? `${label}-${strategosId.slice(0, 4)}` : `${label}-${o.worktree.name}`);
       const at = now();
       const others = [...sessions.values()].map((l) => l.rec);
       const slot = assignRingSlot(others, repo.planetKey, strategosId);
@@ -696,6 +728,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
         schema: 1, strategosId, name, displayName: name,
         claudeSessionIds: [claudeSessionId], currentSessionId: claudeSessionId, transcriptOffset: 0,
         repoRoot: repo.repoRoot, planetKey: repo.planetKey, cwd, ...(repo.branch === undefined ? {} : { branch: repo.branch }),
+        ...(worktree === undefined ? {} : { worktree }),
         launch: {
           ...(o.model === undefined ? {} : { model: o.model }),
           permissionMode: o.permissionMode ?? 'default',
@@ -723,6 +756,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
         await live.spawnP;
       } catch (err) {
         await api.forget(strategosId).catch(() => undefined);
+        if (worktree !== undefined) await deps.worktrees?.discard(worktree).catch(logErr('discard worktree'));
         throw err;
       }
       return live.rec;
@@ -792,6 +826,16 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
         return { ok: false, reason: 'not_allowed', message: '/handoff-now needs the auto-handoff mod, which is not installed.' };
       }
       return sendText(id, cmd, true);
+    },
+
+    update(id, p) {
+      const live = sessions.get(id);
+      if (live === undefined || Object.keys(p).length === 0) return live?.rec;
+      patch(live, p);
+      return live.rec;
+    },
+    setRuntimePrefs(p) {
+      runtimePrefs = { ...runtimePrefs, ...p };
     },
 
     get: (id) => sessions.get(id)?.rec,
@@ -879,7 +923,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
         since, until,
         sessions: [...sessions.values()].map((l) => ({
           strategosId: l.rec.strategosId, displayName: l.rec.displayName, planetKey: l.rec.planetKey, turns: 0,
-          costUsd: l.rec.cost.lineageUsd, decisions: { allowed: 0, denied: 0 }, prs: [], finalStatus: l.rec.status,
+          costUsd: l.rec.cost.lineageUsd, decisions: { allowed: 0, denied: 0 }, prs: l.rec.pr === undefined ? [] : [{ number: l.rec.pr.number, url: l.rec.pr.url }], finalStatus: l.rec.status,
         })),
         totals: { costUsd: [...sessions.values()].reduce((a, l) => a + l.rec.cost.lineageUsd, 0), waitingMs, decisions: 0, guardDenials: [...sessions.values()].reduce((a, l) => a + l.rec.flags.guardDenials, 0) },
       };
@@ -938,7 +982,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     },
 
     snapshot() {
-      const prefs = { ...store.get().prefs, mods: deps.mods?.() ?? { autoHandoff: false } };
+      const prefs = { ...store.get().prefs, ...runtimePrefs, mods: deps.mods?.() ?? { autoHandoff: false } };
       if (!deps.version.inRange) prefs.claudeVersionOutOfRange = true;
       const banner = deps.stateBanner ?? store.banner?.message;
       if (banner !== undefined) prefs.stateBanner = banner;

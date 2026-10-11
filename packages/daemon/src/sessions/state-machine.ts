@@ -257,6 +257,9 @@ function onHook(c: Ctx, h: HookMachineInput): void {
         markInterrupted(c, 'hook', `PostToolUseFailure:${h.tool}`);
       } else {
         s.now = undefined;
+        if (h.testResult !== undefined) {
+          s.flags = { ...s.flags, lastTest: { command: h.testResult.command, ok: h.testResult.ok, at: c.now } };
+        }
         toWorking(c, 'hook', `PostToolUseFailure:${h.tool}`);
       }
       break;

@@ -20,6 +20,7 @@ import {
   type PermissionRequestInput, type PreToolUseInput, type RiskClass,
 } from '@strategos/shared';
 import type { AuditLog } from '../store/audit-log.ts';
+import { testResultOf } from '../git/test-detect.ts';
 import { reply } from '../server/guards.ts';
 import { responderFromRes, type PendingRegistry } from './pending.ts';
 
@@ -35,6 +36,8 @@ export interface ReceiverDeps {
   checkGuards?: (sid: string, ev: PreToolUseInput) => GuardVerdict;
   /** Risk classes of a tool call (task 4.03). Default: none. */
   classifyRisk?: (sid: string, tool: string, input: Record<string, unknown>) => RiskClass[];
+  /** Task 6.04: compiled config.portable.testCommandPatterns. A matching Bash command that finishes sets flags.lastTest. */
+  testPatterns?: () => readonly RegExp[];
   audit?: Pick<AuditLog, 'append'>;
   /** A guard denied a tool call (task 4.04 counts these in `flags.guardDenials`). */
   onGuardDeny?: (sid: string, info: { ruleId: string; reason: string; tool: string; requestId: string }) => void;
@@ -191,14 +194,15 @@ export function createHookReceiver(deps: ReceiverDeps): HookReceiver {
       }
       case 'PostToolUse': {
         const tool = h.tool_name ?? 'unknown';
-        // TODO(4.x): testResult from config.testCommandPatterns.
-        return { input: { ...b, event: 'PostToolUse', tool, ...(h.tool_use_id === undefined ? {} : { toolUseId: h.tool_use_id }), summary: summarise(tool, h.tool_input).text } as HookMachineInput };
+        const testResult = deps.testPatterns === undefined ? undefined : testResultOf(deps.testPatterns(), h);
+        return { input: { ...b, event: 'PostToolUse', tool, ...(h.tool_use_id === undefined ? {} : { toolUseId: h.tool_use_id }), summary: summarise(tool, h.tool_input).text, ...(testResult === undefined ? {} : { testResult }) } as HookMachineInput };
       }
       case 'PostToolUseFailure': {
         const tool = h.tool_name ?? 'unknown';
+        const testResult = deps.testPatterns === undefined ? undefined : testResultOf(deps.testPatterns(), h);
         return {
           input: {
-            ...b, event: 'PostToolUseFailure', tool, isInterrupt: h.is_interrupt === true,
+            ...b, event: 'PostToolUseFailure', tool, isInterrupt: h.is_interrupt === true, ...(testResult === undefined ? {} : { testResult }),
             ...(h.tool_use_id === undefined ? {} : { toolUseId: h.tool_use_id }),
             summary: summarise(tool, h.tool_input).text,
             ...(h.error === undefined ? {} : { error: h.error.slice(0, SUMMARY_MAX) }),
