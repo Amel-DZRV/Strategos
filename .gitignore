@@ -12,3 +12,7 @@ coverage/
 
 # Agent worktrees
 .claude/worktrees/
+
+# Electron shell build output
+packages/shell-electron/build/
+packages/shell-electron/release/

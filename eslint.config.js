@@ -16,7 +16,7 @@ const safeFsMessage = 'Filesystem writes in the daemon must go through packages/
 
 export default tseslint.config(
   { ignores: ['.claude/**', 'spike/**', 'design/**', 'docs/**', 'tools/**', 'fixtures/**'] },
-  { ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**'] },
+  { ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', 'packages/shell-electron/release/**', 'packages/shell-electron/build/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

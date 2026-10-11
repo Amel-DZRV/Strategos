@@ -5,6 +5,7 @@
 // answers with an HttpOnly cookie that the WebSocket upgrade carries. A reload later needs no code.
 import { isDaemonEvent, isSeqEvent, PROTOCOL, type DaemonEvent } from '@strategos/shared';
 import type { Ack, ChannelMessage, CommandInput, Transport } from './commands.ts';
+import { getElectronApi } from '../shell-bridge.ts';
 import type { Store } from './store.ts';
 
 /** The part of WebSocket we use, so tests can pass a fake. */
@@ -30,6 +31,8 @@ export interface ConnectionDeps {
   random?: () => number;
   commandTimeoutMs?: number;
   backoff?: { baseMs: number; maxMs: number };
+  /** The shell's pairing code over IPC. Default: window.strategosShell.getPairCode when running in Electron. */
+  getPairCode?: () => Promise<string | null>;
 }
 
 const OPEN = 1;
@@ -201,10 +204,24 @@ export function createConnection(deps: ConnectionDeps): Connection {
   }
 
   async function pair(): Promise<void> {
-    const m = /(?:^|[#&])pair=([^&]+)/.exec(loc.hash);
-    if (m === null) return;
-    const code = decodeURIComponent(m[1]!);
-    hist.replaceState(null, '', loc.pathname + loc.search); // the code must not stay in the address bar or history
+    let code: string | null = null;
+    // In the Electron shell the code comes over IPC (plan section 10): it is never in the URL or on disk. An existing
+    // cookie from an earlier run is reused, so a restart does not spend a code.
+    const getIpcCode = deps.getPairCode ?? getElectronApi()?.getPairCode;
+    if (getIpcCode !== undefined) {
+      if (await checkPaired()) return;
+      try {
+        code = await getIpcCode();
+      } catch {
+        code = null;
+      }
+    }
+    if (code === null) {
+      const m = /(?:^|[#&])pair=([^&]+)/.exec(loc.hash);
+      if (m === null) return;
+      code = decodeURIComponent(m[1]!);
+      hist.replaceState(null, '', loc.pathname + loc.search); // the code must not stay in the address bar or history
+    }
     try {
       const r = await doFetch('/api/pair', {
         method: 'POST',

@@ -1,6 +1,6 @@
 // The only shell-specific surface in the UI (plan section 4.1). This is the browser implementation; the Electron
 // shell (M7) provides another with kind 'electron'.
-import type { UiNotification } from '@strategos/shared';
+import type { StrategosShellApi, UiNotification } from '@strategos/shared';
 
 export interface ShellBridge {
   notify(n: UiNotification): void;
@@ -14,6 +14,10 @@ export interface ShellBridge {
   notificationPermission(): NotificationPermission | 'unsupported';
   /** Ask the browser for permission. Call it from a click, never on load. */
   requestNotificationPermission(): Promise<NotificationPermission | 'unsupported'>;
+  /** Electron only: the tray icon was clicked. Select the oldest session that is waiting for you. */
+  onSelectOldestBlocked?(cb: () => void): void;
+  /** Electron only: the shell's platform (process.platform), for the D20 path rules of toast buttons. */
+  platform?: string;
   kind: 'browser' | 'electron';
 }
 
@@ -111,4 +115,35 @@ export function createBrowserShellBridge(win: Window = window): ShellBridge {
   };
 }
 
-export const shell: ShellBridge = createBrowserShellBridge();
+/** The Electron shell's preload puts `strategosShell` on the window (packages/shell-electron/src/preload.ts). */
+export function getElectronApi(win: Window = window): StrategosShellApi | undefined {
+  const api = (win as unknown as { strategosShell?: StrategosShellApi }).strategosShell;
+  return api !== undefined && api.kind === 'electron' ? api : undefined;
+}
+
+/** Everything goes over IPC to the main process: native toasts with buttons, taskbar badge, tray, window focus. */
+export function createElectronShellBridge(api: StrategosShellApi): ShellBridge {
+  return {
+    kind: 'electron',
+    platform: api.platform,
+    notificationPermission: () => 'granted', // native notifications need no page permission
+    requestNotificationPermission: () => Promise.resolve('granted'),
+    notify: (n) => { api.notify(n); },
+    setBadge: (count) => { api.setBadge(count); },
+    focusWindow: () => { api.focusWindow(); },
+    openExternal: (url) => {
+      if (!/^https?:\/\//i.test(url)) return; // main checks again
+      api.openExternal(url);
+    },
+    onNotificationAction: (cb) => { api.onNotificationAction(cb); },
+    onNotificationClick: (cb) => { api.onNotificationClick(cb); },
+    onSelectOldestBlocked: (cb) => { api.onSelectOldestBlocked(cb); },
+  };
+}
+
+export function createShellBridge(win: Window = window): ShellBridge {
+  const api = getElectronApi(win);
+  return api === undefined ? createBrowserShellBridge(win) : createElectronShellBridge(api);
+}
+
+export const shell: ShellBridge = createShellBridge();

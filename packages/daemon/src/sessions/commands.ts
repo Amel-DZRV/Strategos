@@ -1,7 +1,7 @@
 // WebSocket commands for the session manager (plan section 5 UiCommand). Each handler validates nothing the protocol
 // already validated; it maps a command to a manager call and a failure to `{ ok: false, error }` (an `ack` with ok:false).
 import type { SendResult } from '@strategos/shared';
-import { approveLowRisk } from '../features/risk.ts';
+import { approveLowRisk, toastAllowRefusal } from '../features/risk.ts';
 import type { CommandResult, WsHub } from '../server/ws-hub.ts';
 import type { Result } from '../hooks/pending.ts';
 import type { SessionManager } from './manager.ts';
@@ -85,6 +85,10 @@ export function registerSessionCommands(hub: WsHub, m: SessionManager, onError: 
   // ---- requests -----------------------------------------------------------------
   hub.registerCommand('perm.decide', (c, ctx) => {
     const via = c.via ?? 'drawer';
+    if (via === 'toast' && c.decision !== 'deny') { // D20/D21 again, on the full input (7.03). 'always' never comes from a toast.
+      const refusal = c.decision === 'always' ? 'a notification cannot grant a permanent rule' : toastAllowRefusal(m, m.get(c.strategosId), c.requestId);
+      if (refusal !== null) return fail(refusal);
+    }
     const d = c.decision === 'allow' ? { kind: 'allow' as const, via }
       : c.decision === 'deny' ? { kind: 'deny' as const, via, ...(c.message === undefined ? {} : { message: c.message }) }
         : { kind: 'always' as const, via, ...(c.suggestionIndex === undefined ? {} : { suggestionIndex: c.suggestionIndex }) };
