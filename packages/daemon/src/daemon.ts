@@ -7,11 +7,15 @@
 import { execFile } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkClaudeVersion, TESTED_RANGE, type VersionStatus } from './claude-version.ts';
 import { loadConfig, strategosHome, type Config } from './config.ts';
 import { acquireLock } from './daemon-lock.ts';
+import { checkGuards } from './features/guards.ts';
+import { classifyRisk, riskCtxOf } from './features/risk.ts';
+import { createUsageTracker } from './features/usage.ts';
 import { cliSecretPath, daemonJsonPath, type DaemonInfo } from './home-files.ts';
 import { createLogger, errText, type Logger } from './logger.ts';
 import { getPlatform, type Platform } from './platform/index.ts';
@@ -60,6 +64,8 @@ export interface DaemonOptions {
   testedRange?: string;
   /** Tests: wrap the SafeFs to record every path the daemon writes. */
   wrapFs?: (fs: SafeFs) => SafeFs;
+  /** Notifications stay quiet this long after startup (default 1500 ms): nothing is announced for what was already there. */
+  notifyQuietMs?: number;
 }
 
 export interface Daemon {
@@ -206,6 +212,10 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
         }) satisfies ExecFn,
       } : {}),
       isDescendant: makeIsDescendant(platform),
+      // 4.04: guards read the live rule list of the config; they only ever deny. 4.03: risk classes need the session's worktree.
+      guards: (_sid, ev) => checkGuards(config.portable.guards, ev, { home: os.homedir() }),
+      classifyRisk: (sid, tool, input) => { const s = ref.m?.get(sid); return s === undefined ? [] : classifyRisk(tool, input, riskCtxOf(s)); },
+      usage: createUsageTracker(),
       version, logger, ...(opts.timing === undefined ? {} : { timing: opts.timing }),
     });
     ref.m = m;
@@ -250,6 +260,7 @@ export async function startDaemon(opts: DaemonOptions = {}): Promise<Daemon> {
     await sfs.chmodUserOnly(cliSecretPath(home)).catch((err: unknown) => { logger.warn(`could not restrict cli.secret: ${errText(err)}`); });
     await sfs.writeFileAtomic(daemonJsonPath(home), JSON.stringify(info) + '\n');
     m.startBackground();
+    m.notifications.arm(opts.notifyQuietMs ?? 1500);
     logger.info(`listening on 127.0.0.1:${port}${staticDir === undefined ? ' (no UI build found)' : ''}`);
 
     let closing: Promise<void> | undefined;

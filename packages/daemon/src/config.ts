@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { isGuardRule, type GuardRule, type NotificationPrefs } from '@strategos/shared';
+import { starterGuards } from './features/guards.ts';
 import type { SafeFs } from './safe-fs.ts';
 
 export const PORT_MIN = 49152;
@@ -65,7 +66,7 @@ export function randomPort(rand: (min: number, max: number) => number = (a, b) =
 export function defaultPortable(): PortableConfig {
   return {
     env: { keep: [], set: {} },
-    guards: [],
+    guards: starterGuards(), // task 4.04: seeded; an empty list in config.json is read as "use the starter rules" (disable a rule with enabled:false)
     notifications: { enabled: true, sound: true, onPermission: true, onQuestion: true, onErrored: true, onDone: false, escalate: true },
     thresholds: {
       ctxWarnPct: 70, ctxFullPct: 85, escalateMinutes: [5, 15], stuckRepeatCount: 3, stuckFailureCount: 5, stuckQuietMinutes: 10, releaseMarginSec: 30,
@@ -205,7 +206,7 @@ export function validateConfig(raw: unknown, pickPort: () => number = randomPort
         } else if (seen.has(g.id)) err(`portable.guards[${i}].id`, `duplicate id ${show(g.id)}`);
         else seen.add(g.id);
       });
-      guards = p['guards'] as GuardRule[];
+      guards = p['guards'].length === 0 ? dp.guards : (p['guards'] as GuardRule[]);
     }
   }
 

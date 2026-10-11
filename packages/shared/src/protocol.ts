@@ -40,7 +40,10 @@ export type UiCommand = { id: string } & (
   | { c: 'perm.decide'; strategosId: string; requestId: string; decision: 'allow' | 'deny' | 'always'; message?: string; suggestionIndex?: number; via?: string } // via: audit label, default 'drawer'
   | { c: 'perm.release'; strategosId: string; requestId: string }
   | { c: 'pending.full'; strategosId: string; requestId: string } // D21: answered with a `pending.full` event
-  | { c: 'perm.approveLowRisk'; initiativeId: string }
+  /** Approve what D20 allows. initiativeId '*' = every session (until initiatives exist). requestIds: only these (the list the person confirmed). */
+  | { c: 'perm.approveLowRisk'; initiativeId: string; requestIds?: string[] }
+  /** The UI tells the daemon which session it is showing (null: none), so no notification is raised for it. Per connection. */
+  | { c: 'view.focus'; strategosId: string | null }
   | { c: 'question.answer'; strategosId: string; requestId: string; answers: Record<string, string>; via?: string }
   | { c: 'reply.send'; strategosId: string; text: string }
   | { c: 'slash.send'; strategosId: string; cmd: AllowedSlash }
@@ -162,7 +165,8 @@ const SPECS: Record<UiCommandKind, Check[]> = {
   ],
   'perm.release': [sid, rid],
   'pending.full': [sid, rid],
-  'perm.approveLowRisk': [need('initiativeId', isNonEmpty, 'a non-empty string')],
+  'perm.approveLowRisk': [need('initiativeId', isNonEmpty, 'a non-empty string'), optional('requestIds', (v) => Array.isArray(v) && v.every(isNonEmpty), 'an array of non-empty strings')],
+  'view.focus': [need('strategosId', (v) => v === null || isNonEmpty(v), 'a string or null')],
   'question.answer': [sid, rid, need('answers', isStringRecord, 'a string-to-string record'), optional('via', isStr, 'a string')],
   'reply.send': [sid, need('text', isStr, 'a string')],
   'slash.send': [sid, need('cmd', isAllowedSlash, 'one of /compact, /handoff-now, /keepwarm 60m|90m|2h')],

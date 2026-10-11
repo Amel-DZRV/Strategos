@@ -22,10 +22,12 @@ import { stat } from 'node:fs/promises';
 import * as path from 'node:path';
 import {
   isAllowedSlash, isLive,
-  type Decision, type PreToolUseInput, type Effect, type MachineInput, type Observation, type DigestData, type PlanetInfo, type SendResult, type SessionRecord,
+  type Decision, type PreToolUseInput, type Effect, type MachineInput, type Observation, type DigestData, type PlanetInfo, type RiskClass, type SendResult, type SessionRecord,
   type StartOptions, type Usage,
 } from '@strategos/shared';
 import type { Config } from '../config.ts';
+import type { UsageTracker } from '../features/usage.ts';
+import { createNotifyPolicy, type NotifyOut, type NotifyPolicy } from '../notify/policy.ts';
 import { createPendingRegistry, type PendingRegistry, type ReleaseWhy, type Result } from '../hooks/pending.ts';
 import { createHookReceiver, type GuardVerdict, type HookReceiver } from '../hooks/receiver.ts';
 import { removeRunSettings, sweepRunDir, writeRunSettings } from '../hooks/settings-writer.ts';
@@ -109,6 +111,10 @@ export interface ManagerDeps {
   stateBanner?: string;
   logger: Logger;
   guards?: (sid: string, ev: PreToolUseInput) => GuardVerdict;
+  /** Task 4.03: risk classes of a tool call of session `sid` (features/risk.ts, wired in daemon.ts). */
+  classifyRisk?: (sid: string, tool: string, input: Record<string, unknown>) => RiskClass[];
+  /** Task 4.08: burn rate, ETA and the park suggestion (features/usage.ts). Without it usage is published as received. */
+  usage?: UsageTracker;
   timing?: ManagerTiming;
   now?: () => number;
 }
@@ -147,6 +153,8 @@ export interface SessionManager {
   digest(since: number): DigestData;
   readonly registry: PendingRegistry;
   readonly receiver: HookReceiver;
+  /** Tasks 2.09/4.05: which `notify` effects reach the UI. Starts disarmed (the daemon arms it a moment after startup). */
+  readonly notifications: NotifyPolicy;
   /** `tokenFor` of the server. */
   tokenFor(sid: string): string | undefined;
   statusLineHandler: ReturnType<typeof createStatusLineHandler>;
@@ -299,11 +307,10 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
         break;
       case 'notify': {
         const risk = (e.kind === 'permission' || e.kind === 'question') ? live.rec.pending?.risk : undefined;
-        hub.publish({
-          t: 'notify', kind: e.kind, strategosId: sid, title: e.title, body: e.body,
-          ...(risk === undefined || risk.length === 0 ? {} : { risk }), ...(e.requestId === undefined ? {} : { requestId: e.requestId }),
-        });
-        deps.events.append('notify', { kind: e.kind, ...(e.requestId === undefined ? {} : { requestId: e.requestId }) }, sid).catch(logErr('event log'));
+        // notify/policy decides whether this becomes a published `notify` event (publishNotify below).
+        if (e.kind !== 'escalate') {
+          notifications.offer(sid, { kind: e.kind, title: e.title, body: e.body, ...(risk === undefined ? {} : { risk }), ...(e.requestId === undefined ? {} : { requestId: e.requestId }) });
+        }
         break;
       }
       case 'chat.marker':
@@ -360,6 +367,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     if (changed) {
       live.rec = r.next;
       persistRec(live);
+      if (r.next.status !== before.status) notifications.setStatus(sid, r.next.status); // before the effects: offer() relies on it
     }
     if (input.k === 'hook') {
       const h = input.hook;
@@ -405,11 +413,27 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     now,
   });
 
+  function publishNotify(n: NotifyOut): void {
+    hub.publish({
+      t: 'notify', kind: n.kind, strategosId: n.strategosId, title: n.title, body: n.body,
+      ...(n.risk === undefined || n.risk.length === 0 ? {} : { risk: n.risk }), ...(n.requestId === undefined ? {} : { requestId: n.requestId }),
+    });
+    deps.events.append('notify', { kind: n.kind, ...(n.requestId === undefined ? {} : { requestId: n.requestId }) }, n.strategosId).catch(logErr('event log'));
+  }
+  const notifications = createNotifyPolicy({
+    publish: publishNotify,
+    prefs: () => deps.config.portable.notifications,
+    escalateMinutes: () => deps.config.portable.thresholds.escalateMinutes,
+    now,
+    onError: logErr('notify policy'),
+  });
+
   const receiver = createHookReceiver({
     registry,
     dispatch: run,
     audit: deps.audit,
     ...(deps.guards === undefined ? {} : { checkGuards: deps.guards }),
+    ...(deps.classifyRisk === undefined ? {} : { classifyRisk: deps.classifyRisk }),
     onGuardDeny: (sid, info) => {
       run(sid, { k: 'guard.denied' });
       deps.events.append('guard', { ruleId: info.ruleId, tool: info.tool, reason: info.reason }, sid).catch(logErr('event log'));
@@ -425,10 +449,26 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     now,
   });
 
-  function onUsage(u: Usage): void {
+  function onUsage(reading: Usage): void {
+    let u = reading;
+    let suggestion: { id: string; kind: 'park'; text: string } | undefined;
+    if (deps.usage !== undefined) {
+      try {
+        const r = deps.usage.ingest(reading);
+        u = r.usage;
+        suggestion = r.suggestion;
+      } catch (err) {
+        logger.error('usage tracker', err);
+      }
+    }
     const same = latestUsage !== undefined && JSON.stringify({ ...latestUsage, at: 0 }) === JSON.stringify({ ...u, at: 0 });
     latestUsage = u;
     if (!same) hub.publish({ t: 'usage', usage: u });
+    if (suggestion !== undefined) {
+      // A suggestion only: nothing is parked until the person accepts it.
+      const strategosIds = [...sessions.values()].filter((l) => l.pty !== undefined && l.rec.status === 'working').map((l) => l.rec.strategosId);
+      hub.publish({ t: 'suggestion', ...suggestion, strategosIds });
+    }
   }
 
   // ---- processes ------------------------------------------------------------
@@ -666,6 +706,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       }
       registry.dropSession(id);
       receiver.forget(id);
+      notifications.forget(id);
       live.unfollow?.();
       sessions.delete(id);
       if (store.loaded) store.update((st) => { st.sessions = st.sessions.filter((s) => s.strategosId !== id); });
@@ -780,6 +821,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     markers: (id) => [...(sessions.get(id)?.markers ?? [])],
     registry,
     receiver,
+    notifications,
     tokenFor: (sid) => sessions.get(sid)?.token,
     statusLineHandler,
 
@@ -837,6 +879,7 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       stopReconciler?.();
       if (tickTimer !== undefined) clearInterval(tickTimer);
       registry.releaseAll();
+      notifications.dispose();
       const live = [...sessions.values()].filter((l) => l.pty !== undefined || l.spawnP !== undefined);
       await Promise.all(live.map(async (l) => {
         await l.spawnP?.catch(() => undefined);
