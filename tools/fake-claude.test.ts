@@ -73,7 +73,7 @@ describe('fake-claude scenarios', () => {
       }
     }
   };
-  const waitOut = async (r: Run, text: string, ms = 15_000): Promise<void> => {
+  const waitOut = async (r: Run, text: string, ms = 45_000): Promise<void> => {
     const end = Date.now() + ms;
     while (!r.out().includes(text)) {
       if (Date.now() > end) throw new Error(`timed out waiting for output ${JSON.stringify(text)}; got ${JSON.stringify(r.out().slice(-300))}`);

@@ -28,5 +28,10 @@ export function appendText(path: string, content: string): void {
 
 export function rmTree(path: string): void {
   // Windows: a just-killed child (or AV/indexer) can hold files for a moment; rmSync retries EBUSY/EPERM/ENOTEMPTY with a growing delay (~40s worst case).
-  rmSync(path, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
+  // Cleanup is best effort: a grandchild (hook relay) still holding the directory must not fail an otherwise green test.
+  try {
+    rmSync(path, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
+  } catch (e) {
+    console.warn(`rmTree: could not remove ${path}: ${(e as Error).message}`);
+  }
 }

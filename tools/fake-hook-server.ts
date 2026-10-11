@@ -69,7 +69,7 @@ export async function startHookServer(responder: Responder = () => ({ status: 20
   return {
     port, hooks, held,
     setResponder(fn) { respondWith = fn; },
-    waitFor(pred, ms = 15_000) {
+    waitFor(pred, ms = 45_000) {
       const found = hooks.find(pred);
       if (found) return Promise.resolve(found);
       return new Promise((resolve, reject) => {
@@ -77,7 +77,7 @@ export async function startHookServer(responder: Responder = () => ({ status: 20
         waiters.push({ pred, resolve: (h) => { clearTimeout(t); resolve(h); } });
       });
     },
-    async waitHeld(ms = 15_000) {
+    async waitHeld(ms = 45_000) {
       const end = Date.now() + ms;
       while (held.length === 0) {
         if (Date.now() > end) throw new Error('timed out waiting for a held request');

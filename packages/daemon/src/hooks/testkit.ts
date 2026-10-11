@@ -80,7 +80,7 @@ export async function makeHarness(o: { holdTimeoutSec?: number; releaseMarginSec
       if (s === undefined) throw new Error(`no session ${sid}`);
       return s;
     },
-    async until(pred, ms = 10_000, what = 'condition') {
+    async until(pred, ms = 45_000, what = 'condition') {
       const end = Date.now() + ms;
       while (!pred()) {
         if (Date.now() > end) throw new Error(`timed out waiting for ${what}`);

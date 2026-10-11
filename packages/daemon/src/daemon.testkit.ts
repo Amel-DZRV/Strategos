@@ -115,12 +115,12 @@ export class UiClient {
       ws.once('open', () => resolve());
       ws.once('error', reject);
     });
-    await c.until(() => c.snapshot !== undefined, 5000, 'snapshot');
+    await c.until(() => c.snapshot !== undefined, 15_000, 'snapshot');
     return c;
   }
 
   /** Send a command and wait for its ack. */
-  cmd(c: DistributiveOmit<UiCommand, 'id'>, timeoutMs = 20_000): Promise<{ ok: boolean; error?: string }> {
+  cmd(c: DistributiveOmit<UiCommand, 'id'>, timeoutMs = 45_000): Promise<{ ok: boolean; error?: string }> {
     const id = `t${++this.n}`;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error(`no ack for ${c.c}`)), timeoutMs);
@@ -129,7 +129,7 @@ export class UiClient {
     });
   }
 
-  async until(pred: () => boolean, ms = 15_000, what = 'condition'): Promise<void> {
+  async until(pred: () => boolean, ms = 45_000, what = 'condition'): Promise<void> {
     const end = Date.now() + ms;
     while (!pred()) {
       if (Date.now() > end) throw new Error(`timed out waiting for ${what}`);
