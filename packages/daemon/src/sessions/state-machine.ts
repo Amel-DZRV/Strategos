@@ -119,18 +119,43 @@ function upsertSubagent(c: Ctx, agentId: string, running: boolean, type: string 
   if (running) {
     entry = { agentId, type: type ?? prev?.type, running: true, startedAt: c.now };
   } else {
-    entry = { agentId, type: type ?? prev?.type, running: false, startedAt: prev?.startedAt ?? c.now, endedAt: c.now };
+    // only called for known agents (unknown stops are ignored by the caller)
+    entry = { agentId, type: type ?? prev?.type, running: false, startedAt: (prev as { startedAt: number }).startedAt, endedAt: c.now };
   }
   const next = i >= 0 ? list.map((a, j) => (j === i ? entry : a)) : [...list, entry];
   c.s.subagents = next.slice(-SUBAGENTS_MAX);
 }
 
+function answeredElsewhere(p: Pending, h: HookMachineInput): boolean {
+  switch (h.event) {
+    case 'PostToolUse':
+    case 'PostToolUseFailure':
+      return p.toolUseId !== undefined && h.toolUseId !== undefined ? p.toolUseId === h.toolUseId : p.toolName === h.tool;
+    case 'PreToolUse':
+      return p.toolUseId !== undefined && h.toolUseId !== undefined && p.toolUseId !== h.toolUseId;
+    case 'UserPromptSubmit':
+    case 'Stop':
+    case 'StopFailure':
+      return true;
+    default:
+      return false;
+  }
+}
+
 function onHook(c: Ctx, h: HookMachineInput): void {
   const s = c.s;
   if (h.event !== 'SessionStart' && h.claudeSessionId !== undefined && !s.claudeSessionIds.includes(h.claudeSessionId)) {
-    // Not from this lineage (for instance a `claude -p` run by the session's own Bash tool): never touch status.
-    log(c, 'error', { why: 'hook_from_unknown_session', event: h.event, claudeSessionId: h.claudeSessionId });
-    return;
+    if (s.status === 'starting' || s.status === 'trust_pending') {
+      // SessionStart travels by a command-hook relay and may arrive after the first UserPromptSubmit: adopt the new id
+      // into the lineage as if it were SessionStart(startup). Only before the first hook; later strangers are ignored.
+      const l = applySessionStart(s, { claudeSessionId: h.claudeSessionId, source: 'startup', transcriptPath: h.transcriptPath });
+      Object.assign(s, l.patch);
+      c.fx.push(...l.effects);
+    } else {
+      // Not from this lineage (for instance a `claude -p` run by the session's own Bash tool): never touch status.
+      log(c, 'error', { why: 'hook_from_unknown_session', event: h.event, claudeSessionId: h.claudeSessionId });
+      return;
+    }
   }
   s.lastActivityAt = c.now;
   if (h.model !== undefined) s.model = h.model;
@@ -139,7 +164,12 @@ function onHook(c: Ctx, h: HookMachineInput): void {
 
   // Rule 3: events from a subagent update `subagents` and `now` only ...
   if (h.event === 'SubagentStart' || h.event === 'SubagentStop') {
-    if (h.agentId !== undefined) upsertSubagent(c, h.agentId, h.event === 'SubagentStart', h.agentType);
+    // SubagentStop fires after almost every turn for internal helpers, often with no SubagentStart (S-batch-1):
+    // a stop for an unknown agent id is ignored so no phantom subagents appear.
+    const known = h.agentId !== undefined && s.subagents.some((a) => a.agentId === h.agentId);
+    if (h.agentId !== undefined && (h.event === 'SubagentStart' || known)) {
+      upsertSubagent(c, h.agentId, h.event === 'SubagentStart', h.agentType);
+    }
     return;
   }
   const req: Pending | undefined = h.event === 'PermissionRequest' || h.event === 'PreToolUse' ? h.pending : undefined;
@@ -154,11 +184,21 @@ function onHook(c: Ctx, h: HookMachineInput): void {
     return;
   }
 
-  // Rule 8: while a hold is open, no hook event touches `pending` or the status.
+  // Rule 8 (amended after spike S2): while a hold is open, no hook event DECIDES it or changes the status on its own.
+  // Answering in the TUI does NOT close our held connection, so hook evidence that the request was answered elsewhere
+  // (PostToolUse/Failure for the same tool, a PreToolUse with a different tool_use_id, UserPromptSubmit, Stop,
+  // StopFailure) RELEASES it: `hook.respond no_decision` (fail-open to the TUI dialog) and pending is cleared, then the
+  // event is processed normally. A forged event can therefore only cause a release, never an allow.
   if (s.pending?.held === true) {
-    if (req !== undefined) releasePending(c, req, 'superseded'); // let the TUI show the second dialog itself
-    log(c, 'error', { why: 'hook_ignored_while_held', event: h.event, requestId: s.pending.requestId });
-    return;
+    const p = s.pending;
+    if (answeredElsewhere(p, h)) {
+      releasePending(c, p, `evidence:${h.event}`);
+      s.pending = undefined;
+    } else {
+      if (req !== undefined) releasePending(c, req, 'superseded'); // let the TUI show the second dialog itself
+      log(c, 'error', { why: 'hook_ignored_while_held', event: h.event, requestId: p.requestId });
+      return;
+    }
   }
 
   // Hooks that reach a stopped, parked or open_elsewhere record carry no status information.
@@ -218,7 +258,8 @@ function onHook(c: Ctx, h: HookMachineInput): void {
       }
       break;
     case 'PermissionRequest':
-      enterPending(c, h.pending, 'hook', `PermissionRequest:${h.pending.toolName}`);
+      // AskUserQuestion also raises a PermissionRequest after its PreToolUse returned no decision: it is a question.
+      enterPending(c, h.pending.toolName === 'AskUserQuestion' ? { ...h.pending, kind: 'question' } : h.pending, 'hook', `PermissionRequest:${h.pending.toolName}`);
       break;
     case 'Notification':
       if (h.pending !== undefined) enterPending(c, h.pending, 'hook', `Notification:${h.notificationType ?? 'unknown'}`);

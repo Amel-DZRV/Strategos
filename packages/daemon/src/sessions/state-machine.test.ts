@@ -534,16 +534,15 @@ describe('permission and question', () => {
 });
 
 describe('rule 8: a held request is cleared only by its own resolution', () => {
-  const held = () => makeSession({ status: 'permission', pending: makePending(), waitingSince: T0 - 50 });
+  const held = () => makeSession({ status: 'permission', pending: makePending({ toolUseId: 'tu1' }), waitingSince: T0 - 50 });
   const forged: HookMachineInput[] = [
-    { event: 'PostToolUse', tool: 'Bash' },
-    { event: 'PreToolUse', tool: 'Read', summary: 'x' },
-    { event: 'Stop', lastMessage: 'bye' },
-    { event: 'StopFailure', error: 'x' },
-    { event: 'UserPromptSubmit' },
+    { event: 'PostToolUse', tool: 'Read' }, // a different tool: not evidence
+    { event: 'PostToolUse', tool: 'Bash', toolUseId: 'other' }, // ids present and different: not evidence
+    { event: 'PreToolUse', tool: 'Read', summary: 'x' }, // no ids to compare: not evidence
+    { event: 'PreToolUse', tool: 'Read', summary: 'x', toolUseId: 'tu1' }, // same id as the pending: not evidence
     { event: 'SessionEnd', reason: 'other' },
     { event: 'SessionStart', source: 'clear' },
-    { event: 'PostToolUseFailure', tool: 'Bash', isInterrupt: true },
+    { event: 'PostToolUseFailure', tool: 'Read', isInterrupt: true },
     { event: 'PreCompact' },
     { event: 'Notification', notificationType: 'elicitation_dialog', pending: makePending({ requestId: 'r9', kind: 'question', held: false }) },
   ];
@@ -554,6 +553,33 @@ describe('rule 8: a held request is cleared only by its own resolution', () => {
     expect(next.pending).toBe(s.pending);
     expect(next.waitingSince).toBe(T0 - 50);
     expect(effectsOf(effects, 'hook.respond')).toEqual([]);
+  });
+
+  // Amendment after spike S2: answering in the TUI does not close our connection, so hook evidence releases (never decides).
+  const evidence: [string, HookMachineInput, SessionRecord['status']][] = [
+    ['PostToolUse, same tool_use_id', { event: 'PostToolUse', tool: 'Bash', toolUseId: 'tu1' }, 'working'],
+    ['PostToolUse, same tool name, no ids', { event: 'PostToolUse', tool: 'Bash' }, 'working'],
+    ['PostToolUseFailure, same tool name', { event: 'PostToolUseFailure', tool: 'Bash', isInterrupt: false }, 'working'],
+    ['PostToolUseFailure interrupt', { event: 'PostToolUseFailure', tool: 'Bash', isInterrupt: true }, 'interrupted'],
+    ['PreToolUse with a different tool_use_id', { event: 'PreToolUse', tool: 'Read', summary: 'x', toolUseId: 'tu2' }, 'working'],
+    ['UserPromptSubmit', { event: 'UserPromptSubmit' }, 'working'],
+    ['Stop', { event: 'Stop', lastMessage: 'bye' }, 'done'],
+    ['StopFailure', { event: 'StopFailure', error: 'x' }, 'errored'],
+  ];
+  it.each(evidence)('%s releases the hold (no_decision), clears pending, then applies the event', (_n, hook, status) => {
+    const { next, effects } = run(held(), H(hook));
+    expect(next.pending).toBeUndefined();
+    expect(next.status).toBe(status);
+    expect(effectsOf(effects, 'hook.respond')).toEqual([{ e: 'hook.respond', requestId: 'r1', response: 'no_decision' }]);
+    expect(effectsOf(effects, 'audit')[0]).toMatchObject({ decision: 'release', via: `evidence:${hook.event}` });
+    expect(effects.some((x) => x.e === 'hook.respond' && x.response !== 'no_decision')).toBe(false); // never a decision
+  });
+
+  it('a new held AskUserQuestion with a different tool_use_id releases the old hold and takes over', () => {
+    const q = makePending({ requestId: 'r5', kind: 'question', toolName: 'AskUserQuestion', toolUseId: 'tu9' });
+    const { next, effects } = run(held(), H({ event: 'PreToolUse', tool: 'AskUserQuestion', summary: 'q', toolUseId: 'tu9', pending: q }));
+    expect(next).toMatchObject({ status: 'question', pending: { requestId: 'r5' } });
+    expect(effectsOf(effects, 'hook.respond').map((x) => x.requestId)).toEqual(['r1']);
   });
 
   it('a second PermissionRequest is released to the TUI instead of replacing the first', () => {
@@ -727,9 +753,9 @@ describe('rule 3: subagents', () => {
     expect(s.status).toBe('done');
   });
 
-  it('SubagentStart again restarts an entry; SubagentStop for an unknown agent records it', () => {
+  it('SubagentStart again restarts an entry; SubagentStop for an unknown agent is ignored (no phantoms)', () => {
     let s = run(makeSession(), H({ event: 'SubagentStop', agentId: 'z' })).next;
-    expect(s.subagents[0]).toMatchObject({ agentId: 'z', running: false, startedAt: T0, endedAt: T0 });
+    expect(s.subagents).toEqual([]);
     s = run(s, H({ event: 'SubagentStart', agentId: 'z', agentType: 'Plan' }), T0 + 5).next;
     expect(s.subagents).toEqual([{ agentId: 'z', type: 'Plan', running: true, startedAt: T0 + 5 }]);
   });
@@ -836,6 +862,21 @@ describe('rule 4: lineage', () => {
     expect(effectsOf(effects, 'log')[0]).toMatchObject({ type: 'error' });
     // an id of the lineage is fine
     expect(run(makeSession({ status: 'working' }), H({ event: 'Stop', claudeSessionId: 'c1' })).next.status).toBe('done');
+  });
+
+  it('a hook with a new session id before any SessionStart is adopted as startup (relay ordering)', () => {
+    for (const status of ['starting', 'trust_pending'] as const) {
+      const s = makeSession({ status, claudeSessionIds: [], currentSessionId: '' });
+      const { next } = run(s, H({ event: 'UserPromptSubmit', claudeSessionId: 'cX', transcriptPath: '/t/cX.jsonl' }));
+      expect(next).toMatchObject({ claudeSessionIds: ['cX'], currentSessionId: 'cX', transcriptPath: '/t/cX.jsonl', status: 'working' });
+    }
+  });
+
+  it('AskUserQuestion PermissionRequest is a question, not a permission', () => {
+    const p = makePending({ toolName: 'AskUserQuestion' });
+    const { next, effects } = run(makeSession(), H({ event: 'PermissionRequest', pending: p }));
+    expect(next).toMatchObject({ status: 'question', pending: { kind: 'question', requestId: 'r1' } });
+    expect(effectsOf(effects, 'notify')[0]?.kind).toBe('question');
   });
 
   it('identity helpers', () => {
