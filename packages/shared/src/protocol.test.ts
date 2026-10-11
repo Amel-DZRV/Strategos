@@ -84,6 +84,8 @@ describe('parseUiCommand', () => {
       { c: 'slash.send', strategosId: 's', cmd: '/keepwarm 5h' },
       { c: 'chat.subscribe', strategosId: 's', from: -1 },
       { c: 'worktree.exclude', repoPath: 'r', add: 'yes' },
+      { c: 'suggestion.respond', accept: true },
+      { c: 'suggestion.respond', suggestionId: '', accept: true },
       { c: 'initiative.upsert', initiative: { id: 'i' } },
       { c: 'initiative.assign', strategosId: 's', initiativeId: 5 },
       { c: 'mission.start', initiativeId: 'i', sessions: [] },

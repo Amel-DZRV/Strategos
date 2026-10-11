@@ -177,7 +177,7 @@ export function ReviewPane({ session, active }: ReviewPaneProps) {
         ) : null}
         <label class="notes">
           <span class="sr-only">Notes to send back</span>
-          <textarea rows={3} placeholder="Notes for the session: what to change before this is ready" value={notes} onInput={(e) => setNotes(e.currentTarget.value)} />
+          <textarea rows={2} placeholder="Notes for the session: what to change before this is ready" value={notes} onInput={(e) => setNotes(e.currentTarget.value)} />
         </label>
         <div class="actions">
           <button
