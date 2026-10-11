@@ -65,18 +65,15 @@ export function TopBar() {
     return () => clearInterval(t);
   }, [synced]);
 
+  const waitTip = `Waiting now ${c.needs === 0 ? '0m' : fmtWait(c.waitingNowMs)}${c.needs > 1 ? ` (oldest ${fmtWait(c.oldestMs)})` : ''} · today ${waitingToday(today?.totals.waitingMs)}`;
+  const spend = today?.totals.costUsd ?? total;
   return (
     <header class="sumbar">
       <h1 class="brand">Strategos</h1>
-      <span class={`need ${c.needs === 0 ? 'none' : ''}`} aria-label={`${c.needs} need you`}>◆ {c.needs} need{c.needs === 1 ? 's' : ''} you</span>
-      <span class="m"><b class="tint-work">{c.working}</b> working</span>
-      <span class="m"><b class="tint-ready">{c.done}</b> done</span>
+      <span class={`need ${c.needs === 0 ? 'none' : ''}`} aria-label={`${c.needs} need you`} title={waitTip}>◆ {c.needs} need{c.needs === 1 ? 's' : ''} you</span>
+      <span class="m"><b>{c.working}</b> working</span>
+      <span class="m"><b>{c.done}</b> done</span>
       <span class="m"><b>{c.stopped}</b> stopped</span>
-      <span class="m waiting" title="Time owners spent waiting: right now (sum over what needs you) and today (daemon log)">
-        Waiting now <b>{c.needs === 0 ? '0m' : fmtWait(c.waitingNowMs)}</b>
-        {c.needs > 1 ? <small> (oldest {fmtWait(c.oldestMs)})</small> : null}
-        {' · '}today <b>{waitingToday(today?.totals.waitingMs)}</b>
-      </span>
       {usage?.fiveHour ? <span class="m">5h <b>{Math.round(usage.fiveHour.pct)}%</b></span> : null}
       {usage?.sevenDay ? <span class="m">7d <b>{Math.round(usage.sevenDay.pct)}%</b></span> : null}
       {store.initiatives.value.filter((i) => !i.archived).map((i) => (
@@ -88,7 +85,7 @@ export function TopBar() {
       ))}
       <span class="sp" />
       <button
-        type="button" class="mbtn" aria-keyshortcuts="g" title="Group planets by repo or by initiative (g)"
+        type="button" class="quiet" aria-keyshortcuts="g" title="Group planets by repo or by initiative (g)"
         onClick={() => {
           const next = groupBy.value === 'repo' ? 'initiative' : 'repo';
           setGroupBy(next);
@@ -102,9 +99,9 @@ export function TopBar() {
           title="Session list (Shift+L)" onClick={() => { view.value = 'list'; }}
         >List</button>
       </div>
-      <span class="m">Spend <b class="mono">{money(total)}</b></span>
-      <span class={`conn ${conn}`} role="status">{CONN_TEXT[conn]}</span>
-      <button type="button" class="btn primary" aria-keyshortcuts="c" onClick={() => { newSessionOpen.value = true; }}>New session</button>
+      {conn !== 'open' ? <span class={`conn ${conn}`} role="status">{CONN_TEXT[conn]}</span> : <span class="sr-only" role="status">{CONN_TEXT[conn]}</span>}
+      <button type="button" class="quiet" aria-keyshortcuts="c" onClick={() => { newSessionOpen.value = true; }}>New session</button>
+      <span class="m spend" title={today ? 'Spend today, from the daemon log' : 'Spend across all sessions'}>Spend today <b class="mono">{money(spend)}</b></span>
     </header>
   );
 }

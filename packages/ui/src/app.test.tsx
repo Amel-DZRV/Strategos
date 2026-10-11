@@ -155,7 +155,6 @@ test('the drawer header follows live updates, and tabs switch', async () => {
     store.applyEvent({ t: 'session.upsert', seq: 2, session: makeSession({ strategosId: 'a', displayName: 'Alpha', status: 'working', cost: { lineageUsd: 2.5, byClaudeSession: {} }, last: 'new message' }) });
   });
   expect(drawer.textContent).toContain('$2.50');
-  expect(drawer.textContent).toContain('new message');
   fireEvent.click(screen.getByRole('tab', { name: 'Chat' }));
   expect(screen.getByRole('tab', { name: 'Chat' }).getAttribute('aria-selected')).toBe('true');
   expect(screen.getByText(/chat view comes in a later milestone/)).toBeTruthy();

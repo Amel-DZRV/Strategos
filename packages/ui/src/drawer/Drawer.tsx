@@ -11,32 +11,37 @@ const TABS: { id: DrawerTab; label: string }[] = [
   { id: 'review', label: 'Review' },
 ];
 
+/** Status pill text as in the design: glyph and an upper-case phrase; colour is the status colour, never the only cue. */
+export function pillText(s: SessionRecord): string {
+  const st = statusInfo(s.status);
+  const label = s.status === 'permission' ? 'Needs permission' : s.status === 'question' ? 'Needs an answer' : st.label;
+  return `${st.glyph} ${label}`;
+}
+
+const TERM_NOTE = 'The real Claude Code, so your mods and slash commands work. Switching is instant: both views read the same live session.';
+const CHAT_NOTE = 'The same session read as a conversation, with tool calls and approvals as cards. Switching is instant: both views read the same live session.';
+
 export function DrawerHeader({ s }: { s: SessionRecord }) {
   const st = statusInfo(s.status);
   const pct = ctxPct(s);
   const waiting = s.waitingSince !== undefined || s.status === 'permission' || s.status === 'question';
+  const branch = branchOf(s);
   return (
     <header class="drawer-head" style={`--stc:${st.colour}`}>
-      <span class="g" aria-hidden="true">{st.glyph}</span>
-      <div class="titles">
-        <h2>{s.displayName}</h2>
-        <div class="sub mono">{repoName(s)}{branchOf(s) ? ` · ${branchOf(s)}` : ''}</div>
+      <h2>{s.displayName}</h2>
+      <div class="sub mono">{repoName(s)}{branch ? ` · ${branch}` : ''}</div>
+      <div class="facts">
+        <span class="pill" title={waiting ? `${st.label} · waiting ${fmtWait(waitingMs(s, now.value))}` : st.label}>{pillText(s)}</span>
+        <span class="ctxline mono" title={pct === null ? 'Context unknown' : `Context used: ${pct}%`}>
+          ctx{' '}
+          {pct === null ? '–' : (
+            <>
+              <span class="bar" aria-hidden="true"><i style={{ width: `${pct}%`, background: ctxColour(pct) }} /></span> <span class="pct">{pct}%</span>
+            </>
+          )}
+        </span>
+        <span class="cost mono" title="Estimated cost of this session and its lineage">{money(s.cost.lineageUsd)}</span>
       </div>
-      <dl class="facts">
-        <div><dt>Status</dt><dd>{st.label}{waiting ? ` · ${fmtWait(waitingMs(s, now.value))}` : ''}</dd></div>
-        <div>
-          <dt>Context</dt>
-          <dd>
-            {pct === null ? 'unknown' : (
-              <>
-                <span class="bar" aria-hidden="true"><i style={{ width: `${pct}%`, background: ctxColour(pct) }} /></span> {pct}%
-              </>
-            )}
-          </dd>
-        </div>
-        <div><dt>Cost</dt><dd class="mono">{money(s.cost.lineageUsd)}</dd></div>
-      </dl>
-      {s.last ? <p class="last" title={s.last}>{s.last}</p> : null}
     </header>
   );
 }
@@ -56,7 +61,6 @@ export function Drawer({ session, onClose, onLeaveTerminal }: DrawerProps) {
         <DrawerHeader s={session} />
         <button type="button" class="btn icon" aria-label="Close drawer" title="Close (Esc)" onClick={onClose}>×</button>
       </div>
-      {session.pending ? <PendingCard session={session} onOpenTerminal={() => { drawerTab.value = 'term'; }} /> : null}
       <div class="tabs" role="tablist" aria-label="Session views">
         {TABS.map((t) => (
           <button
@@ -79,6 +83,12 @@ export function Drawer({ session, onClose, onLeaveTerminal }: DrawerProps) {
       <div id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden={tab !== 'review'} class="panel">
         <p class="placeholder">The review view comes in a later milestone (M6).</p>
       </div>
+      {session.pending ? (
+        <footer class="drawer-foot">
+          <PendingCard session={session} onOpenTerminal={() => { drawerTab.value = 'term'; }} />
+          <p class="footnote">{tab === 'chat' ? CHAT_NOTE : TERM_NOTE}</p>
+        </footer>
+      ) : null}
     </aside>
   );
 }

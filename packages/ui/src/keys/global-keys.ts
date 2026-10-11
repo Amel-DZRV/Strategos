@@ -103,7 +103,11 @@ export function handleKey(e: KeyboardEvent): void {
       }
       break;
     case 'next': case 'prev': // Tab stays the browser's: trapping it would break keyboard navigation
-      if (store.needsYou.value.length > 0) { e.preventDefault(); move(act.id === 'prev' ? -1 : 1, true); }
+      if (store.needsYou.value.length > 0) {
+        e.preventDefault();
+        move(act.id === 'prev' ? -1 : 1, true);
+        if (selectedId.value) openDrawer(selectedId.value); // the drawer shows the command and Approve / Deny
+      }
       break;
     case 'left': case 'right': case 'up': case 'down':
       if (onMap) { e.preventDefault(); arrow(act.id); }
