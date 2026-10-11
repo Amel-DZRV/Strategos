@@ -9,7 +9,8 @@
     "check": "npm run typecheck && npm run test && npm run lint",
     "typecheck": "npm run typecheck --workspaces --if-present && tsc -p tools/tsconfig.json",
     "test": "vitest run",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "strategos": "node packages/daemon/src/cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
