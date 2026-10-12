@@ -1,6 +1,6 @@
 # Strategos: notes for Claude Code
 
-Strategos is a Windows desktop tool (macOS later) that shows every running Claude Code session on one screen, the "Map", and lets the owner act on them: approve or deny permission requests, answer questions, start and stop sessions, review diffs and open pull requests.
+Strategos is a desktop tool for Windows and macOS (Windows first in order) that shows every running Claude Code session on one screen, the "Map", and lets the owner act on them: approve or deny permission requests, answer questions, start and stop sessions, review diffs and open pull requests.
 
 **Status: planning. No product code exists yet.** Do not start building the product unless the owner asks. The next step is milestone M0, a short experiment (the "spike") that tests the riskiest assumptions. It is described in the implementation plan.
 
